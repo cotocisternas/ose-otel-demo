@@ -1,0 +1,119 @@
+# OSE OTel Demo
+
+## What This Is
+
+A workshop-grade demo project that teaches engineers how to instrument a Spring Boot 3.4.13 / Java 17 application using the OpenTelemetry Java SDK directly (manual instrumentation, not the auto-instrumentation Java agent). The demo covers two of the most common service-to-service shapes — synchronous HTTP APIs and asynchronous RabbitMQ producer/consumer flows — and emits all three OTel signals (traces, metrics, logs) to Grafana's `otel-lgtm` all-in-one backend. It's built to be cloned and walked through commit-by-commit by an internal engineering team during a hands-on workshop.
+
+## Core Value
+
+A workshop attendee can clone the repo, run `docker compose up` + `mise run dev`, hit `POST /orders`, and see a single distributed trace flow from the HTTP handler through the RabbitMQ publish, into the consumer's processing logic, with correlated metrics and logs — and understand exactly which lines of SDK code made each piece work.
+
+## Requirements
+
+### Validated
+
+<!-- Shipped and confirmed valuable. -->
+
+(None yet — ship to validate)
+
+### Active
+
+<!-- Current scope. Building toward these. -->
+
+- [ ] Spring Boot 3.4.13 producer service exposing `POST /orders` that publishes an `OrderCreated` message to RabbitMQ via Spring AMQP
+- [ ] Spring Boot 3.4.13 consumer service that processes `OrderCreated` messages with `@RabbitListener` and simulates downstream domain work
+- [ ] Manual OpenTelemetry SDK setup (no Java agent) — `OpenTelemetrySdk` configured at startup with OTLP gRPC exporters for traces, metrics, and logs
+- [ ] Trace instrumentation: explicit `Tracer` usage on HTTP entry points, around publish/receive, and inside business logic
+- [ ] W3C trace context propagation across the AMQP boundary — `TextMapSetter` to inject context into message headers on publish, `TextMapGetter` to extract on consume — making producer and consumer spans share a trace
+- [ ] Metric instrumentation: `Meter` with counters (orders processed, messages published/consumed) and histograms (HTTP request latency, message processing duration)
+- [ ] Log instrumentation: OTel SLF4J/Logback appender bridge that exports application logs as OTLP and stamps every log with the active trace/span IDs
+- [ ] Single-container Grafana `otel-lgtm` (https://github.com/grafana/docker-otel-lgtm) as the observability backend, exposing Grafana on a known port with Tempo, Mimir, and Loki datasources pre-wired
+- [ ] `docker-compose.yml` orchestrating only infrastructure (RabbitMQ + `otel-lgtm`); apps run on the host via `mise run`
+- [ ] `mise.toml` pinning Amazon Corretto 17 and Maven, plus `mise` tasks (`dev`, `test`, `infra:up`, `infra:down`) for one-command operation
+- [ ] Testcontainers integration tests that spin up RabbitMQ, exercise the producer-to-consumer path, and assert that the expected spans were exported (in-memory exporter or OTLP capture)
+- [ ] Staged git checkpoints — one branch (or tagged commit) per workshop step (e.g., `step-01-baseline`, `step-02-traces`, `step-03-context-propagation`, `step-04-metrics`, `step-05-logs`, `step-06-tests`) — so attendees can `git checkout` to follow along
+- [ ] Step-by-step `README.md` mapping each commit/branch to a specific OTel concept, with screenshots of Grafana panels and copy-pasteable curl commands
+
+### Out of Scope
+
+<!-- Explicit boundaries. Includes reasoning to prevent re-adding. -->
+
+- OpenTelemetry Java Agent (`-javaagent:opentelemetry-javaagent.jar`) — the entire point of the workshop is to teach the *manual SDK*; auto-instrumentation hides the mechanics we want to expose
+- Spring Boot OTel starter / Micrometer-tracing-bridge-otel — same reason; we want explicit `Tracer`/`Meter`/`Logger` calls, not framework-mediated ones
+- Kubernetes manifests, Helm charts, Tilt/Skaffold — workshop runs on a laptop with `docker compose` + `mise`, not a cluster
+- Production-grade RabbitMQ topology — no topic exchanges, no DLX, no RPC pattern, no fanout/work-queue variants; one direct exchange + one queue keeps the trace propagation lesson the headline
+- Multi-AMQP-pattern coverage (fanout, topic, RPC) — adds surface area without adding instrumentation lessons; deferred to a v2 if requested
+- Lower-level RabbitMQ Java client (`com.rabbitmq:amqp-client`) examples — Spring AMQP is the idiomatic Spring path attendees will recognize
+- GraalVM native-image build — adds JVM/build complexity orthogonal to OTel
+- Cloud observability backends (Honeycomb, Datadog, New Relic, Lightstep, AWS X-Ray, GCP Trace) — `otel-lgtm` is the demo backend; pointing at a SaaS is a one-line OTLP endpoint change attendees can do themselves
+- A web UI / frontend — the demo is server-side; HTTP traffic is generated via curl or the workshop's load script
+- Authentication / authorization on the HTTP API — irrelevant to the instrumentation lesson and would distract from it
+- Database persistence (JPA, R2DBC, JDBC) — the order/consumer logic is simulated in memory; adding a DB is a separable instrumentation lesson, not this one
+- Distributed deployment across multiple hosts — both services run on the workshop attendee's laptop
+- Performance benchmarking / load testing harnesses — out of scope for the teaching artifact (could be a follow-up)
+
+## Context
+
+**Domain:** OpenTelemetry instrumentation in the JVM ecosystem. The OTel Java SDK and the Java agent are two distinct ways to instrument an app, and they look very different in code. Spring Boot 3.x ships with a Micrometer-based observability story by default, but this demo deliberately steps around that to expose the raw SDK so attendees understand what's underneath the abstractions.
+
+**Audience:** Internal engineering team. Background: comfortable with Spring Boot and RabbitMQ; varying levels of OTel familiarity. Workshop is hands-on — attendees will clone, run, and read code.
+
+**Why this demo exists:** Most OTel learning resources jump straight to auto-instrumentation, which gives a great out-of-the-box experience but leaves engineers fuzzy on what the SDK actually does. When something needs custom instrumentation (a domain-specific span, a business metric, propagating context across a non-HTTP boundary like RabbitMQ), engineers don't know which knobs to turn. This demo closes that gap by making attendees write the SDK calls themselves.
+
+**Pedagogical hook — the AMQP propagation gap:** OTel's auto-instrumentation does *not* cover Spring AMQP out of the box (unlike Spring MVC and JDBC). This makes RabbitMQ the perfect teaching example: even teams that adopt the Java agent still have to handle this manually, so the demo's lesson transfers directly to production work.
+
+**Tooling philosophy:** mise (asdf-compatible) handles Java + Maven versions for reproducibility. Attendees with mise installed get the right toolchain automatically. Apps run on the host (not in containers) so attendees can attach a debugger and walk through SDK calls.
+
+## Constraints
+
+- **Tech stack — Spring Boot version**: 3.4.13 — pinned by user request; aligns with Java 17 baseline and the recent (2025+) Spring Boot 3.x line
+- **Tech stack — Java version**: 17 — pinned by user request; the LTS most teams target
+- **Tech stack — JDK distribution**: Amazon Corretto — chosen as the workshop default
+- **Tech stack — Build tool**: Maven — chosen for ubiquity in enterprise Spring Boot codebases
+- **Tech stack — AMQP API**: Spring AMQP (`spring-boot-starter-amqp`, `RabbitTemplate`, `@RabbitListener`) — idiomatic Spring path; lower-level `com.rabbitmq:amqp-client` excluded
+- **Tech stack — OTel API**: OpenTelemetry Java SDK directly (manual instrumentation only); no Java agent, no Micrometer bridge
+- **Tech stack — Observability backend**: Grafana `otel-lgtm` single-container distribution (https://github.com/grafana/docker-otel-lgtm); single OTLP endpoint receives traces, metrics, and logs
+- **Tech stack — Test framework**: JUnit 5 + Testcontainers (RabbitMQ module); integration tests assert exported telemetry
+- **Tooling**: `mise` for JDK + Maven version management; `mise.toml` is the source of truth
+- **Packaging**: `docker-compose` for infrastructure (RabbitMQ + otel-lgtm) only; apps run on host
+- **Audience constraint**: Workshop attendees with laptop-class hardware; no cloud dependencies; everything runs offline
+- **Output medium**: Public-readable git repository with a step-by-step README and one branch (or tag) per workshop checkpoint
+
+## Key Decisions
+
+<!-- Decisions that constrain future work. Add throughout project lifecycle. -->
+
+| Decision | Rationale | Outcome |
+|----------|-----------|---------|
+| Use OpenTelemetry SDK manually, not the Java agent | Workshop's pedagogical goal is teaching the SDK explicitly; auto-instrumentation hides the mechanics | — Pending |
+| Emit all three OTel signals (traces + metrics + logs) | Workshop attendees need to see how each signal is configured/exported through the same SDK | — Pending |
+| Use Grafana `otel-lgtm` single-container backend | One container instead of five separate services (collector, Tempo, Mimir, Loki, Grafana); minimizes ops noise | — Pending |
+| Minimal RabbitMQ topology (one direct exchange + one queue) | Trace propagation lesson is the headline; richer topologies add surface area without adding instructional value | — Pending |
+| Spring AMQP (`RabbitTemplate` / `@RabbitListener`) over the lower-level RabbitMQ Java client | Spring AMQP is what attendees recognize; manual span wrapping + header injection on top of it is the realistic teaching scenario | — Pending |
+| Order processing as the toy domain | Familiar shape (POST /orders → publish → consumer); makes business-logic spans concrete without distracting | — Pending |
+| Staged git checkpoints (one branch/tag per workshop step) | Workshop format demands "git checkout to follow along"; checkpoints keep each lesson focused | — Pending |
+| Testcontainers integration tests rather than mocks | Demonstrates testing instrumented code against real infrastructure — itself a workshop lesson | — Pending |
+| `docker-compose` for infra, app runs on host via mise | Lets attendees attach a debugger and step through SDK calls; containers for everything would block IDE workflows | — Pending |
+| mise (not asdf or SDKMAN) for JDK/Maven version pinning | mise was the user's chosen tooling; supports Corretto 17 and Maven natively | — Pending |
+| Amazon Corretto 17 over Temurin/Liberica/GraalVM | Chosen by user; well-supported, stable, vendor-backed | — Pending |
+| Maven over Gradle | Chosen by user; ubiquity in enterprise Spring Boot codebases | — Pending |
+
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
+---
+*Last updated: 2026-04-29 after initialization*
