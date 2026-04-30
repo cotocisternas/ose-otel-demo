@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 ## Current Position
 
 Phase: 1 of 7 (Baseline & Scaffold)
-Plan: 3 of 6 in current phase
-Status: Wave 1 complete; Wave 2 ready to dispatch
-Last activity: 2026-04-29 — Wave 1 (1-01 Maven, 1-02 mise, 1-03 docker-compose) merged. `mvn install` BUILD SUCCESS, `mise run verify:bom` confirms zero OTel libs, `docker compose config -q` validates. Phase dir renamed `01-baseline-scaffold` (gsd-tools normalize compatibility).
+Plan: 5 of 6 in current phase
+Status: Waves 1+2 complete; Wave 3 ready (autonomous: false — driver-in-the-loop exit gate)
+Last activity: 2026-04-29 — Wave 2 (1-04 producer, 1-05 consumer) merged. Cross-module queue/exchange/routing-key constants agree. `mvn install` BUILD SUCCESS across all 4 modules. `mise run verify:bom` still green — Phase 1 zero-OTel invariant preserved.
 
-Progress: [█████░░░░░] 50%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
@@ -69,6 +69,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-04-29 (Wave 1 of Phase 1 executed in parallel worktrees)
-Stopped at: Wave 1 merged + verified; Wave 2 (1-04 producer + 1-05 consumer) about to dispatch.
+Last session: 2026-04-29 (Waves 1+2 of Phase 1 executed in parallel worktrees)
+Stopped at: Waves 1+2 merged + verified; Wave 3 (1-06 README + exit gate) requires driver-in-the-loop infra/runtime verification.
 Resume file: None
