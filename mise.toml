@@ -1,0 +1,140 @@
+# OSE OTel Demo workshop toolchain & tasks
+# This file is the source of truth for JDK + Maven versions.
+# A companion .tool-versions file is generated for IntelliJ auto-detection.
+
+min_version = "2025.1.0"
+
+[tools]
+# Pinned to exact patch for workshop reproducibility.
+# Floating "corretto-17" would drift across cohorts.
+java  = "corretto-17.0.13.11.1"
+maven = "3.9.11"
+
+[env]
+# Spring Boot reads these and configures ConnectionFactory automatically.
+SPRING_RABBITMQ_HOST     = "localhost"
+SPRING_RABBITMQ_PORT     = "5672"
+SPRING_RABBITMQ_USERNAME = "guest"
+SPRING_RABBITMQ_PASSWORD = "guest"
+
+# Pre-wired for Phase 2+ (Phase 1 has no OTel libs to consume them).
+# Setting now means later phases inherit a clean slate.
+OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4317"
+OTEL_EXPORTER_OTLP_PROTOCOL = "grpc"
+
+# Stops the producer / consumer from clashing with each other on Tomcat default.
+PRODUCER_PORT = "8080"
+CONSUMER_PORT = "8081"
+
+# ──────────────────────────────────────────────────────────────────
+# Pre-flight: validate the developer's machine before anything starts
+# ──────────────────────────────────────────────────────────────────
+[tasks.preflight]
+description = "Verify environment: docker, ports, JDK, Maven"
+run = """
+set -e
+echo "--- mise tools ---"
+mise current java
+mise current maven
+echo
+echo "--- Java version (must be 17) ---"
+java -version 2>&1 | head -1 | grep -q '"17' || { echo "ERROR: Java 17 not active"; exit 1; }
+echo "OK"
+echo
+echo "--- Maven version (must be 3.9.x) ---"
+mvn -version 2>&1 | head -1 | grep -q "Apache Maven 3.9" || { echo "ERROR: Maven 3.9.x not active"; exit 1; }
+echo "OK"
+echo
+echo "--- Docker ---"
+docker info > /dev/null 2>&1 || { echo "ERROR: Docker not running"; exit 1; }
+echo "OK"
+echo
+echo "--- Port availability (3000, 4317, 4318, 5672, 15672) ---"
+for port in 3000 4317 4318 5672 15672; do
+  if ss -tln 2>/dev/null | grep -q ":${port} "; then
+    echo "ERROR: Port ${port} is in use. Run: lsof -i:${port} to find the process."
+    exit 1
+  fi
+  echo "  ${port}: free"
+done
+echo
+echo "Pre-flight: ALL GREEN. Run: mise run infra:up"
+"""
+
+# ──────────────────────────────────────────────────────────────────
+# Infrastructure (docker-compose)
+# ──────────────────────────────────────────────────────────────────
+[tasks."infra:up"]
+description = "Start RabbitMQ + grafana/otel-lgtm in docker-compose"
+run = "docker compose up -d --wait"
+
+[tasks."infra:down"]
+description = "Stop infra (preserves Grafana state via lgtm-data volume)"
+run = "docker compose down"
+
+[tasks."infra:reset"]
+description = "DESTRUCTIVE: stop infra AND wipe Grafana state"
+run = "docker compose down -v"
+
+[tasks."infra:logs"]
+description = "Tail infra logs"
+run = "docker compose logs -f"
+
+# ──────────────────────────────────────────────────────────────────
+# Build & test
+# ──────────────────────────────────────────────────────────────────
+[tasks.build]
+description = "Build all Maven modules (skip tests)"
+run = "mvn -T 1C -DskipTests clean install"
+
+[tasks.test]
+description = "Run all tests across modules"
+run = "mvn -T 1C verify"
+
+# ──────────────────────────────────────────────────────────────────
+# Run apps on host JVM
+# ──────────────────────────────────────────────────────────────────
+[tasks."dev:producer"]
+description = "Run producer-service on the host JVM"
+depends = ["infra:up"]
+run = "mvn -pl producer-service spring-boot:run -Dspring-boot.run.jvmArguments=\"-Dserver.port=${PRODUCER_PORT}\""
+
+[tasks."dev:consumer"]
+description = "Run consumer-service on the host JVM"
+depends = ["infra:up"]
+run = "mvn -pl consumer-service spring-boot:run -Dspring-boot.run.jvmArguments=\"-Dserver.port=${CONSUMER_PORT}\""
+
+[tasks.dev]
+description = "Run producer + consumer in parallel (Ctrl-C stops both)"
+depends = ["infra:up"]
+run = [
+  { tasks = ["dev:producer", "dev:consumer"] }
+]
+
+# ──────────────────────────────────────────────────────────────────
+# Workshop helpers
+# ──────────────────────────────────────────────────────────────────
+[tasks."demo:order"]
+description = "POST a sample order to the producer; expect 202"
+run = "curl -sf -X POST http://localhost:${PRODUCER_PORT}/orders -H 'Content-Type: application/json' -d '{\"sku\":\"WIDGET-1\",\"quantity\":3}' && echo"
+
+[tasks."verify:bom"]
+description = "Phase 1 success gate: zero OTel libs on the classpath"
+run = """
+set -e
+COUNT=$(mvn -q dependency:tree -Dincludes=io.opentelemetry 2>&1 | grep -c "io.opentelemetry" || true)
+if [ "$COUNT" -gt 0 ]; then
+  echo "ERROR: OpenTelemetry libraries detected on classpath:"
+  mvn dependency:tree -Dincludes=io.opentelemetry
+  exit 1
+fi
+echo "Phase 1 baseline confirmed: zero OpenTelemetry libraries on classpath."
+"""
+
+[tasks."ui:grafana"]
+description = "Open Grafana in the default browser"
+run = "xdg-open http://localhost:3000 2>/dev/null || open http://localhost:3000"
+
+[tasks."ui:rabbitmq"]
+description = "Open RabbitMQ Management UI in the default browser"
+run = "xdg-open http://localhost:15672 2>/dev/null || open http://localhost:15672"
