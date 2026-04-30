@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!--
+    No POM-inheritance element here on purpose.
+
+    We use BOM imports below to control ordering. Inheriting from
+    spring-boot-starter-parent would inject the Spring Boot BOM via
+    POM inheritance BEFORE our <dependencyManagement> block runs,
+    breaking the OTel-first ordering and silently re-pinning OTel
+    artifact versions to whatever Spring Boot 3.4.13 manages
+    (older than 1.61.0).
+    See .planning/phases/01-baseline-scaffold/1-RESEARCH.md Pitfall A.
+  -->
+
+  <groupId>com.example</groupId>
+  <artifactId>ose-otel-demo-parent</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+
+  <name>OSE OTel Demo (parent)</name>
+  <description>Aggregator parent for the OSE OTel workshop demo (Phase 1: Baseline &amp; Scaffold).</description>
+
+  <modules>
+    <module>otel-bootstrap</module>
+    <module>producer-service</module>
+    <module>consumer-service</module>
+  </modules>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <java.version>17</java.version>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
+
+    <!--
+      Phase 1 declares these BOMs but adds ZERO `<dependency>io.opentelemetry:*</dependency>`
+      references. Order matters: Maven uses "first-declaration-wins" for BOM imports
+      (<scope>import</scope>), so OTel BOMs MUST precede the Spring Boot BOM to win
+      on shared transitive artifacts in Phase 2+.
+    -->
+    <opentelemetry.version>1.61.0</opentelemetry.version>
+    <opentelemetry-instrumentation.version>2.27.0-alpha</opentelemetry-instrumentation.version>
+    <spring-boot.version>3.4.13</spring-boot.version>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <!--
+        1st: OpenTelemetry SDK BOM.
+        Must precede Spring Boot to win on shared transitive artifacts
+        (`opentelemetry-api`, etc.) when Phase 2 starts adding OTel deps.
+      -->
+      <dependency>
+        <groupId>io.opentelemetry</groupId>
+        <artifactId>opentelemetry-bom</artifactId>
+        <version>${opentelemetry.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <!--
+        2nd: OpenTelemetry Instrumentation alpha BOM.
+        Used in Phase 5 for the Logback appender artifact only
+        (`opentelemetry-logback-appender-1.0`); pulled via the alpha BOM
+        because that artifact still carries the `-alpha` qualifier.
+      -->
+      <dependency>
+        <groupId>io.opentelemetry.instrumentation</groupId>
+        <artifactId>opentelemetry-instrumentation-bom-alpha</artifactId>
+        <version>${opentelemetry-instrumentation.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <!--
+        3rd: Spring Boot BOM.
+        Imported AFTER the two OTel BOMs so OTel-managed versions take
+        precedence on any shared artifact.
+      -->
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-dependencies</artifactId>
+        <version>${spring-boot.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <!-- Spring Boot plugin available to child service modules (no version override needed there). -->
+        <plugin>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-maven-plugin</artifactId>
+          <version>${spring-boot.version}</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+
+    <plugins>
+      <!--
+        Phase 1 BOM-convergence gate (Pitfall A + Pitfall E).
+        Bound to `validate` so it fires on every Maven invocation
+        (`install`, `package`, `test`, ...). Without this binding, BOM drift
+        could slip through `mvn install`.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>3.5.0</version>
+        <executions>
+          <execution>
+            <id>enforce</id>
+            <phase>validate</phase>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <dependencyConvergence/>
+                <requireMavenVersion>
+                  <version>[3.9.0,)</version>
+                </requireMavenVersion>
+                <requireJavaVersion>
+                  <version>[17,18)</version>
+                </requireJavaVersion>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>
