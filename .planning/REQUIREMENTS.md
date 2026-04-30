@@ -122,63 +122,75 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ## Traceability
 
-Phase mapping is filled by the roadmap; this table will be updated when `gsd-roadmapper` runs.
+Every v1 requirement maps to exactly one phase. Updated by `gsd-roadmapper` 2026-04-29.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | TBD | Pending |
-| INFRA-02 | TBD | Pending |
-| INFRA-03 | TBD | Pending |
-| INFRA-04 | TBD | Pending |
-| INFRA-05 | TBD | Pending |
-| APP-01 | TBD | Pending |
-| APP-02 | TBD | Pending |
-| APP-03 | TBD | Pending |
-| APP-04 | TBD | Pending |
-| APP-05 | TBD | Pending |
-| TRACE-01 | TBD | Pending |
-| TRACE-02 | TBD | Pending |
-| TRACE-03 | TBD | Pending |
-| TRACE-04 | TBD | Pending |
-| TRACE-05 | TBD | Pending |
-| TRACE-06 | TBD | Pending |
-| TRACE-07 | TBD | Pending |
-| TRACE-08 | TBD | Pending |
-| TRACE-09 | TBD | Pending |
-| PROP-01 | TBD | Pending |
-| PROP-02 | TBD | Pending |
-| PROP-03 | TBD | Pending |
-| PROP-04 | TBD | Pending |
-| METRIC-01 | TBD | Pending |
-| METRIC-02 | TBD | Pending |
-| METRIC-03 | TBD | Pending |
-| METRIC-04 | TBD | Pending |
-| LOG-01 | TBD | Pending |
-| LOG-02 | TBD | Pending |
-| LOG-03 | TBD | Pending |
-| LOG-04 | TBD | Pending |
-| LOG-05 | TBD | Pending |
-| TEST-01 | TBD | Pending |
-| TEST-02 | TBD | Pending |
-| TEST-03 | TBD | Pending |
-| TEST-04 | TBD | Pending |
-| TEST-05 | TBD | Pending |
-| TEST-06 | TBD | Pending |
-| DOC-01 | TBD | Pending |
-| DOC-02 | TBD | Pending |
-| DOC-03 | TBD | Pending |
-| DOC-04 | TBD | Pending |
-| DOC-05 | TBD | Pending |
-| WORK-01 | TBD | Pending |
-| WORK-02 | TBD | Pending |
-| WORK-03 | TBD | Pending |
+| INFRA-01 | Phase 1 | Pending |
+| INFRA-02 | Phase 1 | Pending |
+| INFRA-03 | Phase 1 | Pending |
+| INFRA-04 | Phase 1 | Pending |
+| INFRA-05 | Phase 1 | Pending |
+| APP-01 | Phase 1 | Pending |
+| APP-02 | Phase 1 | Pending |
+| APP-03 | Phase 1 | Pending |
+| APP-04 | Phase 3 | Pending |
+| APP-05 | Phase 1 | Pending |
+| TRACE-01 | Phase 2 | Pending |
+| TRACE-02 | Phase 2 | Pending |
+| TRACE-03 | Phase 2 | Pending |
+| TRACE-04 | Phase 2 | Pending |
+| TRACE-05 | Phase 2 | Pending |
+| TRACE-06 | Phase 2 | Pending |
+| TRACE-07 | Phase 2 | Pending |
+| TRACE-08 | Phase 2 | Pending |
+| TRACE-09 | Phase 3 | Pending |
+| PROP-01 | Phase 3 | Pending |
+| PROP-02 | Phase 3 | Pending |
+| PROP-03 | Phase 3 | Pending |
+| PROP-04 | Phase 3 | Pending |
+| METRIC-01 | Phase 4 | Pending |
+| METRIC-02 | Phase 4 | Pending |
+| METRIC-03 | Phase 4 | Pending |
+| METRIC-04 | Phase 4 | Pending |
+| LOG-01 | Phase 5 | Pending |
+| LOG-02 | Phase 5 | Pending |
+| LOG-03 | Phase 5 | Pending |
+| LOG-04 | Phase 5 | Pending |
+| LOG-05 | Phase 5 | Pending |
+| TEST-01 | Phase 6 | Pending |
+| TEST-02 | Phase 6 | Pending |
+| TEST-03 | Phase 6 | Pending |
+| TEST-04 | Phase 6 | Pending |
+| TEST-05 | Phase 6 | Pending |
+| TEST-06 | Phase 6 | Pending |
+| DOC-01 | Phase 7 | Pending |
+| DOC-02 | Phase 1 | Pending |
+| DOC-03 | Phase 2 | Pending |
+| DOC-04 | Phase 7 | Pending |
+| DOC-05 | Phase 2 | Pending |
+| WORK-01 | Phase 1 | Pending |
+| WORK-02 | Phase 7 | Pending |
+| WORK-03 | Phase 7 | Pending |
 
 **Coverage:**
 
-- v1 requirements: 45 total
-- Mapped to phases: 0 (filled by roadmapper)
-- Unmapped: 45 ⚠️ (will be 0 after `gsd-roadmapper`)
+- v1 requirements: 46 total (header in original definition said 45; recount across all 9 categories — INFRA 5 + APP 5 + TRACE 9 + PROP 4 + METRIC 4 + LOG 5 + TEST 6 + DOC 5 + WORK 3 = 46)
+- Mapped to phases: 46 ✓
+- Unmapped: 0 ✓
+- Per-phase distribution: P1=11, P2=10, P3=6, P4=4, P5=5, P6=6, P7=4
+
+### Judgment Calls (documented for traceability)
+
+- **APP-04** (deterministic 10th-order failure): mapped to **Phase 3**, not Phase 1 or Phase 2. Rationale: APP-04 wires the *failure path* whose only purpose is to produce the error condition that TRACE-09 (`recordException` + `setStatus(ERROR)`) reacts to. Wiring APP-04 in Phase 1 would create a deterministic failure with no instrumentation around it (a defect, not a lesson); wiring it in Phase 2 would force TRACE-09 into Phase 2 and bloat the SDK-bootstrap lesson. Landing both in Phase 3 keeps the "first failure → first error span" pairing pedagogically tight.
+- **TRACE-09** (`recordException` + `setStatus(ERROR)`): mapped to **Phase 3** alongside APP-04 (see above).
+- **WORK-01** (annotated git tags `step-01` through `step-06`): mapped to **Phase 1** because it is one requirement covering six tags and the *first* tag is created at Phase 1's exit gate, establishing the convention. Each subsequent phase's success criteria explicitly require the matching tag to be created at that phase's exit (callout in each `### Phase N` section); we did not split WORK-01 across phases because that would inflate the requirement count artificially.
+- **DOC-01** (full README walkthrough): mapped to **Phase 7** because the walkthrough requires *all* six step-tags to exist before it can be authored end-to-end with copy-pasteable curl commands. Per-phase README skeleton increments are absorbed into each phase's "tag this checkpoint" exit work but do not constitute the DOC-01 deliverable.
+- **DOC-02** (Prerequisites section): mapped to **Phase 1** because it is the gate that prevents pre-OTel friction and must exist before any attendee runs `mise run preflight`.
+- **DOC-03** (heavy comments on `OtelSdkConfiguration`): mapped to **Phase 2** because that is when `OtelSdkConfiguration.java` first exists; the heavy-commenting quality bar applies from the moment the file is written.
+- **DOC-05** (deliberate-duplication callout): mapped to **Phase 2** because that is when the duplication first becomes visible in the codebase — the callout must land in the same phase to head off "fix the duplication" PRs from a reader.
 
 ---
+
 *Requirements defined: 2026-04-29*
-*Last updated: 2026-04-29 after initial definition*
+*Last updated: 2026-04-29 by gsd-roadmapper — traceability filled, judgment calls documented*
