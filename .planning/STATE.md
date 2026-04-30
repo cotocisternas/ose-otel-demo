@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 ## Current Position
 
 Phase: 1 of 7 (Baseline & Scaffold)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-04-29 — Roadmap created; 46 v1 requirements mapped across 7 phases.
+Plan: 0 of 6 in current phase
+Status: Ready to execute
+Last activity: 2026-04-29 — Phase 1 research + 6 plans across 3 waves; plan-checker verified PASS; all 11 REQ-IDs covered.
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -54,7 +54,7 @@ None yet.
 
 ### Blockers/Concerns
 
-- **Phase 1 research flag**: Verify Maven BOM import order (OTel BOM **before** Spring Boot BOM) and `mise` plugin ID for Corretto 17 — needs `/gsd-research-phase` before planning.
+- **Phase 1 research flag**: RESOLVED 2026-04-29 — RESEARCH.md (commit `d3bbf32`) confirms OTel BOM precedes Spring Boot BOM; mise pin is `corretto-17.0.13.11.1` (exact patch, not floating).
 - **Phase 3 research flag**: Resolve listener-side extraction mechanism (`MethodInterceptor` advice on `SimpleRabbitListenerContainerFactory` vs inline extract in `@RabbitListener`) — needs `/gsd-research-phase` before planning.
 - **Phase 5 research flag**: Confirm Maven coordinate for MDC injector (`opentelemetry-logback-mdc-1.0` artifact vs `<captureMdcAttributes>` on appender).
 - **Phase 6 research flag**: Validate `@ServiceConnection` + `RabbitMQContainer` on Spring Boot 3.4.13.
@@ -69,6 +69,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-04-29 (initialization)
-Stopped at: Roadmap and traceability written; ready for `/gsd-research-phase 1` or `/gsd-plan-phase 1`.
+Last session: 2026-04-29 (Phase 1 research + plan)
+Stopped at: 6 plans verified by gsd-plan-checker; ready for `/gsd-execute-phase 1`.
 Resume file: None
