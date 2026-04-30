@@ -40,8 +40,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 - **Wave 2** *(blocked on Wave 1 completion)* — **✅ complete**
   - [x] `1-04-producer-service` — APP-01, APP-02, APP-05 — `OrderController` + `OrderPublisher` + `RabbitConfig` + Spring Boot app
   - [x] `1-05-consumer-service` — APP-03, APP-05 — `@RabbitListener` + `ProcessingService` + Spring Boot app
-- **Wave 3** *(blocked on Waves 1+2 completion; contains human checkpoint)*
-  - [ ] `1-06-readme-and-exit-gate` — DOC-02, WORK-01 — README Prerequisites section + annotated `step-01-baseline` tag (gated on all 5 success criteria green)
+- **Wave 3** *(blocked on Waves 1+2 completion; contains human checkpoint)* — **🟡 code complete, awaiting tag**
+  - [x] `1-06-readme-and-exit-gate` (T1+T2) — DOC-02 — README Prerequisites + .gitignore landed; all 5 Phase 1 success criteria simultaneously green
+  - [ ] `1-06` (T3) — WORK-01 — annotated tag `step-01-baseline` user-applied (see `.planning/phases/01-baseline-scaffold/1-06-SUMMARY.md`)
 
 **Cross-cutting constraints** *(must_haves shared across plans)*:
 - `mvn dependency:tree -Dincludes=io.opentelemetry` returns zero matches (asserted by 1-01, 1-02, 1-04, 1-05, 1-06)

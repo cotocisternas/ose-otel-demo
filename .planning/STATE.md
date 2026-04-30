@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 ## Current Position
 
 Phase: 1 of 7 (Baseline & Scaffold)
-Plan: 5 of 6 in current phase
-Status: Waves 1+2 complete; Wave 3 ready (autonomous: false — driver-in-the-loop exit gate)
-Last activity: 2026-04-29 — Wave 2 (1-04 producer, 1-05 consumer) merged. Cross-module queue/exchange/routing-key constants agree. `mvn install` BUILD SUCCESS across all 4 modules. `mise run verify:bom` still green — Phase 1 zero-OTel invariant preserved.
+Plan: 6 of 6 in current phase (code complete; awaiting user tag)
+Status: All 5 Phase 1 success criteria simultaneously green. Awaiting `git tag -a step-01-baseline` from user.
+Last activity: 2026-04-29 — Plan 1-06 T1 (README + .gitignore) + T2 (5-criteria runtime verification) green. POST /orders → 202 + consumer-logged receipt UUID match; verify:bom zero OTel libs; preflight green; tree clean. T3 tag user-applied.
 
-Progress: [████████░░] 83%
+Progress: [█████████░] 95%
 
 ## Performance Metrics
 
