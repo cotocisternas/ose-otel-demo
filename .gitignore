@@ -1,0 +1,21 @@
+# Maven
+target/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# mise local state (mise.toml IS tracked; .mise/ runtime state is not)
+.mise/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs / temp
+*.log
+/tmp/
+
+# Tooling caches
+.gradle/
