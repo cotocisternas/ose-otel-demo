@@ -1,0 +1,44 @@
+# Infrastructure only — apps run on host via mise tasks.
+# Phase 1: lgtm container runs but receives ZERO telemetry (no OTel libs in apps).
+# Pinned image tags for workshop reproducibility (no floating tags — see RESEARCH Anti-Patterns).
+
+services:
+  rabbitmq:
+    image: rabbitmq:4.3-management
+    container_name: ose-otel-rabbitmq
+    ports:
+      - "5672:5672"      # AMQP
+      - "15672:15672"    # Management UI (guest/guest)
+    healthcheck:
+      # Stage 1 healthcheck — lightest with lowest false-positive rate.
+      # Source: rabbitmq.com/docs/monitoring
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  lgtm:
+    # Image's built-in HEALTHCHECK checks all 5 backends — do NOT override.
+    image: grafana/otel-lgtm:0.26.0
+    container_name: ose-otel-lgtm
+    ports:
+      - "3000:3000"      # Grafana UI (admin/admin)
+      - "4317:4317"      # OTLP gRPC ingest (unused in Phase 1)
+      - "4318:4318"      # OTLP HTTP ingest (unused in Phase 1)
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - lgtm-data:/data  # persists Grafana state across infra:down/up cycles (Pitfall D)
+    # NOTE: We deliberately do NOT add a `healthcheck:` block here.
+    # The image's Dockerfile already declares:
+    #   HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    #               CMD ["/otel-lgtm/docker/healthcheck.sh"]
+    # which checks Grafana, Loki, Tempo, Mimir, AND OTel Collector ready
+    # endpoints. Overriding with a partial check would regress validation.
+    restart: unless-stopped
+
+volumes:
+  lgtm-data:
