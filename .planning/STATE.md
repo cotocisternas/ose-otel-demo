@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** A workshop attendee can clone the repo, run `docker compose up` + `mise run dev`, hit `POST /orders`, and see a single distributed trace flow from the HTTP handler through the RabbitMQ publish, into the consumer's processing logic, with correlated metrics and logs — and understand exactly which lines of SDK code made each piece work.
-**Current focus:** Phase 1 — Baseline & Scaffold
+**Current focus:** Phase 1 SHIPPED 2026-04-29 (tag `step-01-baseline`); Phase 2 — Manual SDK Bootstrap & First Traces is next
 
 ## Current Position
 
-Phase: 1 of 7 (Baseline & Scaffold)
-Plan: 6 of 6 in current phase (code complete; awaiting user tag)
-Status: All 5 Phase 1 success criteria simultaneously green. Awaiting `git tag -a step-01-baseline` from user.
-Last activity: 2026-04-29 — Plan 1-06 T1 (README + .gitignore) + T2 (5-criteria runtime verification) green. POST /orders → 202 + consumer-logged receipt UUID match; verify:bom zero OTel libs; preflight green; tree clean. T3 tag user-applied.
+Phase: 1 of 7 (Baseline & Scaffold) — **SHIPPED**
+Plan: 6 of 6 complete
+Status: Phase 1 shipped. Annotated tag `step-01-baseline` on commit `6aa3a92`. Local only — push pending user decision (`git push origin step-01-baseline`).
+Last activity: 2026-04-29 — Tag applied + reproducibility self-test passed (clone → mise install → verify:bom → mvn install all green from /tmp/verify-baseline). Phase 2 (Manual SDK Bootstrap & First Traces) is unblocked.
 
-Progress: [█████████░] 95%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -69,6 +69,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-04-29 (Waves 1+2 of Phase 1 executed in parallel worktrees)
-Stopped at: Waves 1+2 merged + verified; Wave 3 (1-06 README + exit gate) requires driver-in-the-loop infra/runtime verification.
+Last session: 2026-04-29 (Phase 1 shipped — all 3 waves merged, runtime verified, tag applied)
+Stopped at: Phase 1 complete. Tag local-only (push deferred per GSD safety protocol). Next session begins Phase 2 — Manual SDK Bootstrap & First Traces (depends on Phase 1; the broken-then-fixed delta with Phase 3 is load-bearing).
 Resume file: None

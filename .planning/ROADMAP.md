@@ -12,7 +12,7 @@ This roadmap delivers a workshop-grade demo that teaches engineers how to instru
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Baseline & Scaffold** — Working two-service Spring Boot + RabbitMQ app on host JVM with ZERO telemetry; foundation pitfalls neutralised (BOM ordering, ports, mise/IDE)
+- [x] **Phase 1: Baseline & Scaffold** *(shipped 2026-04-29; tag `step-01-baseline`)* — Working two-service Spring Boot + RabbitMQ app on host JVM with ZERO telemetry; foundation pitfalls neutralised (BOM ordering, ports, mise/IDE)
 - [ ] **Phase 2: Manual SDK Bootstrap & First Traces** — `OpenTelemetrySdk` wired per-service, traces emitted, but producer and consumer in **separate** traces (intentional setup for Phase 3's "aha")
 - [ ] **Phase 3: AMQP Context Propagation** — THE headline lesson: `TextMapSetter`/`TextMapGetter` pair joins producer and consumer into ONE trace
 - [ ] **Phase 4: Metrics** — `SdkMeterProvider` + Counter, Histogram, ObservableGauge instrument shapes flowing to Mimir
@@ -40,9 +40,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - **Wave 2** *(blocked on Wave 1 completion)* — **✅ complete**
   - [x] `1-04-producer-service` — APP-01, APP-02, APP-05 — `OrderController` + `OrderPublisher` + `RabbitConfig` + Spring Boot app
   - [x] `1-05-consumer-service` — APP-03, APP-05 — `@RabbitListener` + `ProcessingService` + Spring Boot app
-- **Wave 3** *(blocked on Waves 1+2 completion; contains human checkpoint)* — **🟡 code complete, awaiting tag**
-  - [x] `1-06-readme-and-exit-gate` (T1+T2) — DOC-02 — README Prerequisites + .gitignore landed; all 5 Phase 1 success criteria simultaneously green
-  - [ ] `1-06` (T3) — WORK-01 — annotated tag `step-01-baseline` user-applied (see `.planning/phases/01-baseline-scaffold/1-06-SUMMARY.md`)
+- **Wave 3** *(blocked on Waves 1+2 completion; contains human checkpoint)* — **✅ complete**
+  - [x] `1-06-readme-and-exit-gate` — DOC-02 + WORK-01 — README Prerequisites + .gitignore + annotated tag `step-01-baseline` (criterion 4 reproducibility self-test verified via /tmp/verify-baseline clone)
 
 **Cross-cutting constraints** *(must_haves shared across plans)*:
 - `mvn dependency:tree -Dincludes=io.opentelemetry` returns zero matches (asserted by 1-01, 1-02, 1-04, 1-05, 1-06)

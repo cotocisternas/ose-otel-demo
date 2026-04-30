@@ -1,7 +1,10 @@
 ---
 plan: 1-06-readme-and-exit-gate
 phase: 01-baseline-scaffold
-status: awaiting-tag
+status: complete
+tag: step-01-baseline
+tag_commit: 6aa3a924e3893493883775e5ae5c4384c4c1f530
+tag_pushed: false
 ---
 
 # Plan 1-06 — README + Phase 1 Exit Gate
