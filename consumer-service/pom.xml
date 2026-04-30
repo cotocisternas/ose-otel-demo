@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.example</groupId>
+    <artifactId>ose-otel-demo-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>consumer-service</artifactId>
+  <packaging>jar</packaging>
+
+  <name>OSE OTel Demo (consumer)</name>
+  <description>Consumer service: @RabbitListener processes OrderCreated. Phase 1: Spring Boot starters only — no OTel deps yet.</description>
+
+  <dependencies>
+    <!--
+      Spring Boot starters only. NO OpenTelemetry deps in Phase 1 —
+      that is the Phase 1 invariant verified by Task 3 of this plan
+      (BOM gate: zero matches in dependency:tree across all modules).
+
+      Per RESEARCH.md Open Question #1: consumer DOES include
+      spring-boot-starter-web so that /actuator/health is reachable
+      over HTTP on port 8081 (Tomcat embedded). This matches APP-05.
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-amqp</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- Version comes from parent <pluginManagement>. -->
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+</project>
