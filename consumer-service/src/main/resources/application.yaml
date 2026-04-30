@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: order-consumer
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
