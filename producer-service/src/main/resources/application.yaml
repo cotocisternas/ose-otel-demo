@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: order-producer
+# RabbitMQ connection picked up from SPRING_RABBITMQ_* env vars (mise.toml)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
