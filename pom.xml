@@ -114,6 +114,25 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-enforcer-plugin</artifactId>
         <version>3.5.0</version>
+        <!--
+          Rules declared at plugin level so they apply to BOTH:
+            - the validate-phase-bound `enforce` execution below
+              (fires on every `mvn install`, `mvn package`, etc.)
+            - direct CLI invocations like `mvn enforcer:enforce`
+          Plugin-level configuration is inherited by every <execution>
+          unless that execution overrides it.
+        -->
+        <configuration>
+          <rules>
+            <dependencyConvergence/>
+            <requireMavenVersion>
+              <version>[3.9.0,)</version>
+            </requireMavenVersion>
+            <requireJavaVersion>
+              <version>[17,18)</version>
+            </requireJavaVersion>
+          </rules>
+        </configuration>
         <executions>
           <execution>
             <id>enforce</id>
@@ -121,17 +140,6 @@
             <goals>
               <goal>enforce</goal>
             </goals>
-            <configuration>
-              <rules>
-                <dependencyConvergence/>
-                <requireMavenVersion>
-                  <version>[3.9.0,)</version>
-                </requireMavenVersion>
-                <requireJavaVersion>
-                  <version>[17,18)</version>
-                </requireJavaVersion>
-              </rules>
-            </configuration>
           </execution>
         </executions>
       </plugin>
