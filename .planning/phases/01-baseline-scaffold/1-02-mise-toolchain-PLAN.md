@@ -1,6 +1,6 @@
 ---
 id: 1-02-mise-toolchain
-phase: 1-baseline-scaffold
+phase: 01-baseline-scaffold
 plan: 02
 type: execute
 wave: 1
@@ -59,7 +59,7 @@ Output: 2 files (mise.toml + .tool-versions). After `mise install` and `mise run
 @.planning/ROADMAP.md
 @.planning/STATE.md
 @.planning/REQUIREMENTS.md
-@.planning/phases/1-baseline-scaffold/1-RESEARCH.md
+@.planning/phases/01-baseline-scaffold/1-RESEARCH.md
 @CLAUDE.md
 </context>
 
@@ -69,11 +69,11 @@ Output: 2 files (mise.toml + .tool-versions). After `mise install` and `mise run
   <name>Task 1: Write mise.toml with [tools], [env], and complete task graph</name>
   <files>mise.toml</files>
   <read_first>
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 642-786 — complete mise.toml verified template)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 11-13 — flagged-question resolution: corretto-17.0.13.11.1 exact patch pin)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 265-279 — Pattern 2: mise parallel `:::` separator + `{ tasks = [...] }` array form)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 325-352 — Pitfalls B (port collisions) + D (no -v on infra:down))
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 763-776 — verify:bom is THE Phase 1 success gate)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 642-786 — complete mise.toml verified template)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 11-13 — flagged-question resolution: corretto-17.0.13.11.1 exact patch pin)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 265-279 — Pattern 2: mise parallel `:::` separator + `{ tasks = [...] }` array form)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 325-352 — Pitfalls B (port collisions) + D (no -v on infra:down))
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 763-776 — verify:bom is THE Phase 1 success gate)
   </read_first>
   <action>
     Create `mise.toml` at the repo root EXACTLY matching RESEARCH.md lines 644-785. Concrete required content, top-to-bottom:
@@ -173,8 +173,8 @@ Output: 2 files (mise.toml + .tool-versions). After `mise install` and `mise run
   <name>Task 2: Generate companion .tool-versions (asdf-compat for IntelliJ)</name>
   <files>.tool-versions</files>
   <read_first>
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 789-802 — .tool-versions content + IntelliJ rationale)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 336-345 — Pitfall C: mise + IntelliJ JDK detection mismatch)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 789-802 — .tool-versions content + IntelliJ rationale)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 336-345 — Pitfall C: mise + IntelliJ JDK detection mismatch)
     - mise.toml (just created — must keep .tool-versions in sync)
   </read_first>
   <action>
@@ -207,7 +207,7 @@ Output: 2 files (mise.toml + .tool-versions). After `mise install` and `mise run
   <files>(none — verification only)</files>
   <read_first>
     - mise.toml + .tool-versions (just created)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 1208-1224 — Environment Availability table; mise + docker confirmed present, host Maven absent — `mise install` provides it)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 1208-1224 — Environment Availability table; mise + docker confirmed present, host Maven absent — `mise install` provides it)
   </read_first>
   <action>
     Run two verifications. This task creates no files — it confirms the prior two tasks shipped a working toolchain pin.
@@ -280,7 +280,7 @@ Output: 2 files (mise.toml + .tool-versions). After `mise install` and `mise run
 </success_criteria>
 
 <output>
-After completion, create `.planning/phases/1-baseline-scaffold/1-02-SUMMARY.md` documenting:
+After completion, create `.planning/phases/01-baseline-scaffold/1-02-SUMMARY.md` documenting:
 - Pinned versions (java + maven) and rationale (one sentence about exact-patch reproducibility)
 - Confirmed `mise current` output
 - Confirmed `mise run preflight` green-path output (paste the final 6-8 lines including "ALL GREEN")

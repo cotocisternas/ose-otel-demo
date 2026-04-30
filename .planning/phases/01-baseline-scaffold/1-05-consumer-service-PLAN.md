@@ -1,6 +1,6 @@
 ---
 id: 1-05-consumer-service
-phase: 1-baseline-scaffold
+phase: 01-baseline-scaffold
 plan: 05
 type: execute
 wave: 2
@@ -70,10 +70,10 @@ Output: 4 Java files + 1 application.yaml. After `mise run dev:consumer`, the ap
 @.planning/ROADMAP.md
 @.planning/STATE.md
 @.planning/REQUIREMENTS.md
-@.planning/phases/1-baseline-scaffold/1-RESEARCH.md
-@.planning/phases/1-baseline-scaffold/1-01-SUMMARY.md
-@.planning/phases/1-baseline-scaffold/1-02-SUMMARY.md
-@.planning/phases/1-baseline-scaffold/1-03-SUMMARY.md
+@.planning/phases/01-baseline-scaffold/1-RESEARCH.md
+@.planning/phases/01-baseline-scaffold/1-01-SUMMARY.md
+@.planning/phases/01-baseline-scaffold/1-02-SUMMARY.md
+@.planning/phases/01-baseline-scaffold/1-03-SUMMARY.md
 @CLAUDE.md
 </context>
 
@@ -83,8 +83,8 @@ Output: 4 Java files + 1 application.yaml. After `mise run dev:consumer`, the ap
   <name>Task 1: Write ConsumerApplication + RabbitConfig (Spring Boot bootstrap + queue declaration)</name>
   <files>consumer-service/src/main/java/com/example/consumer/ConsumerApplication.java, consumer-service/src/main/java/com/example/consumer/config/RabbitConfig.java</files>
   <read_first>
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 1004-1041 — ConsumerApplication.java + consumer RabbitConfig.java verified skeletons)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 304-306 — Don't Hand-Roll: ConnectionFactory autoconfigured; do not declare a manual @Bean ConnectionFactory)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 1004-1041 — ConsumerApplication.java + consumer RabbitConfig.java verified skeletons)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 304-306 — Don't Hand-Roll: ConnectionFactory autoconfigured; do not declare a manual @Bean ConnectionFactory)
     - consumer-service/pom.xml (created in plan 01 — confirms starter-amqp/actuator/web/test coordinates)
     - producer-service/src/main/java/com/example/producer/config/RabbitConfig.java (created in plan 04 — for QUEUE name parity; both sides must agree on `orders.created`)
   </read_first>
@@ -138,9 +138,9 @@ Output: 4 Java files + 1 application.yaml. After `mise run dev:consumer`, the ap
   <name>Task 2: Write OrderListener + ProcessingService + application.yaml (consume + simulate)</name>
   <files>consumer-service/src/main/java/com/example/consumer/messaging/OrderListener.java, consumer-service/src/main/java/com/example/consumer/domain/ProcessingService.java, consumer-service/src/main/resources/application.yaml</files>
   <read_first>
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 1043-1092 — OrderListener.java + ProcessingService.java verified skeletons)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 1094-1106 — consumer application.yaml minimal content)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 383-388 — Pitfall F: don't add OTel properties to application.yaml)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 1043-1092 — OrderListener.java + ProcessingService.java verified skeletons)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 1094-1106 — consumer application.yaml minimal content)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 383-388 — Pitfall F: don't add OTel properties to application.yaml)
     - consumer-service/src/main/java/com/example/consumer/config/RabbitConfig.java (just created — `RabbitConfig.QUEUE` is referenced by the listener)
     - .planning/ROADMAP.md (Phase 3 scope — APP-04 deterministic-10%-failure lands later; ProcessingService.process must be a no-op site in Phase 1)
   </read_first>
@@ -315,7 +315,7 @@ Output: 4 Java files + 1 application.yaml. After `mise run dev:consumer`, the ap
 </success_criteria>
 
 <output>
-After completion, create `.planning/phases/1-baseline-scaffold/1-05-SUMMARY.md` documenting:
+After completion, create `.planning/phases/01-baseline-scaffold/1-05-SUMMARY.md` documenting:
 - File tree of consumer-service/src/main (4 Java files + 1 yaml)
 - Confirmed startup line (`Started ConsumerApplication in X seconds`)
 - Confirmed end-to-end flow: paste the POST response (orderId) and the matching consumer log line (OrderCreated received: orderId=...)

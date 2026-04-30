@@ -1,6 +1,6 @@
 ---
 id: 1-06-readme-and-exit-gate
-phase: 1-baseline-scaffold
+phase: 01-baseline-scaffold
 plan: 06
 type: execute
 wave: 3
@@ -58,12 +58,12 @@ Output: 1 README.md + 1 .gitignore + 1 git tag + a clean commit history pushed t
 @.planning/ROADMAP.md
 @.planning/STATE.md
 @.planning/REQUIREMENTS.md
-@.planning/phases/1-baseline-scaffold/1-RESEARCH.md
-@.planning/phases/1-baseline-scaffold/1-01-SUMMARY.md
-@.planning/phases/1-baseline-scaffold/1-02-SUMMARY.md
-@.planning/phases/1-baseline-scaffold/1-03-SUMMARY.md
-@.planning/phases/1-baseline-scaffold/1-04-SUMMARY.md
-@.planning/phases/1-baseline-scaffold/1-05-SUMMARY.md
+@.planning/phases/01-baseline-scaffold/1-RESEARCH.md
+@.planning/phases/01-baseline-scaffold/1-01-SUMMARY.md
+@.planning/phases/01-baseline-scaffold/1-02-SUMMARY.md
+@.planning/phases/01-baseline-scaffold/1-03-SUMMARY.md
+@.planning/phases/01-baseline-scaffold/1-04-SUMMARY.md
+@.planning/phases/01-baseline-scaffold/1-05-SUMMARY.md
 @CLAUDE.md
 </context>
 
@@ -73,9 +73,9 @@ Output: 1 README.md + 1 .gitignore + 1 git tag + a clean commit history pushed t
   <name>Task 1: Write README.md (Prerequisites section + workshop preamble) and .gitignore</name>
   <files>README.md, .gitignore</files>
   <read_first>
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 1107-1182 — README Prerequisites skeleton, verbatim)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 326-334 — Pitfall B context for the port table)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 336-345 — Pitfall C context for the IDE setup section)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 1107-1182 — README Prerequisites skeleton, verbatim)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 326-334 — Pitfall B context for the port table)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 336-345 — Pitfall C context for the IDE setup section)
     - .planning/PROJECT.md (lines 1-10 — "What This Is" + Core Value, useful for the README's intro)
     - mise.toml + .tool-versions + docker-compose.yml (created in earlier plans — README references these by name)
     - .planning/REQUIREMENTS.md (DOC-01 is Phase 7's full README walkthrough — this plan delivers the DOC-02 skeleton ONLY; DO NOT write step-01..step-06 walkthroughs here)
@@ -386,7 +386,7 @@ Output: 1 README.md + 1 .gitignore + 1 git tag + a clean commit history pushed t
 </success_criteria>
 
 <output>
-After completion, create `.planning/phases/1-baseline-scaffold/1-06-SUMMARY.md` documenting:
+After completion, create `.planning/phases/01-baseline-scaffold/1-06-SUMMARY.md` documenting:
 - README.md final structure (H1 + sections + first ~5 lines of each section)
 - Confirmed Phase 1 success-criteria results (paste the green outputs of preflight, demo:order, verify:bom)
 - Confirmed annotated tag exists: paste `git for-each-ref --format='%(objecttype) %(objectname:short) %(refname)' refs/tags/step-01-baseline`
@@ -394,7 +394,7 @@ After completion, create `.planning/phases/1-baseline-scaffold/1-06-SUMMARY.md` 
 - A note that the user should run `git push origin step-01-baseline` when ready to publish (NOT done by this plan)
 - Files created: 2 (README.md + .gitignore) + 1 git ref (refs/tags/step-01-baseline)
 
-Then create `.planning/phases/1-baseline-scaffold/PHASE-SUMMARY.md` rolling up all six plan summaries — phase exit summary documenting:
+Then create `.planning/phases/01-baseline-scaffold/PHASE-SUMMARY.md` rolling up all six plan summaries — phase exit summary documenting:
 - Total artifacts created across the phase (count files, git refs)
 - The single gate sentence: "mvn dependency:tree -Dincludes=io.opentelemetry returns zero matches" — confirmed
 - Tag created: step-01-baseline

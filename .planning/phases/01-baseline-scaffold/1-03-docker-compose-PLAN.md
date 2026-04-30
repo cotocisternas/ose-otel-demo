@@ -1,6 +1,6 @@
 ---
 id: 1-03-docker-compose
-phase: 1-baseline-scaffold
+phase: 01-baseline-scaffold
 plan: 03
 type: execute
 wave: 1
@@ -52,7 +52,7 @@ Output: 1 file (docker-compose.yml). After `docker compose up -d --wait`, both c
 @.planning/ROADMAP.md
 @.planning/STATE.md
 @.planning/REQUIREMENTS.md
-@.planning/phases/1-baseline-scaffold/1-RESEARCH.md
+@.planning/phases/01-baseline-scaffold/1-RESEARCH.md
 @CLAUDE.md
 </context>
 
@@ -62,11 +62,11 @@ Output: 1 file (docker-compose.yml). After `docker compose up -d --wait`, both c
   <name>Task 1: Write docker-compose.yml with RabbitMQ + grafana/otel-lgtm + named lgtm-data volume</name>
   <files>docker-compose.yml</files>
   <read_first>
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 804-852 — verified docker-compose.yml template)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 124-128 — alternatives table: rabbitmq-diagnostics ping (Stage 1) > check_running (Stage 3); image-built-in HEALTHCHECK > custom curl override)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 297-309 — Don't Hand-Roll table: rabbitmq-diagnostics + image's built-in HEALTHCHECK)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 287-294 — Anti-Patterns: floating image tags, port-3000 remapping, infra:down -v)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 347-352 — Pitfall D: lgtm-data named volume must persist across infra:down)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 804-852 — verified docker-compose.yml template)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 124-128 — alternatives table: rabbitmq-diagnostics ping (Stage 1) > check_running (Stage 3); image-built-in HEALTHCHECK > custom curl override)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 297-309 — Don't Hand-Roll table: rabbitmq-diagnostics + image's built-in HEALTHCHECK)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 287-294 — Anti-Patterns: floating image tags, port-3000 remapping, infra:down -v)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 347-352 — Pitfall D: lgtm-data named volume must persist across infra:down)
   </read_first>
   <action>
     Create `docker-compose.yml` at the repo root EXACTLY matching RESEARCH.md lines 806-850. Concrete required content:
@@ -137,7 +137,7 @@ Output: 1 file (docker-compose.yml). After `docker compose up -d --wait`, both c
   <read_first>
     - docker-compose.yml (just created)
     - mise.toml (created in plan 02 — has `infra:up` / `infra:down` / `infra:reset` tasks)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 347-352 — Pitfall D: lgtm-data must survive infra:down)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 347-352 — Pitfall D: lgtm-data must survive infra:down)
   </read_first>
   <action>
     Run a four-step verification proving the docker-compose declaration works AND the persistence behavior demanded by INFRA-04 / Pitfall D actually holds.
@@ -226,7 +226,7 @@ Output: 1 file (docker-compose.yml). After `docker compose up -d --wait`, both c
 </success_criteria>
 
 <output>
-After completion, create `.planning/phases/1-baseline-scaffold/1-03-SUMMARY.md` documenting:
+After completion, create `.planning/phases/01-baseline-scaffold/1-03-SUMMARY.md` documenting:
 - Final docker-compose.yml service shape (one paragraph: rabbitmq with Stage-1 healthcheck + lgtm with image-builtin healthcheck only + named lgtm-data volume)
 - Confirmed `docker compose ps` showing both healthy
 - Confirmed persistence-test result (sentinel file survives down/up; wiped on down -v / up)

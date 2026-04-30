@@ -1,6 +1,6 @@
 ---
 id: 1-04-producer-service
-phase: 1-baseline-scaffold
+phase: 01-baseline-scaffold
 plan: 04
 type: execute
 wave: 2
@@ -77,10 +77,10 @@ Output: 5 Java files + 1 application.yaml. After `mise run dev:producer`, the ap
 @.planning/ROADMAP.md
 @.planning/STATE.md
 @.planning/REQUIREMENTS.md
-@.planning/phases/1-baseline-scaffold/1-RESEARCH.md
-@.planning/phases/1-baseline-scaffold/1-01-SUMMARY.md
-@.planning/phases/1-baseline-scaffold/1-02-SUMMARY.md
-@.planning/phases/1-baseline-scaffold/1-03-SUMMARY.md
+@.planning/phases/01-baseline-scaffold/1-RESEARCH.md
+@.planning/phases/01-baseline-scaffold/1-01-SUMMARY.md
+@.planning/phases/01-baseline-scaffold/1-02-SUMMARY.md
+@.planning/phases/01-baseline-scaffold/1-03-SUMMARY.md
 @CLAUDE.md
 </context>
 
@@ -90,9 +90,9 @@ Output: 5 Java files + 1 application.yaml. After `mise run dev:producer`, the ap
   <name>Task 1: Write ProducerApplication + RabbitConfig (Spring Boot bootstrap + AMQP topology)</name>
   <files>producer-service/src/main/java/com/example/producer/ProducerApplication.java, producer-service/src/main/java/com/example/producer/config/RabbitConfig.java</files>
   <read_first>
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 856-901 — ProducerApplication.java + RabbitConfig.java verified skeletons)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 383-388 — Pitfall F: application.yaml must NOT add OTel properties or pull in micrometer-tracing)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 304-306 — Don't Hand-Roll: ConnectionFactory autoconfigured from SPRING_RABBITMQ_* env vars; DO NOT declare a manual @Bean ConnectionFactory)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 856-901 — ProducerApplication.java + RabbitConfig.java verified skeletons)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 383-388 — Pitfall F: application.yaml must NOT add OTel properties or pull in micrometer-tracing)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 304-306 — Don't Hand-Roll: ConnectionFactory autoconfigured from SPRING_RABBITMQ_* env vars; DO NOT declare a manual @Bean ConnectionFactory)
     - producer-service/pom.xml (created in plan 01 — confirms starter-web/amqp/actuator coordinates)
   </read_first>
   <action>
@@ -152,9 +152,9 @@ Output: 5 Java files + 1 application.yaml. After `mise run dev:producer`, the ap
   <name>Task 2: Write OrderController + OrderService + OrderPublisher (POST /orders publishing path)</name>
   <files>producer-service/src/main/java/com/example/producer/api/OrderController.java, producer-service/src/main/java/com/example/producer/domain/OrderService.java, producer-service/src/main/java/com/example/producer/messaging/OrderPublisher.java, producer-service/src/main/resources/application.yaml</files>
   <read_first>
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 903-986 — OrderController.java + OrderService.java + OrderPublisher.java verified skeletons)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 988-1000 — application.yaml minimal content)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 383-388 — Pitfall F: don't add OTel properties to application.yaml)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 903-986 — OrderController.java + OrderService.java + OrderPublisher.java verified skeletons)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 988-1000 — application.yaml minimal content)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 383-388 — Pitfall F: don't add OTel properties to application.yaml)
     - producer-service/src/main/java/com/example/producer/config/RabbitConfig.java (just created — the constants `EXCHANGE` / `ROUTING_KEY` are referenced by OrderPublisher)
   </read_first>
   <action>
@@ -240,7 +240,7 @@ Output: 5 Java files + 1 application.yaml. After `mise run dev:producer`, the ap
     - mise.toml (created in plan 02 — has `dev:producer`, `demo:order` tasks; sets PRODUCER_PORT=8080)
     - docker-compose.yml (created in plan 03 — RabbitMQ must be up for the producer to start cleanly)
     - producer-service/src/main/java/com/example/producer/api/OrderController.java (just created — POST /orders contract)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 1280-1281 — Open Q #1 confirms producer port 8080)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 1280-1281 — Open Q #1 confirms producer port 8080)
   </read_first>
   <action>
     Start RabbitMQ + lgtm (if not already running), launch the producer in the background, send a POST, verify 202 + JSON body, verify /actuator/health, then shut down. This task creates no files — it proves T1+T2 ship a working APP-01/02/05 surface.
@@ -333,7 +333,7 @@ Output: 5 Java files + 1 application.yaml. After `mise run dev:producer`, the ap
 </success_criteria>
 
 <output>
-After completion, create `.planning/phases/1-baseline-scaffold/1-04-SUMMARY.md` documenting:
+After completion, create `.planning/phases/01-baseline-scaffold/1-04-SUMMARY.md` documenting:
 - File tree of producer-service/src/main (5 Java files + 1 yaml)
 - Confirmed startup line (`Started ProducerApplication in X seconds`)
 - Confirmed POST /orders → 202 + orderId (paste curl response body)

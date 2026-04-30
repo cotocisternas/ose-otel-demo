@@ -1,6 +1,6 @@
 ---
 id: 1-01-maven-skeleton
-phase: 1-baseline-scaffold
+phase: 01-baseline-scaffold
 plan: 01
 type: execute
 wave: 1
@@ -67,7 +67,7 @@ Output: 4 POMs + 1 placeholder `package-info.java`; `mvn -DskipTests install` su
 @.planning/ROADMAP.md
 @.planning/STATE.md
 @.planning/REQUIREMENTS.md
-@.planning/phases/1-baseline-scaffold/1-RESEARCH.md
+@.planning/phases/01-baseline-scaffold/1-RESEARCH.md
 @CLAUDE.md
 </context>
 
@@ -77,9 +77,9 @@ Output: 4 POMs + 1 placeholder `package-info.java`; `mvn -DskipTests install` su
   <name>Task 1: Write parent POM with BOM-import ordering + maven-enforcer-plugin</name>
   <files>pom.xml</files>
   <read_first>
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 390-502 — "Parent POM" code example with verified BOM ordering)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 313-323 — Pitfall A: BOM ordering rule)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 354-381 — Pitfall E: enforcer must bind to validate phase)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 390-502 — "Parent POM" code example with verified BOM ordering)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 313-323 — Pitfall A: BOM ordering rule)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 354-381 — Pitfall E: enforcer must bind to validate phase)
     - CLAUDE.md (lines covering "Tech stack" constraints — Spring Boot 3.4.13, Java 17, Maven 3.9.x pinned by user)
   </read_first>
   <action>
@@ -128,10 +128,10 @@ Output: 4 POMs + 1 placeholder `package-info.java`; `mvn -DskipTests install` su
   <name>Task 2: Write child module POMs (otel-bootstrap, producer-service, consumer-service) + placeholder package-info</name>
   <files>otel-bootstrap/pom.xml, otel-bootstrap/src/main/java/com/example/otel/package-info.java, producer-service/pom.xml, consumer-service/pom.xml</files>
   <read_first>
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 504-554 — producer-service/pom.xml example)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 556-605 — consumer-service/pom.xml example, includes spring-boot-starter-web for actuator HTTP)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 607-640 — otel-bootstrap/pom.xml + package-info.java)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 1278-1281 — Open Question #1 resolution: consumer DOES include starter-web for /actuator/health on port 8081)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 504-554 — producer-service/pom.xml example)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 556-605 — consumer-service/pom.xml example, includes spring-boot-starter-web for actuator HTTP)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 607-640 — otel-bootstrap/pom.xml + package-info.java)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 1278-1281 — Open Question #1 resolution: consumer DOES include starter-web for /actuator/health on port 8081)
     - pom.xml (just created in T1 — shows the exact `<parent>` coordinates child modules must reference)
   </read_first>
   <action>
@@ -179,8 +179,8 @@ Output: 4 POMs + 1 placeholder `package-info.java`; `mvn -DskipTests install` su
   <name>Task 3: Verify the build — Phase 1 BOM gate (zero OTel libs on classpath)</name>
   <files>(none — verification only)</files>
   <read_first>
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 765-776 — verify:bom task definition; the gate is `mvn dependency:tree -Dincludes=io.opentelemetry` returning zero matches)
-    - .planning/phases/1-baseline-scaffold/1-RESEARCH.md (lines 26-39 — phase exit criteria: criterion #3 is THE Phase 1 gate)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 765-776 — verify:bom task definition; the gate is `mvn dependency:tree -Dincludes=io.opentelemetry` returning zero matches)
+    - .planning/phases/01-baseline-scaffold/1-RESEARCH.md (lines 26-39 — phase exit criteria: criterion #3 is THE Phase 1 gate)
     - pom.xml, producer-service/pom.xml, consumer-service/pom.xml, otel-bootstrap/pom.xml (just created)
   </read_first>
   <action>
@@ -248,7 +248,7 @@ Output: 4 POMs + 1 placeholder `package-info.java`; `mvn -DskipTests install` su
 </success_criteria>
 
 <output>
-After completion, create `.planning/phases/1-baseline-scaffold/1-01-SUMMARY.md` documenting:
+After completion, create `.planning/phases/01-baseline-scaffold/1-01-SUMMARY.md` documenting:
 - Parent POM final BOM ordering and rationale (single sentence: "OTel BOMs before Spring Boot BOM because Maven uses first-declaration-wins for `<scope>import</scope>`")
 - Confirmed `mvn dependency:tree -Dincludes=io.opentelemetry` output (paste relevant lines)
 - Confirmed `mvn enforcer:enforce` output (paste BUILD SUCCESS line)
