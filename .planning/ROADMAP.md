@@ -33,15 +33,15 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. The annotated git tag `step-01-baseline` exists on `main` and points at this commit; checking it out reproduces the green-baseline state.
   5. README "Prerequisites" section exists and lists exact tool versions, ports, and the `mise run preflight` command — a first-time attendee can self-diagnose tooling issues before opening any code.
 **Plans** (6 plans, 3 waves):
-- **Wave 1** *(parallelizable, no dependencies)*
-  - `1-01-maven-skeleton` — INFRA-01 — parent POM + 3 child modules with BOM-import ordering
-  - `1-02-mise-toolchain` — INFRA-02, INFRA-03, INFRA-05 — `mise.toml` + `.tool-versions` + 14 named tasks (preflight, dev, infra:up/down, etc.)
-  - `1-03-docker-compose` — INFRA-04 — `docker-compose.yml` (rabbitmq:4.3-management + grafana/otel-lgtm:0.26.0) with healthchecks
+- **Wave 1** *(parallelizable, no dependencies)* — **✅ complete**
+  - [x] `1-01-maven-skeleton` — INFRA-01 — parent POM + 3 child modules with BOM-import ordering
+  - [x] `1-02-mise-toolchain` — INFRA-02, INFRA-03, INFRA-05 — `mise.toml` + `.tool-versions` + 14 named tasks (preflight, dev, infra:up/down, etc.)
+  - [x] `1-03-docker-compose` — INFRA-04 — `docker-compose.yml` (rabbitmq:4.3-management + grafana/otel-lgtm:0.26.0) with healthchecks
 - **Wave 2** *(blocked on Wave 1 completion)*
-  - `1-04-producer-service` — APP-01, APP-02, APP-05 — `OrderController` + `OrderPublisher` + `RabbitConfig` + Spring Boot app
-  - `1-05-consumer-service` — APP-03, APP-05 — `@RabbitListener` + `ProcessingService` + Spring Boot app
+  - [ ] `1-04-producer-service` — APP-01, APP-02, APP-05 — `OrderController` + `OrderPublisher` + `RabbitConfig` + Spring Boot app
+  - [ ] `1-05-consumer-service` — APP-03, APP-05 — `@RabbitListener` + `ProcessingService` + Spring Boot app
 - **Wave 3** *(blocked on Waves 1+2 completion; contains human checkpoint)*
-  - `1-06-readme-and-exit-gate` — DOC-02, WORK-01 — README Prerequisites section + annotated `step-01-baseline` tag (gated on all 5 success criteria green)
+  - [ ] `1-06-readme-and-exit-gate` — DOC-02, WORK-01 — README Prerequisites section + annotated `step-01-baseline` tag (gated on all 5 success criteria green)
 
 **Cross-cutting constraints** *(must_haves shared across plans)*:
 - `mvn dependency:tree -Dincludes=io.opentelemetry` returns zero matches (asserted by 1-01, 1-02, 1-04, 1-05, 1-06)
