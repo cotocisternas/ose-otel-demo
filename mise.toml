@@ -116,8 +116,16 @@ run = [
 # Workshop helpers
 # ──────────────────────────────────────────────────────────────────
 [tasks."demo:order"]
-description = "POST a sample order to the producer; expect 202"
-run = "curl -sf -X POST http://localhost:${PRODUCER_PORT}/orders -H 'Content-Type: application/json' -d '{\"sku\":\"WIDGET-1\",\"quantity\":3}' && echo"
+description = "POST sample orders to the producer; expect 202. Phase 4: alternates priority=express and priority=standard so Mimir shows two orders_created_total series."
+run = """
+set -e
+curl -sf -X POST http://localhost:${PRODUCER_PORT}/orders \
+  -H 'Content-Type: application/json' \
+  -d '{"sku":"WIDGET-1","quantity":3,"priority":"express"}' && echo
+curl -sf -X POST http://localhost:${PRODUCER_PORT}/orders \
+  -H 'Content-Type: application/json' \
+  -d '{"sku":"WIDGET-2","quantity":1,"priority":"standard"}' && echo
+"""
 
 [tasks."verify:bom"]
 description = "Phase 2 invariant: one version per io.opentelemetry* artifact across the reactor"
