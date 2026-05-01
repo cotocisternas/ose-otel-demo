@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Phase 2 SHIPPED 2026-05-01 — annotated tag step-02-traces applied at dac865f. All 6 ROADMAP success criteria simultaneously verified green; verifier next."
-last_updated: "2026-05-01T17:42:00.000Z"
+stopped_at: "Phase 3 context gathered 2026-05-01 — 03-CONTEXT.md captures 13 implementation decisions across 4 areas (bootstrap wiring, producer span ownership, APP-04 failure design, listener factory wiring) + 3 research flags. Ready for /gsd-research-phase 3 then /gsd-plan-phase 3."
+last_updated: "2026-05-01T18:30:00.000Z"
 last_activity: 2026-05-01
 progress:
   total_phases: 7
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 
 ## Current Position
 
-Phase: 2 of 7 (Manual SDK Bootstrap & First Traces) — **SHIPPED 2026-05-01 (tag `step-02-traces`)**
-Plan: 6 of 6 complete — all of `02-01`..`02-06` SHIPPED. Annotated tag `step-02-traces` applied at `dac865f` per user-approved checkpoint gate.
-Status: Phase 2 verifier next; tag local-only (push deferred per project convention; matches Phase 1's `step-01-baseline`). Phase 3 (AMQP Context Propagation — THE headline lesson) unblocked once verifier passes.
-Last activity: 2026-05-01 — annotated tag `step-02-traces` applied at `dac865f`; ROADMAP/STATE/REQUIREMENTS updated to SHIPPED.
+Phase: 3 of 7 (AMQP Context Propagation — THE HEADLINE LESSON) — **context gathered 2026-05-01**
+Plan: 0 of TBD — research-phase next (3 open research flags), then planning, then execution.
+Status: 03-CONTEXT.md committed; 13 implementation decisions locked across 4 gray areas; 3 research flags identified (Spring AMQP API surface verification). Ready for `/gsd-research-phase 3` to resolve flags + produce 03-RESEARCH.md, then `/gsd-plan-phase 3`.
+Last activity: 2026-05-01 — 03-CONTEXT.md + 03-DISCUSSION-LOG.md committed via `/gsd-discuss-phase 3`.
 
 Progress: [█████████░] 86% (rolled-up across all phases — Phases 1+2 SHIPPED, Phases 3-7 outstanding)
 
@@ -82,6 +82,7 @@ Recent decisions affecting current work:
 - [Phase 02-05]: Consumer Wave-3 smoke bypassed `depends=[infra:up]` for the worktree container-name race; producer trace observed had 1 span vs PLAN's 3 because Plan 02-04 INTERNAL+PRODUCER spans lived in sibling worktree at smoke-time (resolves post-merge — verified by post-merge build success).
 - [Phase 02-06]: Followed the plan's verbatim Edit-1/Edit-2/Edit-3 README instructions character-for-character (no abbreviation, no rewording). Did NOT apply the tag — orchestrator/user gate per `<checkpoint_handling>`. Did NOT pre-flip Phase 2 SHIPPED status in STATE/ROADMAP/REQUIREMENTS — the tag is the load-bearing artifact, so SHIPPED state lands atomically with the orchestrator's tag-apply commit.
 - [Phase 02-06]: All 6 Phase 2 success criteria verified end-to-end against live infra at HEAD 0f6c99e: producer trace = SERVER+INTERNAL+PRODUCER (3 spans), consumer trace = CONSUMER+INTERNAL (2 spans, empty parentSpanId proves D-10 Context.root() honored at runtime), Ctrl-C flushed last batch (1→2 traces), 0 unknown_service:java traces, 137/131 comment lines in OtelSdkConfiguration files, README DOC-05 callout present, clean tree, mise verify:bom green.
+- [Phase 03 discuss]: 13 implementation decisions captured in 03-CONTEXT.md across 4 areas: (Bootstrap wiring) plain Java classes + per-service @Bean wiring + 4 separate top-level classes (TracingMessagePostProcessor / TracingMessageListenerAdvice / MessagePropertiesSetter / MessagePropertiesGetter) + explicit RabbitTemplate @Bean + per-service Tracer scope; (Producer span ownership) post-processor owns the PRODUCER span lifecycle (Phase 2 D-09 hand-off honored), inject-only span lifetime (matches OTel Kafka/JMS convention), exchange-based destination naming (semconv-correct, corrects Phase 2's queue-as-destination); (APP-04 failure design) AtomicInteger counter modulus, custom ProcessingFailedException, setDefaultRequeueRejected(false) safety; (Listener factory wiring) Configurer-aided SimpleRabbitListenerContainerFactory @Bean, OrderListener.onOrder simplified to 3-line pass-through (Tracer param removed), CONSUMER span mirrors producer's semconv-correct shape with .setParent(extracted).
 
 ### Pending Todos
 
@@ -90,7 +91,11 @@ None yet.
 ### Blockers/Concerns
 
 - **Phase 1 research flag**: RESOLVED 2026-04-29 — RESEARCH.md (commit `d3bbf32`) confirms OTel BOM precedes Spring Boot BOM; mise pin is `corretto-17.0.13.11.1` (exact patch, not floating).
-- **Phase 3 research flag**: Resolve listener-side extraction mechanism (`MethodInterceptor` advice on `SimpleRabbitListenerContainerFactory` vs inline extract in `@RabbitListener`) — needs `/gsd-research-phase` before planning.
+- **Phase 3 research flags** (3 open, expanded by 03-CONTEXT.md):
+  1. (carried from SUMMARY.md) `MethodInterceptor` advice on `SimpleRabbitListenerContainerFactory.setAdviceChain(...)` composes correctly with Spring AMQP 3.2.8's `@RabbitListener` lifecycle — no thread-context loss between advice and listener body (PITFALLS #7).
+  2. (new from 03-CONTEXT D-07) Spring AMQP 3.2.8 supports the `MessagePostProcessor.postProcessMessage(Message, Correlation, exchange, routingKey)` 4-arg overload AND `RabbitTemplate.processBeforePublishMessageProcessors(...)` invokes it when registered via `setBeforePublishPostProcessors(...)`.
+  3. (new from 03-CONTEXT D-10) `MethodInvocation.getArguments()` index for `Message` arg when wrapping a `@RabbitListener` (arg[0] vs arg[1] vs typed scan) — ARCHITECTURE.md Pattern 2 used `[1]` with comment "(channel, message)" but that may be `ChannelAwareMessageListener`-specific.
+  All three resolve in `/gsd-research-phase 3` before `/gsd-plan-phase 3`.
 - **Phase 5 research flag**: Confirm Maven coordinate for MDC injector (`opentelemetry-logback-mdc-1.0` artifact vs `<captureMdcAttributes>` on appender).
 - **Phase 6 research flag**: Validate `@ServiceConnection` + `RabbitMQContainer` on Spring Boot 3.4.13.
 
@@ -104,6 +109,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-01 (Phase 2 Wave 4 source delta committed — README DOC-03 + DOC-05 sections + Workshop-checkpoint pivot at 0f6c99e; criteria-green smoke verified; tag staged for user gate)
-Stopped at: Awaiting user/orchestrator approval of annotated git tag `step-02-traces` at HEAD `0f6c99e0c3e0463e9d6c74a9eaad124f6d92c393`. The exact tag command + annotated message body are in the executor's checkpoint return message and in `.planning/phases/02-manual-sdk-bootstrap-first-traces/02-06-readme-and-exit-gate-SUMMARY.md`. After tag-apply, orchestrator commits Phase 2 SHIPPED state updates (STATE.md / ROADMAP.md plan-progress / REQUIREMENTS.md DOC-05 + WORK-01-Phase-2-portion → Complete) atomically at the same SHA the tag points to.
-Resume file: .planning/phases/02-manual-sdk-bootstrap-first-traces/02-06-readme-and-exit-gate-SUMMARY.md (executor's checkpoint deliverable; the tag command + criteria-verification outputs are in this file)
+Last session: 2026-05-01 (`/gsd-discuss-phase 3` — 13 implementation decisions captured across 4 gray areas in interactive default-mode flow; checkpoint cleaned up after CONTEXT.md write).
+Stopped at: Phase 3 context gathered. Next workflow step is `/gsd-research-phase 3` to resolve the 3 open research flags about Spring AMQP 3.2.8 API surface (advice composition, 4-arg MessagePostProcessor overload, MethodInvocation arg index) — these MUST resolve before `/gsd-plan-phase 3` because they pin method signatures the planner needs.
+Resume file: `.planning/phases/03-amqp-context-propagation/03-CONTEXT.md` (canonical decisions + research flags); `.planning/phases/03-amqp-context-propagation/03-DISCUSSION-LOG.md` (audit trail of alternatives considered).
