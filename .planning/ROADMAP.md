@@ -64,10 +64,30 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Workshop attendee sees the producer trace contains a SERVER span (`POST /orders` with HTTP semconv attributes) wrapping an INTERNAL span (business logic), and the consumer trace contains a CONSUMER span wrapping an INTERNAL span — proving span-kind discipline before propagation is added.
   5. README explicitly states that the per-service duplication of `OtelSdkConfiguration` is **intentional** with a one-paragraph rationale (DOC-05) — no reader is tempted to "refactor" the duplication away.
   6. The annotated git tag `step-02-traces` exists on `main` and reproduces this exact two-traces state.
-**Plans**: TBD
+**Plans** (6 plans, 4 waves):
+- **Wave 1** *(parallelizable, no dependencies)*
+  - [ ] `2-01-pom-dependencies` — TRACE-01 — Add 5 OTel deps to both service POMs (api/sdk/exporter-otlp BOM-managed; semconv 1.40.0 + semconv-incubating 1.40.0-alpha pinned) + invert `mise run verify:bom` to assert one-version-per-OTel-artifact
+- **Wave 2** *(blocked on Wave 1 completion; parallelizable across services)*
+  - [ ] `2-02-producer-sdk-config` — TRACE-01..05, DOC-03 — Producer's `OtelSdkConfiguration.java` (heavily commented; ≥40 comment lines per DOC-03 grep gate) + `HttpServerSpanFilter.java` (D-05/D-06/D-07 producer-only, `OncePerRequestFilter.shouldNotFilter` for `/actuator/*`) + `Tracer @Bean`
+  - [ ] `2-03-consumer-sdk-config` — TRACE-01..04, DOC-03 — Consumer's `OtelSdkConfiguration.java` (mirror of producer's with documented diffs; NO HttpServerSpanFilter per D-07)
+- **Wave 3** *(blocked on Wave 2 completion; parallelizable across services)*
+  - [ ] `2-04-producer-instrumentation` — TRACE-06, TRACE-07 — INTERNAL span on `OrderService.place` + PRODUCER span on `OrderPublisher.publish` (using `MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE` + `SEND` value per RESEARCH FLAG #1, NOT deprecated `MESSAGING_OPERATION="publish"`)
+  - [ ] `2-05-consumer-instrumentation` — TRACE-06, TRACE-08 — CONSUMER span on `OrderListener.onOrder` (with verbatim D-10 multi-line teaching comment + `.setParent(Context.root())`) + INTERNAL span on `ProcessingService.process`
+- **Wave 4** *(blocked on Waves 1+2+3; contains human checkpoint)*
+  - [ ] `2-06-readme-and-exit-gate` — DOC-03, DOC-05, WORK-01 — README "Reading the code" + "Why is OtelSdkConfiguration.java duplicated?" sections (DOC-05 grep-gated callout) + verify all 6 ROADMAP success criteria green + human checkpoint to create annotated tag `step-02-traces`
+
+**Cross-cutting constraints** *(must_haves shared across plans)*:
+- Maven dependency convergence enforced at `mvn validate` — every `io.opentelemetry*` artifact appears EXACTLY once across the reactor (asserted by 2-01, 2-02, 2-03)
+- BOM ordering preserved from Phase 1: OTel BOM FIRST, OTel Instrumentation BOM SECOND (unused by Phase 2 but kept for Phase 5), Spring Boot BOM THIRD
+- `OtelSdkConfiguration.java` is deliberately duplicated per service (D-01 / DOC-05) — refactoring it to a shared library is a hard FAIL (asserted by 2-02 + 2-03 + 2-06)
+- Pure-inline span wrapping at every call site (D-01) — NO helper class, NO `Spans.run(...)`, NO AOP aspect, NO `@WithSpan` (asserted by 2-02 + 2-04 + 2-05)
+- `@Bean(destroyMethod = "close")` on the `OpenTelemetrySdk` bean (D-15) — graceful shutdown flushes the final span batch via `OpenTelemetrySdk.close()` → `shutdown().join(10s)` cascade (asserted by 2-02 + 2-03 + 2-06 Criterion 2)
+- `mise.toml` env vars (`OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317`, `OTEL_EXPORTER_OTLP_PROTOCOL=grpc`) are READ by `System.getenv(...)` with `Optional.ofNullable(...).orElse(...)` defaults (D-12) — NO `opentelemetry-sdk-extension-autoconfigure` dependency
+- semconv constants only — `io.opentelemetry.semconv:1.40.0` (stable) + `io.opentelemetry.semconv-incubating:1.40.0-alpha` (messaging.* + deployment.* live here per RESEARCH FLAG #2); legacy `io.opentelemetry:opentelemetry-semconv` from the SDK BOM is FORBIDDEN
 **Notes**:
 - TRACE-09 (`recordException` + `setStatus(ERROR)`) is **deferred to Phase 3** because the error-span lesson lands more naturally with APP-04's deterministic-10%-failure path, which itself sets up the consumer-side error-trace propagation story.
 - A PRODUCER span (TRACE-07) is created in this phase but **without** header injection — propagation is intentionally absent so Phase 3's delta is visible.
+- D-09 forward-compat: PRODUCER and CONSUMER inline spans in 2-04 / 2-05 are structured as clean rectangular blocks (no retry/error entanglement) so Phase 3 can cleanly DELETE them when installing the `otel-bootstrap` propagation pair. Phase 3's plan must explicitly delete these inline spans as part of installing `TracingMessagePostProcessor` + `TracingMessageListenerAdvice` — see CONTEXT.md `<deferred>` Phase 3 hand-off.
 
 ### Phase 3: AMQP Context Propagation — THE HEADLINE LESSON
 **Goal**: Workshop attendee adds the `TracingMessagePostProcessor` (producer-side inject) + `TracingMessageListenerAdvice` (consumer-side extract) pair from the shared `otel-bootstrap` module, restarts both services, and watches the **same** `POST /orders` call now produce ONE distributed trace spanning both services with the consumer span's `parentSpanId` equal to the producer span's `spanId`. This is the workshop's most important phase — the broken-then-fixed delta from Phase 2 is the artifact's most powerful pedagogical moment.
@@ -146,7 +166,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Baseline & Scaffold | 0/6 | Ready to execute | - |
-| 2. Manual SDK Bootstrap & First Traces | 0/TBD | Not started | - |
+| 2. Manual SDK Bootstrap & First Traces | 0/6 | Ready to execute | - |
 | 3. AMQP Context Propagation | 0/TBD | Not started | - |
 | 4. Metrics | 0/TBD | Not started | - |
 | 5. Logs Correlation | 0/TBD | Not started | - |
