@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 
 ## Current Position
 
-Phase: 1 of 7 (Baseline & Scaffold) — **SHIPPED**
-Plan: 6 of 6 complete
-Status: Phase 1 shipped. Annotated tag `step-01-baseline` on commit `6aa3a92`. Local only — push pending user decision (`git push origin step-01-baseline`).
-Last activity: 2026-04-29 — Tag applied + reproducibility self-test passed (clone → mise install → verify:bom → mvn install all green from /tmp/verify-baseline). Phase 2 (Manual SDK Bootstrap & First Traces) is unblocked.
+Phase: 2 of 7 (Manual SDK Bootstrap & First Traces) — **CONTEXT GATHERED**
+Plan: 0 of TBD complete
+Status: Phase 2 CONTEXT.md written (`.planning/phases/02-manual-sdk-bootstrap-first-traces/02-CONTEXT.md`); 16 implementation decisions locked across 4 gray areas (span idiom, SERVER hook, PRODUCER/CONSUMER home, env-var resolution). Ready for `/gsd-plan-phase 2`.
+Last activity: 2026-05-01 — Discuss-phase complete for Phase 2. Phase 1 still SHIPPED at tag `step-01-baseline` (commit `6aa3a92`, local-only).
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0% (planning not yet started)
 
 ## Performance Metrics
 
@@ -69,6 +69,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-04-29 (Phase 1 shipped — all 3 waves merged, runtime verified, tag applied)
-Stopped at: Phase 1 complete. Tag local-only (push deferred per GSD safety protocol). Next session begins Phase 2 — Manual SDK Bootstrap & First Traces (depends on Phase 1; the broken-then-fixed delta with Phase 3 is load-bearing).
-Resume file: None
+Last session: 2026-05-01 (Phase 2 context gathered via /gsd-discuss-phase — 4 areas, 16 locked decisions)
+Stopped at: Phase 2 CONTEXT.md written; ready for `/gsd-plan-phase 2`. Phase 1 tag `step-01-baseline` still local-only (push deferred per GSD safety protocol).
+Resume file: .planning/phases/02-manual-sdk-bootstrap-first-traces/02-CONTEXT.md
