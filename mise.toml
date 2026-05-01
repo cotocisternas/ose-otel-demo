@@ -119,16 +119,48 @@ description = "POST a sample order to the producer; expect 202"
 run = "curl -sf -X POST http://localhost:${PRODUCER_PORT}/orders -H 'Content-Type: application/json' -d '{\"sku\":\"WIDGET-1\",\"quantity\":3}' && echo"
 
 [tasks."verify:bom"]
-description = "Phase 1 success gate: zero OTel libs on the classpath"
+description = "Phase 2 invariant: one version per io.opentelemetry* artifact across the reactor"
 run = """
 set -e
-COUNT=$(mvn -q dependency:tree -Dincludes=io.opentelemetry 2>&1 | grep -c "io.opentelemetry" || true)
-if [ "$COUNT" -gt 0 ]; then
-  echo "ERROR: OpenTelemetry libraries detected on classpath:"
-  mvn dependency:tree -Dincludes=io.opentelemetry
+
+# Run dependency:tree across the full reactor, filter to OTel artifacts only,
+# extract groupId:artifactId:type (NOT version) per occurrence, then look for
+# any artifact appearing under MULTIPLE distinct versions across modules.
+#
+# Layout of the relevant dependency:tree lines:
+#   [INFO] +- io.opentelemetry:opentelemetry-api:jar:1.61.0:compile
+#   [INFO] |  \\- io.opentelemetry:opentelemetry-context:jar:1.61.0:compile
+#
+# We split on ':' to get groupId, artifactId, type, version.
+#
+# NOTE: Do NOT pass `-q` to mvn — the maven-dependency-plugin emits its tree
+# via [INFO] logs, and `-q` (quiet) suppresses those. The full output is
+# noisy but we filter it down with grep below.
+OUTPUT=$(mvn dependency:tree -Dincludes=io.opentelemetry 2>&1)
+VIOLATIONS=$(printf '%s\\n' "$OUTPUT" \\
+  | grep -oE 'io\\.opentelemetry[a-z.-]*:[a-z0-9-]+:(jar|pom):[0-9a-zA-Z.-]+' \\
+  | sort -u \\
+  | awk -F: '{ key=$1":"$2":"$3; ver=$4; if (seen[key] && seen[key] != ver) print key" appears at versions "seen[key]" AND "ver; seen[key]=ver }')
+
+if [ -n "$VIOLATIONS" ]; then
+  echo "ERROR: Phase 2 invariant violated — the following OTel artifacts appear at multiple versions across the reactor:"
+  printf '%s\\n' "$VIOLATIONS"
+  echo
+  echo "Full dependency:tree output for diagnosis:"
+  printf '%s\\n' "$OUTPUT"
   exit 1
 fi
-echo "Phase 1 baseline confirmed: zero OpenTelemetry libraries on classpath."
+
+# Also confirm we're not in the (impossible-after-Plan-02-01) state of zero
+# OTel libs — a freshly cloned repo at step-02-traces MUST have artifacts.
+COUNT=$(printf '%s\\n' "$OUTPUT" | grep -cE 'io\\.opentelemetry[a-z.-]*:[a-z0-9-]+:(jar|pom):' || true)
+if [ "$COUNT" -eq 0 ]; then
+  echo "ERROR: zero OpenTelemetry artifacts on the classpath — Phase 2 expects the SDK to be present."
+  echo "If you want the Phase 1 baseline state, check out tag step-01-baseline."
+  exit 1
+fi
+
+echo "Phase 2 baseline confirmed: one version per OpenTelemetry artifact across all modules."
 """
 
 [tasks."ui:grafana"]
