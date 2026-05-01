@@ -15,6 +15,7 @@ import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
+import org.springframework.amqp.rabbit.support.ListenerExecutionFailedException;
 
 /**
  * Consumer-side AMQP context propagation: extracts W3C trace context from
@@ -69,6 +70,15 @@ import org.springframework.amqp.core.MessageProperties;
  * messages are dropped (no DLX per PROJECT.md). The CONSUMER span carries
  * the exception event — workshop attendees see ERROR status + the
  * {@code exception.type} attribute in Tempo (TRACE-09 + ROADMAP SC #3).
+ *
+ * <p><strong>Cause-unwrap on record (Phase 3 verification finding).</strong>
+ * Spring AMQP's {@code MessagingMessageListenerAdapter.invokeListenerMethod}
+ * wraps any user-thrown exception in {@link ListenerExecutionFailedException}
+ * BEFORE this advice's catch fires — so naively recording {@code t} would
+ * surface the wrapper FQCN as {@code exception.type}, not the user's
+ * business exception. We unwrap one level so the CONSUMER span reports
+ * the original cause (e.g. {@code com.example.consumer.domain.ProcessingFailedException})
+ * directly. The wrapper is still rethrown — the listener container expects it.
  */
 public class TracingMessageListenerAdvice implements MethodInterceptor {
 
@@ -118,7 +128,11 @@ public class TracingMessageListenerAdvice implements MethodInterceptor {
         try (Scope scope = span.makeCurrent()) {
             return inv.proceed();
         } catch (Throwable t) {
-            span.recordException(t);
+            Throwable recorded =
+                (t instanceof ListenerExecutionFailedException && t.getCause() != null)
+                    ? t.getCause()
+                    : t;
+            span.recordException(recorded);
             span.setStatus(StatusCode.ERROR);
             throw t;
         } finally {
