@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Wave 1 SHIPPED. Wave 2 ready (02-02-producer-sdk-config + 02-03-consumer-sdk-config in parallel). Phase 1 tag step-01-baseline still local-only (push deferred per GSD safety protocol)."
-last_updated: "2026-05-01T16:50:49.264Z"
+stopped_at: "Waves 1+2 SHIPPED. Wave 3 ready (02-04-producer-instrumentation + 02-05-consumer-instrumentation in parallel). Phase 1 tag step-01-baseline still local-only (push deferred per GSD safety protocol)."
+last_updated: "2026-05-01T17:10:00.000Z"
 last_activity: 2026-05-01
 progress:
   total_phases: 7
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 ## Current Position
 
 Phase: 2 of 7 (Manual SDK Bootstrap & First Traces) — **IN PROGRESS**
-Plan: 1 of 6 complete (`02-01-pom-dependencies` SHIPPED)
-Status: Wave 1 complete; Wave 2 ready (`02-02-producer-sdk-config` + `02-03-consumer-sdk-config` in parallel).
-Last activity: 2026-05-01 — `02-01-pom-dependencies` SHIPPED (commits `f836d12`, `cf7de72`); TRACE-01 marked complete.
+Plan: 3 of 6 complete (`02-01-pom-dependencies`, `02-02-producer-sdk-config`, `02-03-consumer-sdk-config` SHIPPED)
+Status: Waves 1+2 complete; Wave 3 ready (`02-04-producer-instrumentation` + `02-05-consumer-instrumentation` in parallel). `mvn -DskipTests install` BUILD SUCCESS across all 4 modules; `mise run verify:bom` Phase 2 invariant green.
+Last activity: 2026-05-01 — Wave 2 SHIPPED via parallel worktrees; merge commits `92ad6df` (producer) + `93bd6a4` (consumer); TRACE-02..05 + DOC-03 marked complete.
 
-Progress: [██████░░░░] 58% (rolled-up across all phases — Phase 1 SHIPPED 6/6, Phase 2 1/6)
+Progress: [███████░░░] 67% (rolled-up across all phases — Phase 1 SHIPPED 6/6, Phase 2 3/6)
 
 ## Performance Metrics
 
@@ -71,6 +71,8 @@ Recent decisions affecting current work:
 - Initialization: Phase 7 (Polish & Differentiators) is locked into v1 (not deferred post-cohort) per user choice — dashboard, load script, screenshots, full README walkthrough.
 - [Phase 02-01]: Inverted mise verify:bom IN PLACE — task name keeps meaning; Phase 1 zero-libs assertion → Phase 2 one-version-per-artifact assertion
 - [Phase 02-01]: Removed -q from mvn dependency:tree in mise verify:bom (Rule 1 deviation): -q suppresses [INFO] logs that the dependency-plugin uses to emit the tree, causing the script to read empty output and trigger a false-alarm
+- [Phase 02-02]: Producer worktree smoke test required runtime workaround for parallel-worktree container-name race (Rule 3 documented); no source diff. SDK-config code itself is unaffected.
+- [Phase 02-03]: Consumer's JavaDoc deliberately includes producer-side identities as pedagogical references; collides with grep-only acceptance gates that fold JavaDoc into code matching. Followed the explicit "use the EXACT structure below" PLAN directive — semantic intent preserved on every must_have.
 
 ### Pending Todos
 
@@ -93,6 +95,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-01 (Phase 2 Wave 1 SHIPPED — `02-01-pom-dependencies`; TRACE-01 marked complete)
-Stopped at: Wave 2 ready — spawn `02-02-producer-sdk-config` + `02-03-consumer-sdk-config` in parallel (Phase 1 tag `step-01-baseline` still local-only; push deferred per GSD safety protocol).
-Resume file: .planning/phases/02-manual-sdk-bootstrap-first-traces/02-02-producer-sdk-config-PLAN.md (Wave 2 head)
+Last session: 2026-05-01 (Phase 2 Waves 1+2 SHIPPED — TRACE-01..05 + DOC-03 marked complete)
+Stopped at: Wave 3 ready — spawn `02-04-producer-instrumentation` + `02-05-consumer-instrumentation` in parallel (Phase 1 tag `step-01-baseline` still local-only; push deferred per GSD safety protocol).
+Resume file: .planning/phases/02-manual-sdk-bootstrap-first-traces/02-04-producer-instrumentation-PLAN.md (Wave 3 head)

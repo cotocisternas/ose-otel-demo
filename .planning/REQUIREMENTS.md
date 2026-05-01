@@ -26,10 +26,10 @@ Requirements for initial release. Each maps to a roadmap phase. All requirements
 ### Manual SDK bootstrap & traces (TRACE)
 
 - [x] **TRACE-01**: Each service contains its own `OtelSdkConfiguration.java` that builds `OpenTelemetrySdk` manually via `OpenTelemetrySdk.builder()` (no shared library, no autoconfigure starter, no Java agent) — the duplication is intentional so attendees read the SDK setup twice
-- [ ] **TRACE-02**: Each service's `Resource` is built with the new `io.opentelemetry.semconv:1.40.0` constants for `service.name`, `service.namespace`, `service.instance.id`, and `deployment.environment.name` — Tempo shows distinct service names (never `unknown_service:java`)
-- [ ] **TRACE-03**: Each service registers a `SdkTracerProvider` with `BatchSpanProcessor` + `OtlpGrpcSpanExporter` targeting `:4317` and an explicit `Sampler.parentBased(Sampler.alwaysOn())` chosen with a code comment that explains the production-vs-workshop tradeoff
-- [ ] **TRACE-04**: `OpenTelemetrySdk` is registered as `@Bean(destroyMethod = "close")` so a graceful shutdown (`Ctrl-C`) flushes the final batch of spans, metrics, and logs
-- [ ] **TRACE-05**: A SERVER span wraps every `POST /orders` invocation with HTTP semantic-convention attributes (`http.request.method`, `url.path`, `http.response.status_code`)
+- [x] **TRACE-02**: Each service's `Resource` is built with the new `io.opentelemetry.semconv:1.40.0` constants for `service.name`, `service.namespace`, `service.instance.id`, and `deployment.environment.name` — Tempo shows distinct service names (never `unknown_service:java`)
+- [x] **TRACE-03**: Each service registers a `SdkTracerProvider` with `BatchSpanProcessor` + `OtlpGrpcSpanExporter` targeting `:4317` and an explicit `Sampler.parentBased(Sampler.alwaysOn())` chosen with a code comment that explains the production-vs-workshop tradeoff
+- [x] **TRACE-04**: `OpenTelemetrySdk` is registered as `@Bean(destroyMethod = "close")` so a graceful shutdown (`Ctrl-C`) flushes the final batch of spans, metrics, and logs
+- [x] **TRACE-05**: A SERVER span wraps every `POST /orders` invocation with HTTP semantic-convention attributes (`http.request.method`, `url.path`, `http.response.status_code`)
 - [ ] **TRACE-06**: An INTERNAL span wraps each domain method in both services (e.g., `OrderService.place(...)`, `ProcessingService.process(...)`) so attendees see nested business-logic spans
 - [ ] **TRACE-07**: A PRODUCER span wraps the publish call with messaging semantic-convention attributes (`messaging.system=rabbitmq`, `messaging.destination.name`, `messaging.operation=publish`)
 - [ ] **TRACE-08**: A CONSUMER span wraps the listener handler with messaging semantic-convention attributes (`messaging.operation=process`)
@@ -70,7 +70,7 @@ Requirements for initial release. Each maps to a roadmap phase. All requirements
 
 - [ ] **DOC-01**: A `README.md` walks the workshop attendee through each step keyed to the matching annotated git tag (`step-01-baseline` through `step-06-tests`) with copy-pasteable curl commands
 - [ ] **DOC-02**: README "Prerequisites" section lists ports, tools, and the `mise run preflight` task; first-time attendees can self-diagnose tooling issues before getting stuck
-- [ ] **DOC-03**: `OtelSdkConfiguration.java` is heavily commented — every SDK builder call has an inline comment explaining what it does and why; the code IS the workshop's textbook
+- [x] **DOC-03**: `OtelSdkConfiguration.java` is heavily commented — every SDK builder call has an inline comment explaining what it does and why; the code IS the workshop's textbook
 - [ ] **DOC-04**: README includes Grafana screenshots that pair `step-02-traces` (TWO disconnected traces) with `step-03-context-propagation` (ONE joined trace) so the broken-then-fixed delta is visible without running the steps
 - [ ] **DOC-05**: README explicitly states that the per-service duplication of `OtelSdkConfiguration` is intentional and explains why (so readers don't "fix" it by extracting a shared library)
 
@@ -137,10 +137,10 @@ Every v1 requirement maps to exactly one phase. Updated by `gsd-roadmapper` 2026
 | APP-04 | Phase 3 | Pending |
 | APP-05 | Phase 1 | Pending |
 | TRACE-01 | Phase 2 | Complete |
-| TRACE-02 | Phase 2 | Pending |
-| TRACE-03 | Phase 2 | Pending |
-| TRACE-04 | Phase 2 | Pending |
-| TRACE-05 | Phase 2 | Pending |
+| TRACE-02 | Phase 2 | Complete |
+| TRACE-03 | Phase 2 | Complete |
+| TRACE-04 | Phase 2 | Complete |
+| TRACE-05 | Phase 2 | Complete |
 | TRACE-06 | Phase 2 | Pending |
 | TRACE-07 | Phase 2 | Pending |
 | TRACE-08 | Phase 2 | Pending |
@@ -166,7 +166,7 @@ Every v1 requirement maps to exactly one phase. Updated by `gsd-roadmapper` 2026
 | TEST-06 | Phase 6 | Pending |
 | DOC-01 | Phase 7 | Pending |
 | DOC-02 | Phase 1 | Pending |
-| DOC-03 | Phase 2 | Pending |
+| DOC-03 | Phase 2 | Complete |
 | DOC-04 | Phase 7 | Pending |
 | DOC-05 | Phase 2 | Pending |
 | WORK-01 | Phase 1 | Pending |

@@ -65,11 +65,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. README explicitly states that the per-service duplication of `OtelSdkConfiguration` is **intentional** with a one-paragraph rationale (DOC-05) — no reader is tempted to "refactor" the duplication away.
   6. The annotated git tag `step-02-traces` exists on `main` and reproduces this exact two-traces state.
 **Plans** (6 plans, 4 waves):
-- **Wave 1** *(parallelizable, no dependencies)*
-  - [ ] `2-01-pom-dependencies` — TRACE-01 — Add 5 OTel deps to both service POMs (api/sdk/exporter-otlp BOM-managed; semconv 1.40.0 + semconv-incubating 1.40.0-alpha pinned) + invert `mise run verify:bom` to assert one-version-per-OTel-artifact
-- **Wave 2** *(blocked on Wave 1 completion; parallelizable across services)*
-  - [ ] `2-02-producer-sdk-config` — TRACE-01..05, DOC-03 — Producer's `OtelSdkConfiguration.java` (heavily commented; ≥40 comment lines per DOC-03 grep gate) + `HttpServerSpanFilter.java` (D-05/D-06/D-07 producer-only, `OncePerRequestFilter.shouldNotFilter` for `/actuator/*`) + `Tracer @Bean`
-  - [ ] `2-03-consumer-sdk-config` — TRACE-01..04, DOC-03 — Consumer's `OtelSdkConfiguration.java` (mirror of producer's with documented diffs; NO HttpServerSpanFilter per D-07)
+- **Wave 1** *(parallelizable, no dependencies)* — **✅ complete**
+  - [x] `2-01-pom-dependencies` — TRACE-01 — Add 5 OTel deps to both service POMs (api/sdk/exporter-otlp BOM-managed; semconv 1.40.0 + semconv-incubating 1.40.0-alpha pinned) + invert `mise run verify:bom` to assert one-version-per-OTel-artifact
+- **Wave 2** *(blocked on Wave 1 completion; parallelizable across services)* — **✅ complete**
+  - [x] `2-02-producer-sdk-config` — TRACE-01..05, DOC-03 — Producer's `OtelSdkConfiguration.java` (heavily commented; ≥40 comment lines per DOC-03 grep gate) + `HttpServerSpanFilter.java` (D-05/D-06/D-07 producer-only, `OncePerRequestFilter.shouldNotFilter` for `/actuator/*`) + `Tracer @Bean`
+  - [x] `2-03-consumer-sdk-config` — TRACE-01..04, DOC-03 — Consumer's `OtelSdkConfiguration.java` (mirror of producer's with documented diffs; NO HttpServerSpanFilter per D-07)
 - **Wave 3** *(blocked on Wave 2 completion; parallelizable across services)*
   - [ ] `2-04-producer-instrumentation` — TRACE-06, TRACE-07 — INTERNAL span on `OrderService.place` + PRODUCER span on `OrderPublisher.publish` (using `MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE` + `SEND` value per RESEARCH FLAG #1, NOT deprecated `MESSAGING_OPERATION="publish"`)
   - [ ] `2-05-consumer-instrumentation` — TRACE-06, TRACE-08 — CONSUMER span on `OrderListener.onOrder` (with verbatim D-10 multi-line teaching comment + `.setParent(Context.root())`) + INTERNAL span on `ProcessingService.process`
@@ -166,7 +166,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Baseline & Scaffold | 0/6 | Ready to execute | - |
-| 2. Manual SDK Bootstrap & First Traces | 1/6 | In Progress | - |
+| 2. Manual SDK Bootstrap & First Traces | 3/6 | In Progress | - |
 | 3. AMQP Context Propagation | 0/TBD | Not started | - |
 | 4. Metrics | 0/TBD | Not started | - |
 | 5. Logs Correlation | 0/TBD | Not started | - |
