@@ -15,7 +15,69 @@
   <packaging>jar</packaging>
 
   <name>OSE OTel Demo (otel-bootstrap)</name>
-  <description>Shared OTel helper module. Phase 1: empty placeholder. Phase 3 populates it with the AMQP propagation pair.</description>
+  <description>Shared OTel helper module — AMQP W3C context propagation pair (TracingMessagePostProcessor + TracingMessageListenerAdvice + MessagePropertiesSetter / MessagePropertiesGetter). Used by producer-service and consumer-service.</description>
 
-  <!-- Phase 1: empty module. Phase 3 populates it with the AMQP propagation pair. -->
+  <dependencies>
+    <!--
+      OpenTelemetry API — TextMapSetter, TextMapGetter, TextMapPropagator,
+      Tracer, Span, Context, SpanKind. Compile scope: required to compile
+      the four propagation classes. BOM-managed by opentelemetry-bom:1.61.0
+      (parent pom.xml lines 57-63) — no <version>.
+    -->
+    <dependency>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-api</artifactId>
+    </dependency>
+
+    <!--
+      Spring AMQP API — Message, MessageProperties, MessagePostProcessor,
+      Correlation. Provided scope: consuming services (producer-service,
+      consumer-service) bring spring-rabbit transitively via
+      spring-boot-starter-amqp; otel-bootstrap only references the API
+      types at compile time. BOM-managed by spring-boot-dependencies:3.4.13
+      (parent pom.xml line 67) — no <version>.
+    -->
+    <dependency>
+      <groupId>org.springframework.amqp</groupId>
+      <artifactId>spring-rabbit</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <!--
+      Spring AOP — transitively brings org.aopalliance:aopalliance for
+      MethodInterceptor / MethodInvocation. Provided scope: consuming
+      services bring spring-aop transitively via spring-boot-starter-amqp
+      → spring-tx → spring-aop. BOM-managed.
+    -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-aop</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <!--
+      OpenTelemetry semconv-incubating — MessagingIncubatingAttributes
+      constants are referenced by the propagation classes; while constants
+      inline at compile, the artifact is needed to compile this module
+      standalone. Provided scope: consuming services already pin
+      1.40.0-alpha directly. NOT BOM-managed — explicit version required.
+    -->
+    <dependency>
+      <groupId>io.opentelemetry.semconv</groupId>
+      <artifactId>opentelemetry-semconv-incubating</artifactId>
+      <version>1.40.0-alpha</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!--
+      JUnit 5 — for the MessagePropertiesRoundTripTest pure unit test
+      (PITFALLS.md #2 regression net for the byte[]-vs-String discipline).
+      Test scope: only used during mvn test. BOM-managed.
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 </project>
