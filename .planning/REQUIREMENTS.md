@@ -72,7 +72,7 @@ Requirements for initial release. Each maps to a roadmap phase. All requirements
 - [ ] **DOC-02**: README "Prerequisites" section lists ports, tools, and the `mise run preflight` task; first-time attendees can self-diagnose tooling issues before getting stuck
 - [x] **DOC-03**: `OtelSdkConfiguration.java` is heavily commented — every SDK builder call has an inline comment explaining what it does and why; the code IS the workshop's textbook
 - [ ] **DOC-04**: README includes Grafana screenshots that pair `step-02-traces` (TWO disconnected traces) with `step-03-context-propagation` (ONE joined trace) so the broken-then-fixed delta is visible without running the steps
-- [ ] **DOC-05**: README explicitly states that the per-service duplication of `OtelSdkConfiguration` is intentional and explains why (so readers don't "fix" it by extracting a shared library)
+- [x] **DOC-05**: README explicitly states that the per-service duplication of `OtelSdkConfiguration` is intentional and explains why (so readers don't "fix" it by extracting a shared library)
 
 ### Workshop artifacts (WORK)
 
@@ -168,7 +168,7 @@ Every v1 requirement maps to exactly one phase. Updated by `gsd-roadmapper` 2026
 | DOC-02 | Phase 1 | Pending |
 | DOC-03 | Phase 2 | Complete |
 | DOC-04 | Phase 7 | Pending |
-| DOC-05 | Phase 2 | Pending |
+| DOC-05 | Phase 2 | Complete |
 | WORK-01 | Phase 1 | Pending |
 | WORK-02 | Phase 7 | Pending |
 | WORK-03 | Phase 7 | Pending |

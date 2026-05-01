@@ -73,8 +73,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - **Wave 3** *(blocked on Wave 2 completion; parallelizable across services)* — **✅ complete**
   - [x] `2-04-producer-instrumentation` — TRACE-06, TRACE-07 — INTERNAL span on `OrderService.place` + PRODUCER span on `OrderPublisher.publish` (using `MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE` + `SEND` value per RESEARCH FLAG #1, NOT deprecated `MESSAGING_OPERATION="publish"`)
   - [x] `2-05-consumer-instrumentation` — TRACE-06, TRACE-08 — CONSUMER span on `OrderListener.onOrder` (with verbatim D-10 multi-line teaching comment + `.setParent(Context.root())`) + INTERNAL span on `ProcessingService.process`
-- **Wave 4** *(blocked on Waves 1+2+3; contains human checkpoint)*
-  - [ ] `2-06-readme-and-exit-gate` — DOC-03, DOC-05, WORK-01 — README "Reading the code" + "Why is OtelSdkConfiguration.java duplicated?" sections (DOC-05 grep-gated callout) + verify all 6 ROADMAP success criteria green + human checkpoint to create annotated tag `step-02-traces`
+- **Wave 4** *(blocked on Waves 1+2+3; contains human checkpoint)* — **source delta SHIPPED 2026-05-01; tag pending user gate**
+  - [x] `2-06-readme-and-exit-gate` — DOC-03 + DOC-05 README sections committed (0f6c99e); all 6 ROADMAP success criteria verified simultaneously green; annotated tag `step-02-traces` STAGED, awaiting user/orchestrator approval
 
 **Cross-cutting constraints** *(must_haves shared across plans)*:
 - Maven dependency convergence enforced at `mvn validate` — every `io.opentelemetry*` artifact appears EXACTLY once across the reactor (asserted by 2-01, 2-02, 2-03)
@@ -165,8 +165,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Baseline & Scaffold | 0/6 | Ready to execute | - |
-| 2. Manual SDK Bootstrap & First Traces | 5/6 | In Progress | - |
+| 1. Baseline & Scaffold | 6/6 | Shipped (tag step-01-baseline) | 2026-04-29 |
+| 2. Manual SDK Bootstrap & First Traces | 6/6 (source); awaiting tag | Awaiting tag gate | source: 2026-05-01 |
 | 3. AMQP Context Propagation | 0/TBD | Not started | - |
 | 4. Metrics | 0/TBD | Not started | - |
 | 5. Logs Correlation | 0/TBD | Not started | - |
