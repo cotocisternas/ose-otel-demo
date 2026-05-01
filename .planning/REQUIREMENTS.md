@@ -25,7 +25,7 @@ Requirements for initial release. Each maps to a roadmap phase. All requirements
 
 ### Manual SDK bootstrap & traces (TRACE)
 
-- [ ] **TRACE-01**: Each service contains its own `OtelSdkConfiguration.java` that builds `OpenTelemetrySdk` manually via `OpenTelemetrySdk.builder()` (no shared library, no autoconfigure starter, no Java agent) — the duplication is intentional so attendees read the SDK setup twice
+- [x] **TRACE-01**: Each service contains its own `OtelSdkConfiguration.java` that builds `OpenTelemetrySdk` manually via `OpenTelemetrySdk.builder()` (no shared library, no autoconfigure starter, no Java agent) — the duplication is intentional so attendees read the SDK setup twice
 - [ ] **TRACE-02**: Each service's `Resource` is built with the new `io.opentelemetry.semconv:1.40.0` constants for `service.name`, `service.namespace`, `service.instance.id`, and `deployment.environment.name` — Tempo shows distinct service names (never `unknown_service:java`)
 - [ ] **TRACE-03**: Each service registers a `SdkTracerProvider` with `BatchSpanProcessor` + `OtlpGrpcSpanExporter` targeting `:4317` and an explicit `Sampler.parentBased(Sampler.alwaysOn())` chosen with a code comment that explains the production-vs-workshop tradeoff
 - [ ] **TRACE-04**: `OpenTelemetrySdk` is registered as `@Bean(destroyMethod = "close")` so a graceful shutdown (`Ctrl-C`) flushes the final batch of spans, metrics, and logs
@@ -136,7 +136,7 @@ Every v1 requirement maps to exactly one phase. Updated by `gsd-roadmapper` 2026
 | APP-03 | Phase 1 | Pending |
 | APP-04 | Phase 3 | Pending |
 | APP-05 | Phase 1 | Pending |
-| TRACE-01 | Phase 2 | Pending |
+| TRACE-01 | Phase 2 | Complete |
 | TRACE-02 | Phase 2 | Pending |
 | TRACE-03 | Phase 2 | Pending |
 | TRACE-04 | Phase 2 | Pending |

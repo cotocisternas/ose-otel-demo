@@ -166,7 +166,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Baseline & Scaffold | 0/6 | Ready to execute | - |
-| 2. Manual SDK Bootstrap & First Traces | 0/6 | Ready to execute | - |
+| 2. Manual SDK Bootstrap & First Traces | 1/6 | In Progress | - |
 | 3. AMQP Context Propagation | 0/TBD | Not started | - |
 | 4. Metrics | 0/TBD | Not started | - |
 | 5. Logs Correlation | 0/TBD | Not started | - |
