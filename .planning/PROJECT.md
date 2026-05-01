@@ -86,12 +86,12 @@ A workshop attendee can clone the repo, run `docker compose up` + `mise run dev`
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
 | Use OpenTelemetry SDK manually, not the Java agent | Workshop's pedagogical goal is teaching the SDK explicitly; auto-instrumentation hides the mechanics | ✓ Validated in Phase 2 (manual `OpenTelemetrySdk.builder()` shipped per-service) |
-| Emit all three OTel signals (traces + metrics + logs) | Workshop attendees need to see how each signal is configured/exported through the same SDK | — Pending |
-| Use Grafana `otel-lgtm` single-container backend | One container instead of five separate services (collector, Tempo, Mimir, Loki, Grafana); minimizes ops noise | — Pending |
+| Emit all three OTel signals (traces + metrics + logs) | Workshop attendees need to see how each signal is configured/exported through the same SDK | ◆ In progress — traces (Phase 2) + metrics (Phase 4) shipped; logs pending (Phase 5) |
+| Use Grafana `otel-lgtm` single-container backend | One container instead of five separate services (collector, Tempo, Mimir, Loki, Grafana); minimizes ops noise | ✓ Validated in Phase 2 + Phase 4 (traces + metrics flow to otel-lgtm via OTLP) |
 | Minimal RabbitMQ topology (one direct exchange + one queue) | Trace propagation lesson is the headline; richer topologies add surface area without adding instructional value | — Pending |
 | Spring AMQP (`RabbitTemplate` / `@RabbitListener`) over the lower-level RabbitMQ Java client | Spring AMQP is what attendees recognize; manual span wrapping + header injection on top of it is the realistic teaching scenario | — Pending |
 | Order processing as the toy domain | Familiar shape (POST /orders → publish → consumer); makes business-logic spans concrete without distracting | — Pending |
-| Staged git checkpoints (one branch/tag per workshop step) | Workshop format demands "git checkout to follow along"; checkpoints keep each lesson focused | ◆ In progress — `step-01-baseline`, `step-02-traces` applied (2 of 6) |
+| Staged git checkpoints (one branch/tag per workshop step) | Workshop format demands "git checkout to follow along"; checkpoints keep each lesson focused | ◆ In progress — `step-01-baseline`, `step-02-traces`, `step-03-context-propagation`, `step-04-metrics` applied (4 of 6) |
 | Testcontainers integration tests rather than mocks | Demonstrates testing instrumented code against real infrastructure — itself a workshop lesson | — Pending |
 | `docker-compose` for infra, app runs on host via mise | Lets attendees attach a debugger and step through SDK calls; containers for everything would block IDE workflows | — Pending |
 | mise (not asdf or SDKMAN) for JDK/Maven version pinning | mise was the user's chosen tooling; supports Corretto 17 and Maven natively | — Pending |
@@ -116,4 +116,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-01 after Phase 2 SHIPPED (tag `step-02-traces`)*
+*Last updated: 2026-05-01 after Phase 4 SHIPPED (tag `step-04-metrics`)*
