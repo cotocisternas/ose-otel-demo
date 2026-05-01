@@ -19,6 +19,21 @@
 
   <dependencies>
     <!--
+      Phase 3: shared otel-bootstrap module. Provides the AMQP context
+      propagation pair — TracingMessagePostProcessor (PRODUCER inject)
+      and TracingMessageListenerAdvice (CONSUMER extract). Producer uses
+      only the post-processor (registered on RabbitTemplate via
+      setBeforePublishPostProcessors in RabbitConfig). The version
+      ${project.version} resolves to 0.1.0-SNAPSHOT via parent POM
+      inheritance (multi-module reactor convention).
+    -->
+    <dependency>
+      <groupId>com.example</groupId>
+      <artifactId>otel-bootstrap</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <!--
       Phase 2 onward: ONE version per OpenTelemetry artifact across the reactor,
       enforced by maven-enforcer-plugin's <dependencyConvergence/> rule
       (parent pom.xml lines 113-145, bound to the validate phase).
