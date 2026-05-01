@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Phase 3 context gathered 2026-05-01 — 03-CONTEXT.md captures 13 implementation decisions across 4 areas (bootstrap wiring, producer span ownership, APP-04 failure design, listener factory wiring) + 3 research flags. Ready for /gsd-research-phase 3 then /gsd-plan-phase 3."
-last_updated: "2026-05-01T18:30:00.000Z"
-last_activity: 2026-05-01
+stopped_at: Phase 3 context gathered. Next workflow step is `/gsd-research-phase 3` to resolve the 3 open research flags about Spring AMQP 3.2.8 API surface (advice composition, 4-arg MessagePostProcessor overload, MethodInvocation arg index) — these MUST resolve before `/gsd-plan-phase 3` because they pin method signatures the planner needs.
+last_updated: "2026-05-01T20:09:52.204Z"
+last_activity: 2026-05-01 -- Phase 03 planning complete
 progress:
   total_phases: 7
-  completed_phases: 1
-  total_plans: 12
-  completed_plans: 7
-  percent: 58
+  completed_phases: 2
+  total_plans: 17
+  completed_plans: 12
+  percent: 71
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 
 Phase: 3 of 7 (AMQP Context Propagation — THE HEADLINE LESSON) — **context gathered 2026-05-01**
 Plan: 0 of TBD — research-phase next (3 open research flags), then planning, then execution.
-Status: 03-CONTEXT.md committed; 13 implementation decisions locked across 4 gray areas; 3 research flags identified (Spring AMQP API surface verification). Ready for `/gsd-research-phase 3` to resolve flags + produce 03-RESEARCH.md, then `/gsd-plan-phase 3`.
-Last activity: 2026-05-01 — 03-CONTEXT.md + 03-DISCUSSION-LOG.md committed via `/gsd-discuss-phase 3`.
+Status: Ready to execute
+Last activity: 2026-05-01 -- Phase 03 planning complete
 
 Progress: [█████████░] 86% (rolled-up across all phases — Phases 1+2 SHIPPED, Phases 3-7 outstanding)
 
@@ -96,6 +96,7 @@ None yet.
   2. (new from 03-CONTEXT D-07) Spring AMQP 3.2.8 supports the `MessagePostProcessor.postProcessMessage(Message, Correlation, exchange, routingKey)` 4-arg overload AND `RabbitTemplate.processBeforePublishMessageProcessors(...)` invokes it when registered via `setBeforePublishPostProcessors(...)`.
   3. (new from 03-CONTEXT D-10) `MethodInvocation.getArguments()` index for `Message` arg when wrapping a `@RabbitListener` (arg[0] vs arg[1] vs typed scan) — ARCHITECTURE.md Pattern 2 used `[1]` with comment "(channel, message)" but that may be `ChannelAwareMessageListener`-specific.
   All three resolve in `/gsd-research-phase 3` before `/gsd-plan-phase 3`.
+
 - **Phase 5 research flag**: Confirm Maven coordinate for MDC injector (`opentelemetry-logback-mdc-1.0` artifact vs `<captureMdcAttributes>` on appender).
 - **Phase 6 research flag**: Validate `@ServiceConnection` + `RabbitMQContainer` on Spring Boot 3.4.13.
 
