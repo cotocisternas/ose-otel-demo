@@ -122,9 +122,29 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Workshop attendee runs the demo for ~30 seconds and sees `http_server_request_duration_seconds` populated with `count`, `sum`, and bucket histograms — proving the histogram instrument shape and **seconds** unit (semconv-aligned).
   3. Workshop attendee sees the `orders_queue_depth_estimate` observable gauge produce a fresh sample every 10 seconds in Mimir (proving the `PeriodicMetricReader` interval was overridden from the 60-second default — see METRIC-01).
   4. The annotated git tag `step-04-metrics` exists on `main`.
-**Plans**: TBD
+**Plans** (5 plans, 3 waves):
+- **Wave 1** *(parallelizable, no dependencies)*
+  - [ ] `04-01-meter-pipeline-refactor` — METRIC-01 — Refactor BOTH OtelSdkConfiguration.java files: extract Phase 2's inline tracer pipeline into `private SdkTracerProvider buildTracerProvider(Resource)` (verbatim lift-and-shift) and add a sibling `private SdkMeterProvider buildMeterProvider(Resource)` that wires OtlpGrpcMetricExporter + PeriodicMetricReader.setInterval(Duration.ofSeconds(10)) + SdkMeterProvider; add Meter @Bean parallel to existing Tracer @Bean (D-06); update producer's HttpServerSpanFilter @Bean factory to take (Tracer, Meter); zero new pom deps (opentelemetry-exporter-otlp + sdk-metrics already on classpath since Phase 2)
+- **Wave 2** *(blocked on Wave 1; parallelizable across the three instrument shapes)*
+  - [ ] `04-02-producer-counter` — METRIC-02 — Extend OrderService: constructor-inject Meter; build LongCounter `orders.created` once as a final field; increment INSIDE the existing INTERNAL span body, AFTER `publisher.publish` returns and BEFORE `return orderId`, with `order.priority` business attribute from payload (fallback "standard", D-09); catch block UNCHANGED — counter does NOT fire on failure (D-08)
+  - [ ] `04-03-producer-histogram` — METRIC-03 — EXTEND existing HttpServerSpanFilter (D-12 — no new filter, no chain reordering): constructor-inject Meter; build DoubleHistogram `http.server.request.duration` once with unit `"s"` (seconds — D-13 semconv-aligned); capture `startNanos = System.nanoTime()` BEFORE spanBuilder; record `(System.nanoTime() - startNanos) / 1_000_000_000.0` in existing finally block BEFORE span.end(); attributes use `HttpAttributes.HTTP_REQUEST_METHOD` + `HttpAttributes.HTTP_RESPONSE_STATUS_CODE` semconv constants (D-14 — `url.path` excluded for cardinality); SDK-default buckets (D-15)
+  - [ ] `04-04-consumer-gauge` — METRIC-04 — Create new @Component QueueDepthGauge at consumer-service/src/main/java/com/example/consumer/observability/QueueDepthGauge.java (D-18b chosen over D-18a's inline @PostConstruct to preserve producer/consumer mirror property D-02); constructor-inject Meter; register ObservableLongGauge `orders.queue.depth.estimate` with `.ofLongs()` (D-19) and `buildWithCallback(measurement -> measurement.record(ThreadLocalRandom.current().nextInt(0, 50)))` (D-17 synthetic); @PreDestroy gauge.close() defensive cleanup
+- **Wave 3** *(blocked on Waves 1+2; contains human checkpoint)*
+  - [ ] `04-05-mise-readme-tag` — METRIC-01..04 — Update mise.toml `demo:order` task to send TWO priority payloads (express + standard, D-10 cardinality-awareness lesson); add `## Step 4: Metrics` README section keyed to tag step-04-metrics (D-21 — names three instrument shapes, seconds-not-millis trap callout, OTel→Prometheus name mapping); move **Current.** marker from step-03-context-propagation to step-04-metrics; update "What's NOT here yet" to remove metrics; verify all 4 ROADMAP success criteria simultaneously green at live stack; human-verify gate then create annotated tag step-04-metrics per WORK-01 / D-22
+
+**Cross-cutting constraints** *(must_haves shared across plans)*:
+- D-01 (refactor to helper methods — pedagogical north star: diff against step-03 reads as "we added a sibling pipeline")
+- D-02 (per-service duplication preserved — Phase 2 D-01 / DOC-05 carryforward; producer/consumer OtelSdkConfiguration.java differs by ~3 lines only)
+- D-04 (no autoconfigure dependency — Phase 2 D-12 carryforward; same env-var-with-fallback pattern as the trace exporter)
+- D-05 (Resource built once in @Bean orchestrator and shared between tracer + meter pipelines for cross-signal correlation)
+- D-07 (lifecycle: existing @Bean(destroyMethod="close") cascade handles SdkMeterProvider.shutdown() — no new lifecycle annotation)
+- D-13 (seconds, not milliseconds — semconv 1.40.0 trap; explicit `/ 1_000_000_000.0`)
+- D-14 (semconv constants for HTTP attrs; string literal AttributeKey for app-specific `order.priority`)
+- D-20 (DOC-03 / comment-density bar ≥ 40 lines per OtelSdkConfiguration.java — Phase 4's helper additions naturally exceed this)
 **Notes**:
 - Standard OTel patterns; flagged in SUMMARY.md as **does not need** `/gsd-research-phase` — paste-able from STACK.md.
+- Wave 2 (04-02 / 04-03 / 04-04) can run in parallel: each plan touches a different file (OrderService.java / HttpServerSpanFilter.java / QueueDepthGauge.java [new]) with zero file-overlap.
+- D-18 hosting choice committed to D-18b (separate @Component) per PATTERNS.md recommendation — preserves producer/consumer OtelSdkConfiguration mirror.
 
 ### Phase 5: Logs Correlation
 **Goal**: Workshop attendee adds the `SdkLoggerProvider` and `OpenTelemetryAppender` (with `install(openTelemetry)` invoked from `@PostConstruct` after the SDK bean is built — neutralising the silent-no-op pitfall) plus MDC `trace_id`/`span_id` injection, then runs a query in Grafana Loki, finds a log line, clicks the `trace_id` link, and lands directly on the matching trace in Tempo — closing the loop on all three signals.
@@ -177,7 +197,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Baseline & Scaffold | 6/6 | Shipped (tag step-01-baseline) | 2026-04-29 |
 | 2. Manual SDK Bootstrap & First Traces | 6/6 | Shipped | 2026-05-01 |
 | 3. AMQP Context Propagation | 0/5 | In progress (planned) | - |
-| 4. Metrics | 0/TBD | Not started | - |
+| 4. Metrics | 0/5 | In progress (planned) | - |
 | 5. Logs Correlation | 0/TBD | Not started | - |
 | 6. Verification Tests | 0/TBD | Not started | - |
 | 7. Polish & Differentiators | 0/TBD | Not started | - |
