@@ -1,17 +1,22 @@
 package com.example.consumer.config;
 
+import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.baggage.propagation.W3CBaggagePropagator;
 import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.metrics.Meter;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.propagation.ContextPropagators;
 import io.opentelemetry.context.propagation.TextMapPropagator;
+import io.opentelemetry.exporter.otlp.metrics.OtlpGrpcMetricExporter;
 import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.metrics.SdkMeterProvider;
+import io.opentelemetry.sdk.metrics.export.PeriodicMetricReader;
 import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
@@ -42,8 +47,8 @@ import org.springframework.context.annotation.Configuration;
  * artifact would read OTEL_* env vars magically and build the SDK behind
  * the scenes. We deliberately do NOT pull it in (see consumer-service/pom.xml).
  * The env-var contract is visible in code below — System.getenv()
- * with an explicit fallback. Phase 4 + Phase 5 will reuse the same pattern
- * when wiring the meter and logger providers.
+ * with an explicit fallback. Phase 5 will reuse the same pattern
+ * when wiring the logger provider.
  *
  * <p><b>Why semconv-incubating?</b> The messaging conventions
  * (MessagingIncubatingAttributes — used by Plan 02-05 for the CONSUMER span)
@@ -58,6 +63,15 @@ import org.springframework.context.annotation.Configuration;
  * The per-service-duplication ethos applies to the SDK BOOTSTRAP; it
  * does NOT apply to instrumentation surfaces, which exist where the
  * surface exists (D-07).
+ *
+ * <p><b>Why three @Beans (openTelemetry / tracer / meter)?</b> The
+ * {@link #openTelemetry()} @Bean is the orchestrator that builds the SDK
+ * by delegating to {@link #buildTracerProvider(Resource)} (Phase 2's
+ * trace pipeline) and {@link #buildMeterProvider(Resource)} (Phase 4's
+ * metric pipeline) — see D-01 in 04-CONTEXT.md. The {@code Tracer} and
+ * {@code Meter} @Beans are thin "instrumentation scope" handles that
+ * call sites constructor-inject. Phase 5 will add a sibling
+ * {@code buildLoggerProvider} helper and a {@code Logger} @Bean.
  */
 @Configuration
 public class OtelSdkConfiguration {
@@ -91,6 +105,13 @@ public class OtelSdkConfiguration {
     OpenTelemetry openTelemetry() {
         // ----- Resource: identifies this service in Tempo, Mimir, Loki -----
         //
+        // Built ONCE in the orchestrator and passed to BOTH pipeline helpers
+        // (D-05) so traces and metrics share an identical Resource — service.name,
+        // service.namespace, service.instance.id, and deployment.environment.name
+        // are byte-for-byte the same in Tempo and Mimir. That shared identity is
+        // what makes cross-signal correlation work in Grafana (click a metric
+        // sample, jump to the matching trace by service.name + instance.id).
+        //
         // Resource.getDefault() carries the OTel-defined defaults including
         // SERVICE_NAME=unknown_service:java. We .merge() our overrides on
         // top — merge(other) puts `other` last, so OUR service.name wins.
@@ -107,6 +128,51 @@ public class OtelSdkConfiguration {
                 .put(DeploymentIncubatingAttributes.DEPLOYMENT_ENVIRONMENT_NAME, "workshop")
                 .build()));
 
+        // ----- Sibling pipelines: traces (Phase 2) + metrics (Phase 4 / D-01) -----
+        //
+        // Phase 2 inlined the entire tracer pipeline inside this @Bean. Phase 4
+        // extracts that into buildTracerProvider(resource) — no behavior change,
+        // every Phase 2 line lives unchanged inside the helper — and adds a
+        // sibling buildMeterProvider(resource) so the diff between step-03 and
+        // step-04 reads as "we added a sibling pipeline next to the trace
+        // pipeline." Phase 5 will land buildLoggerProvider(resource) the same
+        // way, and the @Bean stays a 3-step recipe.
+        SdkTracerProvider tracerProvider = buildTracerProvider(resource);
+        SdkMeterProvider  meterProvider  = buildMeterProvider(resource);
+
+        // ----- Propagators: composite W3C trace-context + W3C baggage -----
+        //
+        // Wired in Phase 2; exercised in Phase 3 (the propagation pair in
+        // otel-bootstrap reads back via openTelemetry.getPropagators()).
+        // Phase 4 does not touch the propagator wiring — metrics inherit the
+        // active span's traceId/spanId via exemplars at record time, but
+        // exemplar emission requires no extra propagator config.
+        ContextPropagators propagators = ContextPropagators.create(
+            TextMapPropagator.composite(
+                W3CTraceContextPropagator.getInstance(),
+                W3CBaggagePropagator.getInstance()));
+
+        // ----- The SDK itself -----
+        //
+        // .setMeterProvider(meterProvider) is THE single new builder line that
+        // Phase 4 contributes to the orchestrator (D-01). The destroyMethod="close"
+        // on this @Bean cascades through OpenTelemetrySdk.close() to BOTH
+        // SdkTracerProvider.shutdown() AND SdkMeterProvider.shutdown() — no new
+        // lifecycle annotation needed for the meter pipeline (D-07).
+        return OpenTelemetrySdk.builder()
+            .setTracerProvider(tracerProvider)
+            .setMeterProvider(meterProvider)
+            .setPropagators(propagators)
+            .build();
+    }
+
+    /**
+     * Builds Phase 2's tracer pipeline. Extracted in Phase 4 (D-01) so the
+     * sibling {@link #buildMeterProvider(Resource)} reads as a parallel block.
+     * Body is byte-for-byte identical to Phase 2's inline code — no behavior
+     * change.
+     */
+    private SdkTracerProvider buildTracerProvider(Resource resource) {
         // ----- OTLP gRPC exporter: ships spans to grafana/otel-lgtm :4317 -----
         //
         // mise.toml pre-wires OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
@@ -158,33 +224,78 @@ public class OtelSdkConfiguration {
         Sampler sampler = Sampler.parentBased(Sampler.alwaysOn());
 
         // ----- TracerProvider: assembles resource + sampler + processor -----
-        SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
+        return SdkTracerProvider.builder()
             .setResource(resource)
             .setSampler(sampler)
             .addSpanProcessor(spanProcessor)
             .build();
+    }
 
-        // ----- Propagators: composite W3C trace-context + W3C baggage -----
+    /**
+     * Meter pipeline added in Phase 4 — sibling to {@link #buildTracerProvider(Resource)}.
+     *
+     * <p>Three new SDK touch points (read top-to-bottom):
+     * <ol>
+     *   <li>{@link OtlpGrpcMetricExporter} — same artifact and same env-var
+     *       fallback as the trace exporter (D-04). The opentelemetry-exporter-otlp
+     *       jar already on the classpath from Phase 2 ships span + metric + log
+     *       exporters; no new pom dependency is needed.</li>
+     *   <li>{@link PeriodicMetricReader} with {@code .setInterval(Duration.ofSeconds(10))}
+     *       — overrides OTel's 60-second default to keep the workshop's ~15-second
+     *       feedback loop tight (METRIC-01 / D-03). Production apps would typically
+     *       leave this at the 60s default; 10s here is a workshop value.</li>
+     *   <li>{@link SdkMeterProvider} with {@code .setResource(resource)} — same
+     *       Resource as the tracer pipeline (D-05) so metrics and traces share
+     *       identity in Mimir/Tempo for cross-signal correlation.</li>
+     * </ol>
+     *
+     * <p><b>Default View / Aggregation: SDK defaults.</b> No custom histogram
+     * bucket tuning here (D-15). The OTel-spec default explicit-bucket aggregation
+     * for {@code http.server.request.duration} (seconds) produces sensible workshop
+     * values. Bucket tuning is a real-world concern outside the SDK lesson.
+     */
+    private SdkMeterProvider buildMeterProvider(Resource resource) {
+        // ----- OTLP gRPC metric exporter: ships metrics to grafana/otel-lgtm :4317 -----
         //
-        // Phase 2 wires both propagators but does NOT exercise them — the
-        // producer and consumer are intentionally in DIFFERENT traces here
-        // (broken-then-fixed pedagogy). Phase 3 reuses what's already wired
-        // by calling openTelemetry.getPropagators().getTextMapPropagator() to
-        // build the TracingMessageListenerAdvice extract method.
-        //
-        // W3CTraceContextPropagator carries the `traceparent` + `tracestate`
-        // headers (the W3C Trace Context spec); W3CBaggagePropagator carries
-        // the `baggage` header (W3C Baggage spec). Together they cover the
-        // OTel-recommended baseline.
-        ContextPropagators propagators = ContextPropagators.create(
-            TextMapPropagator.composite(
-                W3CTraceContextPropagator.getInstance(),
-                W3CBaggagePropagator.getInstance()));
+        // Reuses the SAME endpoint pattern as the span exporter (D-04 / Phase 2 D-12
+        // carryforward) — System.getenv with the DEFAULT_OTLP_ENDPOINT fallback. No
+        // new env var; metrics flow to the same OTLP endpoint as traces. The
+        // opentelemetry-exporter-otlp artifact (already pulled in by Phase 2)
+        // ships OtlpGrpcSpanExporter, OtlpGrpcMetricExporter, and
+        // OtlpGrpcLogRecordExporter from one jar — single artifact for all three
+        // signals. Verify with `mvn dependency:tree -Dincludes=io.opentelemetry`.
+        String endpoint = Optional.ofNullable(System.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"))
+            .orElse(DEFAULT_OTLP_ENDPOINT);
+        OtlpGrpcMetricExporter metricExporter = OtlpGrpcMetricExporter.builder()
+            .setEndpoint(endpoint)
+            .build();
 
-        // ----- The SDK itself -----
-        return OpenTelemetrySdk.builder()
-            .setTracerProvider(tracerProvider)
-            .setPropagators(propagators)
+        // ----- PeriodicMetricReader: 10s collection interval (METRIC-01 / D-03) -----
+        //
+        // The default PeriodicMetricReader interval is 60 seconds. We override to
+        // 10 seconds so workshop attendees see fresh metrics within ~15 seconds of
+        // POSTing an order — the Phase 4 ROADMAP success criterion #1 explicitly
+        // cites a 15-second window. A 60-second wait would break the workshop's
+        // tight feedback loop.
+        //
+        // Production rule of thumb: keep this at 60s (the OTel default). Lower
+        // values increase scrape volume on the metric backend (Mimir/Prometheus)
+        // without proportional value — production dashboards rarely refresh faster
+        // than 30s anyway. The 10s value here is a workshop-only choice (parallel
+        // to the always-on sampler choice in buildTracerProvider).
+        PeriodicMetricReader metricReader = PeriodicMetricReader.builder(metricExporter)
+            .setInterval(Duration.ofSeconds(10))
+            .build();
+
+        // ----- MeterProvider: assembles resource + reader -----
+        //
+        // No custom View / ExplicitBucketHistogramAggregation (D-15) — the SDK's
+        // default bucket boundaries for http.server.request.duration (seconds)
+        // are spec'd by OTel and produce sensible workshop values. Tuning buckets
+        // for production is a real-world concern outside the SDK lesson.
+        return SdkMeterProvider.builder()
+            .setResource(resource)
+            .registerMetricReader(metricReader)
             .build();
     }
 
@@ -199,5 +310,24 @@ public class OtelSdkConfiguration {
     @Bean
     Tracer tracer(OpenTelemetry openTelemetry) {
         return openTelemetry.getTracer("com.example.consumer");
+    }
+
+    /**
+     * Meter for instrumentation scope "com.example.consumer" (D-06).
+     *
+     * Sibling to the {@link #tracer(OpenTelemetry)} @Bean above — same scope
+     * name, same injection pattern. Workshop attendees inject this Meter into
+     * QueueDepthGauge (Plan 04-04 — orders.queue.depth.estimate ObservableGauge)
+     * via constructor injection. Meter is thread-safe; one bean is reused
+     * across all instrument call sites.
+     *
+     * <p>The scope name "com.example.consumer" surfaces in Mimir as the
+     * {@code otel_scope_name} label on every metric data point produced by
+     * instruments built from this Meter — workshop attendees can filter
+     * Mimir queries by it.
+     */
+    @Bean
+    Meter meter(OpenTelemetry openTelemetry) {
+        return openTelemetry.getMeter("com.example.consumer");
     }
 }
