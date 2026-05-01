@@ -69,12 +69,60 @@ In Phase 1 there is **no telemetry** — the OTLP endpoint is open and the Grafa
 
 - `step-01-baseline` — Working two-service Spring Boot + RabbitMQ app on host JVM with ZERO telemetry.
 - `step-02-traces` — Manual SDK bootstrap; producer and consumer emit DISCONNECTED traces (intentional setup for the Phase 3 propagation lesson).
-- `step-03-context-propagation` — THE headline lesson: AMQP context propagation joins the two traces; `consumer.parentSpanId == producer.spanId` after this checkpoint. **Current.**
-- `step-04-metrics` — (Phase 4) `SdkMeterProvider` + Counter/Histogram/ObservableGauge.
+- `step-03-context-propagation` — THE headline lesson: AMQP context propagation joins the two traces; `consumer.parentSpanId == producer.spanId` after this checkpoint.
+- `step-04-metrics` — `SdkMeterProvider` lands as a sibling pipeline next to the tracer pipeline; `orders.created` (Counter), `http.server.request.duration` (Histogram, seconds), `orders.queue.depth.estimate` (ObservableGauge) flow to Mimir on a 10-second interval. **Current.**
 - `step-05-logs` — (Phase 5) Logs correlation + Loki-to-Tempo click-through.
 - `step-06-tests` — (Phase 6) Testcontainers verification.
 
 This section establishes the convention; Phase 7 turns each bullet into a full walkthrough.
+
+## Step 4: Metrics
+
+`step-04-metrics` adds the **second** OTel signal — metrics — to both services. The two
+`OtelSdkConfiguration.java` files now build a `SdkMeterProvider` next to the
+`SdkTracerProvider` (D-01 in `04-CONTEXT.md` extracted Phase 2's tracer pipeline
+into `buildTracerProvider(Resource)` and added a sibling `buildMeterProvider(Resource)`,
+so the diff against `step-03-context-propagation` reads as "we added a sibling
+pipeline next to the trace pipeline"). The producer adds a Counter and a Histogram
+to its existing instrumentation surfaces; the consumer adds an ObservableGauge.
+
+The three instrument shapes — one Counter, one Histogram, one ObservableGauge —
+cover the OTel SDK's three primary metric kinds:
+
+- **`orders.created`** (`LongCounter`, producer-side) — fires after each successful
+  `POST /orders` from inside [`OrderService.place(...)`](./producer-service/src/main/java/com/example/producer/domain/OrderService.java)
+  with the business attribute `order.priority` from the request payload (fallback `"standard"`).
+  The counter does NOT fire on the failure path — failures are visible via the trace's
+  ERROR status, not as a metric. `order.priority` is a string-literal `AttributeKey`
+  because it is NOT in the OTel semconv catalog (contrast with the histogram's
+  `HttpAttributes.HTTP_REQUEST_METHOD` which IS semconv).
+- **`http.server.request.duration`** (`DoubleHistogram`, producer-side) — recorded from
+  inside the existing [`HttpServerSpanFilter`](./producer-service/src/main/java/com/example/producer/config/HttpServerSpanFilter.java)
+  finally block, BEFORE `span.end()`. **Unit is seconds (`"s"`), not milliseconds.**
+  The seconds-not-millis trap (D-13) is the textbook OTel-porting mistake — semconv 1.40.0
+  specifies seconds, and Mimir's default `http_server_request_duration_seconds` dashboards
+  assume seconds. Attributes follow HTTP semconv: `http.request.method` and
+  `http.response.status_code` only — `url.path` is intentionally excluded because
+  high-cardinality path values would explode the metric series count.
+- **`orders.queue.depth.estimate`** (`ObservableGauge`, consumer-side) — registered by
+  [`QueueDepthGauge`](./consumer-service/src/main/java/com/example/consumer/observability/QueueDepthGauge.java).
+  Callback fires on every 10-second collection interval (METRIC-01 — overrides OTel's
+  60-second default `PeriodicMetricReader`) and returns a synthetic
+  `ThreadLocalRandom.current().nextInt(0, 50)` value. The lesson is the
+  callback-on-interval mechanism, not the value semantics; a real implementation would
+  poll the RabbitMQ Management API (out of scope for this workshop).
+
+`mise run demo:order` now sends two payloads — `priority=express` and `priority=standard`
+— so Mimir shows two series for `orders.created`. Try the Mimir query
+`orders_created_total{order_priority="express"}` to see one of them. **Note the name
+mangling:** the OTel-to-Prometheus exporter (running inside `otel-lgtm`'s collector)
+converts dots to underscores and appends `_total` for monotonic counters, so the
+OTel-side `orders.created` surfaces in Mimir as `orders_created_total` and
+`http.server.request.duration` (unit `s`) surfaces as `http_server_request_duration_seconds`.
+The same Resource attributes from Phase 2 (`service.name`, `service.namespace`,
+`service.instance.id`, `deployment.environment.name`) appear on every metric data
+point (D-05 — built once and shared between traces and metrics for cross-signal
+correlation in Grafana).
 
 ## Reading the code
 
@@ -110,6 +158,6 @@ Phase 3 also corrects an OTel messaging semconv divergence from Phase 2: the pro
 The following are deliberate Phase 1 omissions — the repo isn't incomplete, it's **uninstrumented on purpose** so each later phase has something concrete to add:
 
 - No `OtelSdkConfiguration.java` (Phase 2)
-- No metrics or log correlation (Phase 4 / Phase 5)
+- No log correlation (Phase 5)
 - No integration tests (Phase 6)
 - No pre-built Grafana dashboard or load script (Phase 7)
