@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 3 context gathered. Next workflow step is `/gsd-research-phase 3` to resolve the 3 open research flags about Spring AMQP 3.2.8 API surface (advice composition, 4-arg MessagePostProcessor overload, MethodInvocation arg index) — these MUST resolve before `/gsd-plan-phase 3` because they pin method signatures the planner needs.
-last_updated: "2026-05-01T20:09:52.204Z"
-last_activity: 2026-05-01 -- Phase 03 planning complete
+last_updated: "2026-05-01T20:12:45.882Z"
+last_activity: 2026-05-01 -- Phase 03 execution started
 progress:
   total_phases: 7
   completed_phases: 2
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** A workshop attendee can clone the repo, run `docker compose up` + `mise run dev`, hit `POST /orders`, and see a single distributed trace flow from the HTTP handler through the RabbitMQ publish, into the consumer's processing logic, with correlated metrics and logs — and understand exactly which lines of SDK code made each piece work.
-**Current focus:** Phase 1 SHIPPED 2026-04-29 (tag `step-01-baseline`); Phase 2 SHIPPED 2026-05-01 (tag `step-02-traces`); Phase 3 — AMQP Context Propagation is next
+**Current focus:** Phase 03 — amqp-context-propagation
 
 ## Current Position
 
-Phase: 3 of 7 (AMQP Context Propagation — THE HEADLINE LESSON) — **context gathered 2026-05-01**
-Plan: 0 of TBD — research-phase next (3 open research flags), then planning, then execution.
-Status: Ready to execute
-Last activity: 2026-05-01 -- Phase 03 planning complete
+Phase: 03 (amqp-context-propagation) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 03
+Last activity: 2026-05-01 -- Phase 03 execution started
 
 Progress: [█████████░] 86% (rolled-up across all phases — Phases 1+2 SHIPPED, Phases 3-7 outstanding)
 
