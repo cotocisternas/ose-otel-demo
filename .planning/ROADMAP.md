@@ -99,7 +99,16 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Workshop attendee triggers the deterministic 10th order and sees Tempo render the trace as `Error` status with the exception event attached to the consumer span (proves APP-04 + TRACE-09 working together) — the error-status propagation across the AMQP hop is itself a teaching moment.
   4. Workshop attendee can read **one** producer-side class (`TracingMessagePostProcessor`) and **one** consumer-side class (`TracingMessageListenerAdvice`) in the shared `otel-bootstrap` Maven module and observe their structural symmetry — one inject method matched by one extract method IS the lesson; README explicitly contrasts this with the per-service-duplicated SDK bootstrap (PROP-04).
   5. The annotated git tag `step-03-context-propagation` exists on `main`; running `git diff step-02-traces..step-03-context-propagation` shows a small, readable changeset focused on the propagation pair (the broken-vs-fixed delta is reviewable in one diff).
-**Plans**: TBD
+**Plans** (5 plans, 4 waves):
+- **Wave 1** *(parallelizable, no dependencies)*
+  - [ ] `03-01-otel-bootstrap-amqp-classes` — PROP-01, PROP-02, PROP-04 — Populate otel-bootstrap with the 4 propagation classes (TracingMessagePostProcessor + TracingMessageListenerAdvice + MessagePropertiesSetter + MessagePropertiesGetter); add 3 BOM-managed deps (otel-api compile, spring-rabbit + spring-aop provided) + semconv-incubating + spring-boot-starter-test; add MessagePropertiesRoundTripTest unit test for PITFALLS.md #2 regression net
+- **Wave 2** *(blocked on Wave 1; parallelizable across services)*
+  - [ ] `03-02-producer-wiring` — PROP-01, PROP-04 — Add com.example:otel-bootstrap dep to producer-service/pom.xml; add @Bean TracingMessagePostProcessor + explicit @Bean RabbitTemplate that calls setBeforePublishPostProcessors(mpp) per D-05; DELETE Phase 2's inline PRODUCER span body from OrderPublisher.publish (lines 39-83) and remove Tracer ctor param
+  - [ ] `03-03-consumer-wiring` — PROP-02, PROP-03, PROP-04 — Add com.example:otel-bootstrap dep to consumer-service/pom.xml; add @Bean TracingMessageListenerAdvice + Configurer-aided @Bean SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(...) with setAdviceChain + setDefaultRequeueRejected(false) per D-08; DELETE Phase 2's inline CONSUMER span body from OrderListener.onOrder (lines 46-79) and remove Tracer ctor param per D-09
+- **Wave 3** *(blocked on Wave 2 consumer plan; consumer-only)*
+  - [ ] `03-04-app-04-failure-path` — APP-04, TRACE-09 — Create ProcessingFailedException (extends RuntimeException) per D-12; modify ProcessingService.process to add AtomicInteger counter + throw site (n%10==0) inside existing D-03 try-block per D-11. Phase 2 catch shape + Plan 03-03's advice catch automatically wire TRACE-09 on both INTERNAL and CONSUMER spans
+- **Wave 4** *(blocked on Waves 1+2+3; contains human checkpoint)*
+  - [ ] `03-05-readme-and-exit-gate` — PROP-03, PROP-04, APP-04, TRACE-09 — README delta: add "Why is the propagation pair shared?" PROP-04 callout (parallel to DOC-05); mark step-03-context-propagation as Current; remove obsolete "no traceparent yet" bullet. Human-verify gate confirms all 5 success criteria green at the live stack, then create annotated git tag step-03-context-propagation per WORK-01
 **Notes**:
 - This phase will need `/gsd-research-phase` before planning — the listener-side extraction mechanism (`MethodInterceptor` advice on `SimpleRabbitListenerContainerFactory` vs inline extract in each `@RabbitListener`) is flagged as an open research item in SUMMARY.md and must be resolved before implementation.
 - APP-04 (deterministic 10th-order failure) lives here, not Phase 1 — the failure is wired in concert with TRACE-09's `recordException` so the *first* time attendees see business logic failing is also the first time they see the OTel error-span pattern.
@@ -167,7 +176,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Baseline & Scaffold | 6/6 | Shipped (tag step-01-baseline) | 2026-04-29 |
 | 2. Manual SDK Bootstrap & First Traces | 6/6 | Shipped | 2026-05-01 |
-| 3. AMQP Context Propagation | 0/TBD | Not started | - |
+| 3. AMQP Context Propagation | 0/5 | In progress (planned) | - |
 | 4. Metrics | 0/TBD | Not started | - |
 | 5. Logs Correlation | 0/TBD | Not started | - |
 | 6. Verification Tests | 0/TBD | Not started | - |
