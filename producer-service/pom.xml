@@ -15,13 +15,23 @@
   <packaging>jar</packaging>
 
   <name>OSE OTel Demo (producer)</name>
-  <description>Producer service: HTTP POST /orders → publish OrderCreated to RabbitMQ. Phase 1: Spring Boot starters only — no OTel deps yet.</description>
+  <description>Producer service: HTTP POST /orders → publish OrderCreated to RabbitMQ. Phase 2: manual OTel SDK + semconv dependencies wired (SDK config in 02-02).</description>
 
   <dependencies>
     <!--
-      Spring Boot starters only. NO OpenTelemetry deps in Phase 1 —
-      that is the Phase 1 invariant verified by Task 3 of this plan
-      (BOM gate: zero matches in dependency:tree across all modules).
+      Phase 2 onward: ONE version per OpenTelemetry artifact across the reactor,
+      enforced by maven-enforcer-plugin's <dependencyConvergence/> rule
+      (parent pom.xml lines 113-145, bound to the validate phase).
+
+      The first three OTel deps below are BOM-managed by opentelemetry-bom:1.61.0
+      (parent pom.xml lines 57-63) — no <version> tags here. The two semconv
+      coords are NOT BOM-managed and pin 1.40.0 (stable) / 1.40.0-alpha
+      (incubating) directly per .planning/phases/02-manual-sdk-bootstrap-first-traces/02-RESEARCH.md §B.
+
+      Per-service duplication of these dependencies is intentional (DOC-05): the
+      consumer-service/pom.xml carries the IDENTICAL block. Refactoring this
+      into parent <dependencyManagement> would hide one of the two readings
+      that Phase 2's `OtelSdkConfiguration.java` is built around.
     -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -34,6 +44,58 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+
+    <!--
+      OpenTelemetry SDK runtime — versions managed by opentelemetry-bom:1.61.0
+      in parent pom.xml. Three artifacts cover the API surface, the SDK
+      implementation, and the OTLP gRPC exporter (the single artifact that
+      ships exporters for traces, metrics, and logs — Phase 2 only uses the
+      trace exporter; Phase 4 + Phase 5 reuse the same artifact for the
+      meter and logger pipelines).
+    -->
+    <dependency>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-sdk</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-exporter-otlp</artifactId>
+    </dependency>
+
+    <!--
+      Stable semantic conventions — the new io.opentelemetry.semconv coordinate
+      maintained in semantic-conventions-java (NOT the deprecated
+      io.opentelemetry:opentelemetry-semconv that ships in the SDK BOM).
+      Carries ServiceAttributes, HttpAttributes, UrlAttributes,
+      ServerAttributes — everything the SERVER span needs.
+      Pin to 1.40.0 directly: this artifact is NOT BOM-managed.
+    -->
+    <dependency>
+      <groupId>io.opentelemetry.semconv</groupId>
+      <artifactId>opentelemetry-semconv</artifactId>
+      <version>1.40.0</version>
+    </dependency>
+
+    <!--
+      Incubating semantic conventions — REQUIRED in Phase 2, not optional.
+      Carries MessagingIncubatingAttributes (for PRODUCER + CONSUMER spans)
+      and DeploymentIncubatingAttributes (for the Resource's
+      deployment.environment.name). Without this artifact the SDK config
+      and the messaging spans both fail to compile.
+
+      Carries the -alpha qualifier because messaging conventions are still
+      evolving in the OTel spec; no shipping demo can use stable-only
+      constants for AMQP semconv yet.
+    -->
+    <dependency>
+      <groupId>io.opentelemetry.semconv</groupId>
+      <artifactId>opentelemetry-semconv-incubating</artifactId>
+      <version>1.40.0-alpha</version>
     </dependency>
 
     <dependency>
