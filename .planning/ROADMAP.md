@@ -13,7 +13,7 @@ This roadmap delivers a workshop-grade demo that teaches engineers how to instru
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Baseline & Scaffold** *(shipped 2026-04-29; tag `step-01-baseline`)* — Working two-service Spring Boot + RabbitMQ app on host JVM with ZERO telemetry; foundation pitfalls neutralised (BOM ordering, ports, mise/IDE)
-- [ ] **Phase 2: Manual SDK Bootstrap & First Traces** — `OpenTelemetrySdk` wired per-service, traces emitted, but producer and consumer in **separate** traces (intentional setup for Phase 3's "aha")
+- [x] **Phase 2: Manual SDK Bootstrap & First Traces** *(shipped 2026-05-01; tag `step-02-traces`)* — `OpenTelemetrySdk` wired per-service, traces emitted, but producer and consumer in **separate** traces (intentional setup for Phase 3's "aha")
 - [ ] **Phase 3: AMQP Context Propagation** — THE headline lesson: `TextMapSetter`/`TextMapGetter` pair joins producer and consumer into ONE trace
 - [ ] **Phase 4: Metrics** — `SdkMeterProvider` + Counter, Histogram, ObservableGauge instrument shapes flowing to Mimir
 - [ ] **Phase 5: Logs Correlation** — `OpenTelemetryAppender` + MDC trace_id/span_id; Loki-to-Tempo click-through working
@@ -74,7 +74,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [x] `2-04-producer-instrumentation` — TRACE-06, TRACE-07 — INTERNAL span on `OrderService.place` + PRODUCER span on `OrderPublisher.publish` (using `MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE` + `SEND` value per RESEARCH FLAG #1, NOT deprecated `MESSAGING_OPERATION="publish"`)
   - [x] `2-05-consumer-instrumentation` — TRACE-06, TRACE-08 — CONSUMER span on `OrderListener.onOrder` (with verbatim D-10 multi-line teaching comment + `.setParent(Context.root())`) + INTERNAL span on `ProcessingService.process`
 - **Wave 4** *(blocked on Waves 1+2+3; contains human checkpoint)* — **source delta SHIPPED 2026-05-01; tag pending user gate**
-  - [x] `2-06-readme-and-exit-gate` — DOC-03 + DOC-05 README sections committed (0f6c99e); all 6 ROADMAP success criteria verified simultaneously green; annotated tag `step-02-traces` STAGED, awaiting user/orchestrator approval
+  - [x] `2-06-readme-and-exit-gate` — DOC-03, DOC-05, WORK-01 — README "Reading the code" + "Why is OtelSdkConfiguration.java duplicated?" sections committed (`0f6c99e`); all 6 ROADMAP success criteria verified simultaneously green; annotated tag `step-02-traces` applied at `dac865f`
 
 **Cross-cutting constraints** *(must_haves shared across plans)*:
 - Maven dependency convergence enforced at `mvn validate` — every `io.opentelemetry*` artifact appears EXACTLY once across the reactor (asserted by 2-01, 2-02, 2-03)
@@ -166,7 +166,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Baseline & Scaffold | 6/6 | Shipped (tag step-01-baseline) | 2026-04-29 |
-| 2. Manual SDK Bootstrap & First Traces | 6/6 (source); awaiting tag | Awaiting tag gate | source: 2026-05-01 |
+| 2. Manual SDK Bootstrap & First Traces | 6/6 | Shipped | 2026-05-01 |
 | 3. AMQP Context Propagation | 0/TBD | Not started | - |
 | 4. Metrics | 0/TBD | Not started | - |
 | 5. Logs Correlation | 0/TBD | Not started | - |

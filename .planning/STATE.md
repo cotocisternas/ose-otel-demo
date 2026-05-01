@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Phase 2 Plan 06 (readme-and-exit-gate) executed: README delta committed (0f6c99e); all 6 Phase 2 ROADMAP success criteria simultaneously verified green; annotated tag step-02-traces STAGED (not yet applied — checkpoint plan, autonomous=false; awaits user gate). Phase 2 SHIPPED status flips when orchestrator/user applies the tag."
-last_updated: "2026-05-01T17:38:02.000Z"
+stopped_at: "Phase 2 SHIPPED 2026-05-01 — annotated tag step-02-traces applied at dac865f. All 6 ROADMAP success criteria simultaneously verified green; verifier next."
+last_updated: "2026-05-01T17:42:00.000Z"
 last_activity: 2026-05-01
 progress:
   total_phases: 7
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** A workshop attendee can clone the repo, run `docker compose up` + `mise run dev`, hit `POST /orders`, and see a single distributed trace flow from the HTTP handler through the RabbitMQ publish, into the consumer's processing logic, with correlated metrics and logs — and understand exactly which lines of SDK code made each piece work.
-**Current focus:** Phase 1 SHIPPED 2026-04-29 (tag `step-01-baseline`); Phase 2 — Manual SDK Bootstrap & First Traces is next
+**Current focus:** Phase 1 SHIPPED 2026-04-29 (tag `step-01-baseline`); Phase 2 SHIPPED 2026-05-01 (tag `step-02-traces`); Phase 3 — AMQP Context Propagation is next
 
 ## Current Position
 
-Phase: 2 of 7 (Manual SDK Bootstrap & First Traces) — **AWAITING TAG GATE**
-Plan: 6 of 6 source-complete (`02-01`..`02-06` SHIPPED at the source/README level; `02-06` source delta + criteria-green verification at HEAD `0f6c99e`); annotated tag `step-02-traces` is the last remaining artifact and is STAGED for the user-checkpoint gate.
-Status: Wave 4 source delta committed (README DOC-03 + DOC-05 sections + Workshop-checkpoint pivot to step-02-traces Current). All 6 Phase 2 ROADMAP success criteria verified simultaneously green at `0f6c99e`: TWO distinct traces / Ctrl-C flushes last batch (1→2) / heavy comments in both OtelSdkConfiguration files (137 / 131 lines) / SERVER+INTERNAL+PRODUCER on producer + CONSUMER+INTERNAL on consumer with empty parentSpanId / DOC-05 callout in README / clean tree. `mise run verify:bom` Phase 2 invariant green. Phase 2 SHIPPED status flips when orchestrator/user applies the tag at the same SHA the criteria were verified against.
-Last activity: 2026-05-01 — Wave 4 source delta committed; criteria-green smoke run executed end-to-end against live infra; tag staged.
+Phase: 2 of 7 (Manual SDK Bootstrap & First Traces) — **SHIPPED 2026-05-01 (tag `step-02-traces`)**
+Plan: 6 of 6 complete — all of `02-01`..`02-06` SHIPPED. Annotated tag `step-02-traces` applied at `dac865f` per user-approved checkpoint gate.
+Status: Phase 2 verifier next; tag local-only (push deferred per project convention; matches Phase 1's `step-01-baseline`). Phase 3 (AMQP Context Propagation — THE headline lesson) unblocked once verifier passes.
+Last activity: 2026-05-01 — annotated tag `step-02-traces` applied at `dac865f`; ROADMAP/STATE/REQUIREMENTS updated to SHIPPED.
 
-Progress: [████████░░] 75% (rolled-up across all phases — Phase 1 SHIPPED 6/6, Phase 2 5/6)
+Progress: [█████████░] 86% (rolled-up across all phases — Phases 1+2 SHIPPED, Phases 3-7 outstanding)
 
 ## Performance Metrics
 
