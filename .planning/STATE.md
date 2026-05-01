@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 3 context gathered. Next workflow step is `/gsd-research-phase 3` to resolve the 3 open research flags about Spring AMQP 3.2.8 API surface (advice composition, 4-arg MessagePostProcessor overload, MethodInvocation arg index) — these MUST resolve before `/gsd-plan-phase 3` because they pin method signatures the planner needs.
-last_updated: "2026-05-01T20:12:45.882Z"
-last_activity: 2026-05-01 -- Phase 03 execution started
+stopped_at: Phase 3 SHIPPED 2026-05-01 (annotated tag `step-03-context-propagation`). Next workflow step is `/gsd-discuss-phase 4` to begin Phase 4 (Metrics) — `SdkMeterProvider` + Counter/Histogram/ObservableGauge instrument shapes flowing to Mimir. Phase 4 has no plans yet (TBD).
+last_updated: "2026-05-01T21:07:45.217Z"
+last_activity: 2026-05-01 -- Phase 03 SHIPPED (tag step-03-context-propagation)
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 17
-  completed_plans: 12
-  percent: 71
+  completed_plans: 17
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** A workshop attendee can clone the repo, run `docker compose up` + `mise run dev`, hit `POST /orders`, and see a single distributed trace flow from the HTTP handler through the RabbitMQ publish, into the consumer's processing logic, with correlated metrics and logs — and understand exactly which lines of SDK code made each piece work.
-**Current focus:** Phase 03 — amqp-context-propagation
+**Current focus:** Phase 1 SHIPPED 2026-04-29 (tag `step-01-baseline`); Phase 2 SHIPPED 2026-05-01 (tag `step-02-traces`); Phase 3 SHIPPED 2026-05-01 (tag `step-03-context-propagation`); Phase 4 — Metrics is next
 
 ## Current Position
 
-Phase: 03 (amqp-context-propagation) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 03
-Last activity: 2026-05-01 -- Phase 03 execution started
+Phase: 3 of 7 SHIPPED — Phase 4 (Metrics) is next
+Plan: 5 of 5 (Phase 3 final plan complete)
+Status: Phase 3 SHIPPED — annotated tag `step-03-context-propagation` at HEAD
+Last activity: 2026-05-01 -- Phase 03 SHIPPED (tag step-03-context-propagation; PROP-01..04 + APP-04 + TRACE-09 verified)
 
-Progress: [█████████░] 86% (rolled-up across all phases — Phases 1+2 SHIPPED, Phases 3-7 outstanding)
+Progress: [████████████] 100% of Phases 1-3 plans complete (Phases 4-7 outstanding — no plans yet)
 
 ## Performance Metrics
 
