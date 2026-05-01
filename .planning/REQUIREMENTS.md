@@ -30,9 +30,9 @@ Requirements for initial release. Each maps to a roadmap phase. All requirements
 - [x] **TRACE-03**: Each service registers a `SdkTracerProvider` with `BatchSpanProcessor` + `OtlpGrpcSpanExporter` targeting `:4317` and an explicit `Sampler.parentBased(Sampler.alwaysOn())` chosen with a code comment that explains the production-vs-workshop tradeoff
 - [x] **TRACE-04**: `OpenTelemetrySdk` is registered as `@Bean(destroyMethod = "close")` so a graceful shutdown (`Ctrl-C`) flushes the final batch of spans, metrics, and logs
 - [x] **TRACE-05**: A SERVER span wraps every `POST /orders` invocation with HTTP semantic-convention attributes (`http.request.method`, `url.path`, `http.response.status_code`)
-- [ ] **TRACE-06**: An INTERNAL span wraps each domain method in both services (e.g., `OrderService.place(...)`, `ProcessingService.process(...)`) so attendees see nested business-logic spans
-- [ ] **TRACE-07**: A PRODUCER span wraps the publish call with messaging semantic-convention attributes (`messaging.system=rabbitmq`, `messaging.destination.name`, `messaging.operation=publish`)
-- [ ] **TRACE-08**: A CONSUMER span wraps the listener handler with messaging semantic-convention attributes (`messaging.operation=process`)
+- [x] **TRACE-06**: An INTERNAL span wraps each domain method in both services (e.g., `OrderService.place(...)`, `ProcessingService.process(...)`) so attendees see nested business-logic spans
+- [x] **TRACE-07**: A PRODUCER span wraps the publish call with messaging semantic-convention attributes (`messaging.system=rabbitmq`, `messaging.destination.name`, `messaging.operation=publish`)
+- [x] **TRACE-08**: A CONSUMER span wraps the listener handler with messaging semantic-convention attributes (`messaging.operation=process`)
 - [ ] **TRACE-09**: The deterministic 10% failure path calls `span.recordException(e)` and `span.setStatus(StatusCode.ERROR)` so Tempo shows the trace as `Error` status with the exception event attached
 
 ### AMQP context propagation (PROP) — the headline lesson
@@ -141,9 +141,9 @@ Every v1 requirement maps to exactly one phase. Updated by `gsd-roadmapper` 2026
 | TRACE-03 | Phase 2 | Complete |
 | TRACE-04 | Phase 2 | Complete |
 | TRACE-05 | Phase 2 | Complete |
-| TRACE-06 | Phase 2 | Pending |
-| TRACE-07 | Phase 2 | Pending |
-| TRACE-08 | Phase 2 | Pending |
+| TRACE-06 | Phase 2 | Complete |
+| TRACE-07 | Phase 2 | Complete |
+| TRACE-08 | Phase 2 | Complete |
 | TRACE-09 | Phase 3 | Pending |
 | PROP-01 | Phase 3 | Pending |
 | PROP-02 | Phase 3 | Pending |

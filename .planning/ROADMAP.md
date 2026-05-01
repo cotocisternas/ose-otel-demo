@@ -70,9 +70,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 - **Wave 2** *(blocked on Wave 1 completion; parallelizable across services)* — **✅ complete**
   - [x] `2-02-producer-sdk-config` — TRACE-01..05, DOC-03 — Producer's `OtelSdkConfiguration.java` (heavily commented; ≥40 comment lines per DOC-03 grep gate) + `HttpServerSpanFilter.java` (D-05/D-06/D-07 producer-only, `OncePerRequestFilter.shouldNotFilter` for `/actuator/*`) + `Tracer @Bean`
   - [x] `2-03-consumer-sdk-config` — TRACE-01..04, DOC-03 — Consumer's `OtelSdkConfiguration.java` (mirror of producer's with documented diffs; NO HttpServerSpanFilter per D-07)
-- **Wave 3** *(blocked on Wave 2 completion; parallelizable across services)*
-  - [ ] `2-04-producer-instrumentation` — TRACE-06, TRACE-07 — INTERNAL span on `OrderService.place` + PRODUCER span on `OrderPublisher.publish` (using `MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE` + `SEND` value per RESEARCH FLAG #1, NOT deprecated `MESSAGING_OPERATION="publish"`)
-  - [ ] `2-05-consumer-instrumentation` — TRACE-06, TRACE-08 — CONSUMER span on `OrderListener.onOrder` (with verbatim D-10 multi-line teaching comment + `.setParent(Context.root())`) + INTERNAL span on `ProcessingService.process`
+- **Wave 3** *(blocked on Wave 2 completion; parallelizable across services)* — **✅ complete**
+  - [x] `2-04-producer-instrumentation` — TRACE-06, TRACE-07 — INTERNAL span on `OrderService.place` + PRODUCER span on `OrderPublisher.publish` (using `MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE` + `SEND` value per RESEARCH FLAG #1, NOT deprecated `MESSAGING_OPERATION="publish"`)
+  - [x] `2-05-consumer-instrumentation` — TRACE-06, TRACE-08 — CONSUMER span on `OrderListener.onOrder` (with verbatim D-10 multi-line teaching comment + `.setParent(Context.root())`) + INTERNAL span on `ProcessingService.process`
 - **Wave 4** *(blocked on Waves 1+2+3; contains human checkpoint)*
   - [ ] `2-06-readme-and-exit-gate` — DOC-03, DOC-05, WORK-01 — README "Reading the code" + "Why is OtelSdkConfiguration.java duplicated?" sections (DOC-05 grep-gated callout) + verify all 6 ROADMAP success criteria green + human checkpoint to create annotated tag `step-02-traces`
 
@@ -166,7 +166,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Baseline & Scaffold | 0/6 | Ready to execute | - |
-| 2. Manual SDK Bootstrap & First Traces | 3/6 | In Progress | - |
+| 2. Manual SDK Bootstrap & First Traces | 5/6 | In Progress | - |
 | 3. AMQP Context Propagation | 0/TBD | Not started | - |
 | 4. Metrics | 0/TBD | Not started | - |
 | 5. Logs Correlation | 0/TBD | Not started | - |
