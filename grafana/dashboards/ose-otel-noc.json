@@ -72,7 +72,7 @@
       "type": "stat",
       "id": 101,
       "title": "Message error rate (5m)",
-      "description": "Consumer-side processing health: ERROR vs total over CONSUMER-kind spans on order-consumer — one span per AMQP message the consumer pulls off orders.created. NOC-flavoured framing: 'message' = one delivery attempt at the broker boundary; 'order' = one business event from the producer. With no retries / DLQ wired up they're 1:1 in this demo, but they would diverge if redeliveries kicked in (then this rate would also include re-attempts of orders that already counted once at ingress). Expect ~10% at steady state — the deterministic 1-in-10 failure in ProcessingService.",
+      "description": "End-to-end messaging error rate (5m): ERROR vs total across BOTH producer-publish (PRODUCER-kind) and consumer-process (CONSUMER-kind) spans, summed across both services. NOC framing: 'message' = one AMQP envelope crossing the broker boundary, counted once on publish and once on process. A failure on either side counts. With the demo's 1-in-10 deterministic consumer failure and zero publish failures, expect ~5% at steady state (10% of consumer halves = half of all message-spans). Diverges from the consumer-side stat in 301 by exactly the producer's success volume.",
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "gridPos": {"h": 5, "w": 4, "x": 4, "y": 0},
       "fieldConfig": {
@@ -98,7 +98,7 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "100 * (sum(rate(traces_spanmetrics_calls_total{service=\"order-consumer\",span_kind=\"SPAN_KIND_CONSUMER\",status_code=\"STATUS_CODE_ERROR\"}[5m])) or vector(0)) / clamp_min(sum(rate(traces_spanmetrics_calls_total{service=\"order-consumer\",span_kind=\"SPAN_KIND_CONSUMER\"}[5m])), 1)",
+        "expr": "100 * (sum(rate(traces_spanmetrics_calls_total{service=~\"order-(producer|consumer)\",span_kind=~\"SPAN_KIND_(PRODUCER|CONSUMER)\",status_code=\"STATUS_CODE_ERROR\"}[5m])) or vector(0)) / clamp_min(sum(rate(traces_spanmetrics_calls_total{service=~\"order-(producer|consumer)\",span_kind=~\"SPAN_KIND_(PRODUCER|CONSUMER)\"}[5m])), 1)",
         "refId": "A"
       }]
     },
