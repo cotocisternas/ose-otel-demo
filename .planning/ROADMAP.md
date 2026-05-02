@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: AMQP Context Propagation** — THE headline lesson: `TextMapSetter`/`TextMapGetter` pair joins producer and consumer into ONE trace
 - [ ] **Phase 4: Metrics** — `SdkMeterProvider` + Counter, Histogram, ObservableGauge instrument shapes flowing to Mimir
 - [x] **Phase 5: Logs Correlation** — `OpenTelemetryAppender` + MDC trace_id/span_id; Loki-to-Tempo click-through working (completed 2026-05-02)
-- [ ] **Phase 6: Verification Tests** — Testcontainers `RabbitMQContainer` + `InMemorySpanExporter` proves the full chain in CI
+- [x] **Phase 6: Verification Tests** *(shipped 2026-05-02; tag `step-06-tests`)* — Testcontainers `RabbitMQContainer` + `InMemorySpanExporter` proves the full chain in CI
 - [ ] **Phase 7: Polish & Differentiators** — Pre-built dashboard, load script, screenshots, full README walkthrough
 
 ## Phase Details
@@ -250,7 +250,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. AMQP Context Propagation | 0/5 | In progress (planned) | - |
 | 4. Metrics | 0/5 | In progress (planned) | - |
 | 5. Logs Correlation | 6/6 | Complete   | 2026-05-02 |
-| 6. Verification Tests | 4/6 | In Progress|  |
+| 6. Verification Tests | 6/6 | Shipped (tag step-06-tests) | 2026-05-02 |
 | 7. Polish & Differentiators | 0/TBD | Not started | - |
 
 ## Research Flags

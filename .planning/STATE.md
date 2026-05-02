@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 6 context gathered
-last_updated: "2026-05-02T05:20:26.296Z"
-last_activity: 2026-05-02
+stopped_at: Phase 6 verification-tests source-complete; tag step-06-tests applied
+last_updated: "2026-05-02T05:32:07.808Z"
+last_activity: 2026-05-02 -- Phase 06 verification-tests source-complete (4/4 IT green); step-06-tests tag applied
 progress:
   total_phases: 7
-  completed_phases: 5
-  total_plans: 34
-  completed_plans: 34
-  percent: 100
+  completed_phases: 6
+  total_plans: 35
+  completed_plans: 30
+  percent: 86
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** A workshop attendee can clone the repo, run `docker compose up` + `mise run dev`, hit `POST /orders`, and see a single distributed trace flow from the HTTP handler through the RabbitMQ publish, into the consumer's processing logic, with correlated metrics and logs — and understand exactly which lines of SDK code made each piece work.
-**Current focus:** Phase 06 — verification-tests
+**Current focus:** Phase 07 — polish-and-differentiators (Phase 06 shipped)
 
 ## Current Position
 
-Phase: 06 (verification-tests) — EXECUTING
+Phase: 06 — SHIPPED (tag step-06-tests, 2026-05-02); next up Phase 07
 Plan: 6 of 6
-Status: Ready to execute
-Last activity: 2026-05-02
+Status: Phase 06 source-complete + tagged; awaiting Phase 07 kickoff
+Last activity: 2026-05-02 -- Phase 06 verification-tests source-complete (4/4 IT green); step-06-tests tag applied
 
-Progress: [██████████] 100%
+Progress: [████████▌─] 86%
 
 ## Performance Metrics
 
@@ -97,6 +97,7 @@ Recent decisions affecting current work:
 - [Phase 06]: Plan 06-04: TestOtelConfiguration created (131 lines, 83 comment lines). Single Rule 1/3 deviation: rephrased JavaDoc divergence table to drop literal Batch*/PeriodicMetricReader tokens so NO-BATCH-PROCESSORS grep gate passes; pedagogical content preserved (paraphrased). 17/17 must_haves green; mvn -B -pl integration-tests -am test-compile BUILD SUCCESS (2 source files). Commit baedb99.
 - [Phase ?]: 06-05: AssertJ alias collision resolved per Option A (FQCN at AssertJ sites; static-import OTel assertThat)
 - [Phase ?]: 06-05: PRODUCER span asserts MessagingOperationTypeIncubatingValues.SEND not literal 'publish'; CONSUMER asserts .PROCESS — semconv-version-aware
+- [Phase 06-06]: README "Step 6: Verification Tests" section landed (commit 5a1b5c1) with verbatim Edit-1/Edit-2/Edit-3 from plan; smoke verified 4/4 IT green with host RabbitMQ stopped (random port 32780, BUILD SUCCESS). All 5 ROADMAP Phase-6 success criteria passed (SC #5 satisfied by orchestrator's tag-apply). Annotated tag step-06-tests applied to status-flip commit per WORK-01 / D-21 / Phase 2-06 precedent; ROADMAP/REQUIREMENTS/STATE flipped atomically with the tag. infra:up restarted post-gate (rabbitmq + otel-lgtm both healthy).
 
 ### Pending Todos
 
@@ -125,6 +126,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-02T05:19:42.809Z
-Stopped at: Phase 6 context gathered
+Last session: 2026-05-02T05:32:07.808Z
+Stopped at: Phase 6 verification-tests source-complete; tag step-06-tests applied
 Resume file: None
