@@ -219,6 +219,44 @@ identity match across Loki / Tempo / Mimir.
 > Filter on the OTLP severity field — that's the OTel-idiomatic shape and
 > what Loki's OTLP receiver was built around.
 
+### Production-readiness callout: do not log untrusted payload fields
+
+The Phase 5 business log lines deliberately mirror what application code
+looks like **before** anyone has thought about log hygiene — the workshop
+runs on a developer laptop with synthetic data, and "what raw application
+logs look like" is part of the lesson. Two specific log sites would NOT
+be safe in production and should be tightened before this code is copied
+anywhere real:
+
+- **`OrderController.create(...)`** —
+  `LOG.info("received POST /orders payload={}", payload)` writes the
+  entire `Map<String, Object>` request body to logs and Loki. Any field
+  an attendee POSTs (free-form text, accidental secrets, credit-card-shaped
+  strings) lands in log storage. The `Map.toString()` formatter does no
+  CRLF escaping either — a `{"note":"hi\r\n[INFO] forged"}` payload
+  injects a forged log line into the file/console that downstream parsers
+  may treat as real.
+- **`ProcessingService.process(...)`** —
+  `LOG.error("order processing failed: orderId={}", orderId, e)` logs an
+  attacker-controlled string from the message payload. The producer's
+  `OrderPublisher` currently overwrites this field with a server-minted
+  UUID, but that defense is one edit away — the consumer itself does not
+  validate the `orderId` shape, so a CRLF in the field would inject a
+  forged log line on the consumer side.
+
+**Production fixes (out of scope for the workshop demo, in scope for any
+real deployment of this code shape):** replace untrusted-payload logs
+with explicit allowlisted fields (e.g. log only `priority` from the
+controller body, or move the entry log into `OrderService.place(...)`
+after the orderId is generated and log only that orderId); validate the
+shape of fields read from messages at consumer ingress before they hit a
+log line; or drop the field entirely and rely on the `trace_id` stamped
+by the OpenTelemetryAppender as the correlation key (the workshop's
+success criterion is "correlate via `trace_id`", not "via `orderId`").
+Tracked under threat-model row T-05-04-01 (producer payload disclosure)
+in `.planning/phases/05-logs-correlation/05-04-SUMMARY.md`; the
+consumer-side concern is the symmetric case on the failure path.
+
 ## Reading the code
 
 The two `OtelSdkConfiguration.java` files are the workshop's textbook for the manual SDK setup. Open them in your IDE and read top-to-bottom — every `@Bean` carries an inline comment explaining what each builder call does and why (DOC-03):
