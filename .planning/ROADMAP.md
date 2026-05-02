@@ -200,7 +200,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - **Wave 1** *(parallelizable, no dependencies)*
   - [x] `07-01-grafana-dashboard-provisioning` — WORK-02 — `grafana/dashboards/{ose-otel-demo.json,dashboards.yaml}` + docker-compose volume mount; two-row layout per D-02 (top = projector demo strip, bottom = collapsed deeper-dive) **(shipped 2026-05-02; live-verified by user)**
   - [x] `07-02-load-script` — WORK-03 — `scripts/load.sh` (two parallel oha invocations + SIGINT/SIGTERM trap, D-04) + `mise run load` task wiring + oha/hey pinned in mise.toml [tools] **(shipped 2026-05-02; oha pinned to 1.14.0 via mise aqua:hatoo/oha; SIGTERM/SIGINT trap smoke-verified)**
-  - [ ] `07-03-screenshot-tooling-scaffold` — DOC-04 — `scripts/screenshots/{package.json,capture.mjs,.gitignore}` + `mise run docs:screenshots` task scaffold; Playwright pinned for reproducibility
+  - [x] `07-03-screenshot-tooling-scaffold` — DOC-04 — `scripts/screenshots/{package.json,capture.mjs,.gitignore}` + `mise run docs:screenshots` task scaffold; Playwright pinned for reproducibility **(shipped 2026-05-02; playwright@1.49.1 pinned, 7 captures in CAPTURES list with optional waterfall)**
 - **Wave 2** *(blocked on Wave 1; high-blast-radius human-verify gate)*
   - [ ] `07-04-screenshot-capture` — DOC-04 — Tag-cycling driver via `git worktree`; produces 6-8 PNGs in docs/screenshots/ committed to git (DOC-04 broken/fixed pair = step-02-disconnected + step-03-joined)
 - **Wave 3** *(blocked on Wave 2; parallelizable across the README halves)*
@@ -232,7 +232,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - **Wave 1** *(parallelizable, no dependencies)*
   - [x] `07-01-grafana-dashboard-provisioning` — WORK-02 — `grafana/dashboards/{ose-otel-demo.json,dashboards.yaml}` + docker-compose volume mount; two-row layout per D-02 (top = projector demo strip, bottom = collapsed deeper-dive) **(shipped 2026-05-02; live-verified by user)**
   - [x] `07-02-load-script` — WORK-03 — `scripts/load.sh` (two parallel oha invocations + SIGINT/SIGTERM trap, D-04) + `mise run load` task wiring + oha/hey pinned in mise.toml [tools] **(shipped 2026-05-02; oha pinned to 1.14.0 via mise aqua:hatoo/oha; SIGTERM/SIGINT trap smoke-verified)**
-  - [ ] `07-03-screenshot-tooling-scaffold` — DOC-04 — `scripts/screenshots/{package.json,capture.mjs,.gitignore}` + `mise run docs:screenshots` task scaffold; Playwright pinned for reproducibility
+  - [x] `07-03-screenshot-tooling-scaffold` — DOC-04 — `scripts/screenshots/{package.json,capture.mjs,.gitignore}` + `mise run docs:screenshots` task scaffold; Playwright pinned for reproducibility **(shipped 2026-05-02; playwright@1.49.1 pinned, 7 captures in CAPTURES list with optional waterfall)**
 - **Wave 2** *(blocked on Wave 1; high-blast-radius human-verify gate)*
   - [ ] `07-04-screenshot-capture` — DOC-04 — Tag-cycling driver via `git worktree`; produces 6-8 PNGs in docs/screenshots/ committed to git (DOC-04 broken/fixed pair = step-02-disconnected + step-03-joined)
 - **Wave 3** *(blocked on Wave 2; parallelizable across the README halves)*
