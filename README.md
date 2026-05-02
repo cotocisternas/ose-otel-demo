@@ -193,146 +193,78 @@ Phase 3 is the workshop's headline lesson. The broken-then-fixed delta from Step
 
 ## Step 4: Metrics
 
-`step-04-metrics` adds the **second** OTel signal — metrics — to both services. The two
-`OtelSdkConfiguration.java` files now build a `SdkMeterProvider` next to the
-`SdkTracerProvider` (D-01 in `04-CONTEXT.md` extracted Phase 2's tracer pipeline
-into `buildTracerProvider(Resource)` and added a sibling `buildMeterProvider(Resource)`,
-so the diff against `step-03-context-propagation` reads as "we added a sibling
-pipeline next to the trace pipeline"). The producer adds a Counter and a Histogram
-to its existing instrumentation surfaces; the consumer adds an ObservableGauge.
+### What you'll learn
 
-The three instrument shapes — one Counter, one Histogram, one ObservableGauge —
-cover the OTel SDK's three primary metric kinds:
+Three OTel instrument shapes — `LongCounter` (`orders.created`), `DoubleHistogram` (`http.server.request.duration`, **seconds**), and `ObservableLongGauge` (`orders.queue.depth.estimate`) — wired into both services as a sibling pipeline alongside the existing trace pipeline, with a 10-second `PeriodicMetricReader` interval that overrides OTel's 60-second default.
 
-- **`orders.created`** (`LongCounter`, producer-side) — fires after each successful
-  `POST /orders` from inside [`OrderService.place(...)`](./producer-service/src/main/java/com/example/producer/domain/OrderService.java)
-  with the business attribute `order.priority` from the request payload (fallback `"standard"`).
-  The counter does NOT fire on the failure path — failures are visible via the trace's
-  ERROR status, not as a metric. `order.priority` is a string-literal `AttributeKey`
-  because it is NOT in the OTel semconv catalog (contrast with the histogram's
-  `HttpAttributes.HTTP_REQUEST_METHOD` which IS semconv).
-- **`http.server.request.duration`** (`DoubleHistogram`, producer-side) — recorded from
-  inside the existing [`HttpServerSpanFilter`](./producer-service/src/main/java/com/example/producer/config/HttpServerSpanFilter.java)
-  finally block, BEFORE `span.end()`. **Unit is seconds (`"s"`), not milliseconds.**
-  The seconds-not-millis trap (D-13) is the textbook OTel-porting mistake — semconv 1.40.0
-  specifies seconds, and Mimir's default `http_server_request_duration_seconds` dashboards
-  assume seconds. Attributes follow HTTP semconv: `http.request.method` and
-  `http.response.status_code` only — `url.path` is intentionally excluded because
-  high-cardinality path values would explode the metric series count.
-- **`orders.queue.depth.estimate`** (`ObservableGauge`, consumer-side) — registered by
-  [`QueueDepthGauge`](./consumer-service/src/main/java/com/example/consumer/observability/QueueDepthGauge.java).
-  Callback fires on every 10-second collection interval (METRIC-01 — overrides OTel's
-  60-second default `PeriodicMetricReader`) and returns a synthetic
-  `ThreadLocalRandom.current().nextInt(0, 50)` value. The lesson is the
-  callback-on-interval mechanism, not the value semantics; a real implementation would
-  poll the RabbitMQ Management API (out of scope for this workshop).
+### Checkpoint
 
-`mise run demo:order` now sends two payloads — `priority=express` and `priority=standard`
-— so Mimir shows two series for `orders.created`. Try the Mimir query
-`orders_created_total{order_priority="express"}` to see one of them. **Note the name
-mangling:** the OTel-to-Prometheus exporter (running inside `otel-lgtm`'s collector)
-converts dots to underscores and appends `_total` for monotonic counters, so the
-OTel-side `orders.created` surfaces in Mimir as `orders_created_total` and
-`http.server.request.duration` (unit `s`) surfaces as `http_server_request_duration_seconds`.
-The same Resource attributes from Phase 2 (`service.name`, `service.namespace`,
-`service.instance.id`, `deployment.environment.name`) appear on every metric data
-point (D-05 — built once and shared between traces and metrics for cross-signal
-correlation in Grafana).
+`git checkout step-04-metrics` — adds `SdkMeterProvider` per service. The diff against `step-03-context-propagation` reads as "we added a sibling pipeline next to the trace pipeline" because Phase 4 D-01 extracted Phase 2's inline tracer pipeline into `private SdkTracerProvider buildTracerProvider(Resource)` and added a sibling `private SdkMeterProvider buildMeterProvider(Resource)`. Zero new dependencies (`opentelemetry-exporter-otlp` ships traces + metrics + logs from one jar; on classpath since Phase 2).
+
+### Run
+
+```sh
+git checkout step-04-metrics
+mise run infra:up
+mise run dev
+mise run demo:order        # alternates priority=express + priority=standard
+mise run load              # in another terminal — populates per-priority panels
+```
+
+### What to look for
+
+- **`orders_created_total`** in Mimir (Grafana → Explore → Prometheus): increments on every successful POST. Two series — `order_priority="express"` and `order_priority="standard"`. **Note the name mangling**: the OTel-to-Prometheus exporter (running inside `otel-lgtm`'s collector) converts dots to underscores and appends `_total` for monotonic counters, so OTel-side `orders.created` surfaces as Prometheus `orders_created_total`. The counter does NOT fire on the failure path (D-08) — failures are visible via the trace's ERROR status, not as a metric.
+- **`http_server_request_duration_seconds`** (Histogram, **seconds**): query `histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket[1m])))` for p95. **Unit is seconds (`"s"`), not milliseconds.** The seconds-not-millis trap (Phase 4 D-13) is the textbook OTel-porting mistake — semconv 1.40.0 specifies seconds, and Mimir's default `http_server_request_duration_seconds` dashboards assume seconds. Attributes follow HTTP semconv: `http.request.method` and `http.response.status_code` only — `url.path` is intentionally excluded for cardinality reasons.
+- **`orders_queue_depth_estimate`** (ObservableGauge, consumer-side): a synthetic value from `ThreadLocalRandom.current().nextInt(0, 50)` reported on every 10-second collection cycle. The `PeriodicMetricReader` interval is set to **10 seconds** (METRIC-01 — overrides OTel's 60-second default; this is the difference between "fresh metric every demo" and "wait a minute every demo").
+- **Attribute-key contrast** — `order.priority` is a string-literal `AttributeKey<String>` because it is NOT in the OTel semconv catalog (a *business* attribute), while `http.request.method` and `http.response.status_code` come from `HttpAttributes.HTTP_REQUEST_METHOD` and `HttpAttributes.HTTP_RESPONSE_STATUS_CODE` (semconv constants from `io.opentelemetry.semconv:1.40.0`).
+- **Same Resource attributes on every metric data point** — `service.name`, `service.namespace`, `service.instance.id`, `deployment.environment.name` (Phase 4 D-05 — Resource built once and shared between tracer + meter pipelines for cross-signal correlation in Grafana).
+
+<!-- TODO(DOC-04 v1.x): docs/screenshots/step-04-metrics.png — Mimir RED metrics panel.
+     Capture deferred per Phase 7 wave-4 SUMMARY (07-04); referenced here as a placeholder
+     so the screenshot embed can be re-introduced without re-touching the surrounding prose.
+     Until then, the dashboard URL below carries the visual: open the auto-provisioned
+     "OSE OTel Demo — Three Signals" dashboard at http://localhost:3000/d/ose-otel-demo with
+     `mise run load` running in another terminal — the per-priority `orders_created_total`
+     panel and the `http_server_request_duration_seconds` p50/p95/p99 panel populate live. -->
+
+### Why it matters
+
+The three instrument shapes cover OTel's primary metric kinds. The textbook traps Phase 4 surfaces — seconds-not-millis, dots-to-underscores name mangling, the 60-second-vs-10-second reader interval, semconv-vs-business attribute keys — are the specific shapes that bite teams porting from custom metrics libraries. The "sibling pipeline" structure is a deliberate carryforward from Phase 2's helper extraction; the diff against the previous tag reads as a focused addition, not a tangled refactor. For why both services repeat the same `OtelSdkConfiguration.java` shape rather than sharing one — see *Why is OtelSdkConfiguration.java duplicated?* in the [Concepts & FAQ](#concepts--faq) appendix.
 
 ## Step 5: Logs Correlation
 
-`step-05-logs` adds the **third** OTel signal — logs — to both services, closing
-the three-signals loop. The two `OtelSdkConfiguration.java` files now build a
-`SdkLoggerProvider` next to the existing `SdkTracerProvider` and `SdkMeterProvider`
-(D-01 in `05-CONTEXT.md` lands a third sibling helper `buildLoggerProvider(Resource)`,
-parallel to the Phase 2 and Phase 4 helpers, so the diff against `step-04-metrics`
-reads as "we added a sibling pipeline next to the trace and metric pipelines"). A
-new `logback-spring.xml` per service declares the `OpenTelemetryAppender` for OTLP
-export plus the MDC injector wrapper appender that stamps `trace_id`/`span_id`
-into the console pattern.
+### What you'll learn
 
-The three Phase 5 SDK + Logback touch points cover the two ways trace context
-flows into a log line:
+The third OTel signal — logs — wired alongside traces and metrics, plus MDC `trace_id`/`span_id` injection so terminal output is correlatable without leaving the workshop laptop. The load-bearing PITFALL #5 mitigation: `OpenTelemetryAppender.install(sdk)` runs INLINE in the `@Bean` factory body so Logback's pre-Spring initialization doesn't pin the appender to `OpenTelemetry.noop()`.
 
-- **`SdkLoggerProvider` + `BatchLogRecordProcessor` + `OtlpGrpcLogRecordExporter`** —
-  the third pipeline added to
-  [`OtelSdkConfiguration.java`](./producer-service/src/main/java/com/example/producer/config/OtelSdkConfiguration.java)
-  (and its consumer mirror at
-  [`consumer-service/.../OtelSdkConfiguration.java`](./consumer-service/src/main/java/com/example/consumer/config/OtelSdkConfiguration.java)).
-  Same OTLP endpoint as traces and metrics (`:4317`, `OTEL_EXPORTER_OTLP_ENDPOINT`
-  env var with fallback — D-04 carryforward); same shared `Resource` for cross-signal
-  correlation (D-05 — same `service.name` / `service.namespace` / `service.instance.id`
-  attributes appear on every log record, every span, every metric data point).
-  The `opentelemetry-exporter-otlp` artifact already on classpath since Phase 2
-  ships log + metric + span exporters from one jar — Phase 5 adds **zero** new
-  SDK-side dependencies.
-- **`OpenTelemetryAppender` (OTLP export) + the MDC injector wrapper** — declared
-  in [`producer-service/src/main/resources/logback-spring.xml`](./producer-service/src/main/resources/logback-spring.xml)
-  (and its byte-identical consumer mirror at
-  [`consumer-service/src/main/resources/logback-spring.xml`](./consumer-service/src/main/resources/logback-spring.xml)).
-  Two artifacts pulled from the `opentelemetry-instrumentation-bom-alpha:2.27.0-alpha`
-  BOM that Phase 1 declared forward-compat for this exact moment:
-  `opentelemetry-logback-appender-1.0` (the OTLP export appender) and
-  `opentelemetry-logback-mdc-1.0` (the MDC injector). **Heads-up — both ship a
-  class named `OpenTelemetryAppender` in different packages**: the
-  `appender.v1_0.OpenTelemetryAppender` is the OTLP exporter (has the `install()`
-  static); the `mdc.v1_0.OpenTelemetryAppender` is an appender WRAPPER that reads
-  `Span.current()` and stamps `trace_id`/`span_id` into MDC before forwarding to
-  its child appender. The MDC injector is wrapped around `CONSOLE` so the
-  bracketed pattern `[trace_id=%mdc{trace_id:-} span_id=%mdc{span_id:-}]`
-  resolves correctly for in-span events.
-- **Inline `OpenTelemetryAppender.install(sdk)` in the `@Bean` factory** —
-  the load-bearing PITFALL #5 mitigation (LOG-03 / D-08 / D-09). **The
-  order-of-operations problem:** Logback initializes BEFORE the Spring
-  `ApplicationContext` is built, so the `OpenTelemetryAppender` constructed
-  at startup defaults to `OpenTelemetry.noop()`. We call `install(sdk)`
-  inside the `@Bean` factory itself, immediately after
-  `OpenTelemetrySdk.builder()...build()` returns and before `return sdk` —
-  this avoids the Spring self-cycle that a `@PostConstruct` shape would
-  create (the `@Configuration` bean would have to autowire the
-  `OpenTelemetry` it itself produces) AND tightens the window in which logs
-  can land in the noop replay queue. `install()` walks the global
-  `LoggerContext`, finds every OTEL appender (including ones nested inside
-  wrapper appenders like the MDC injector), and swaps the noop reference
-  for the real SDK; the replay queue (1000-event default) is then drained.
-  Nothing is lost in normal Spring Boot startup, but if `install()` is
-  never called, log records beyond the buffer are silently dropped. **The
-  install-inline-in-the-`@Bean`-factory shape IS the lesson** — the
-  silent-no-op trap PLUS the Spring self-cycle that `@PostConstruct` would
-  create are textbook OTel logback gotchas (see
-  [opentelemetry-java-instrumentation#10307](https://github.com/open-telemetry/opentelemetry-java-instrumentation/issues/10307)).
+### Checkpoint
 
-`mise run demo:order` now produces a console line per service with `trace_id` /
-`span_id` stamped in brackets — pre-`POST` startup logs render
-`[trace_id= span_id=]` (empty defaults via Logback's `%mdc{key:-}` syntax),
-in-span logs render `[trace_id=4b2e... span_id=ad12...]`. The same trace_id
-flows to Loki via the OTLP appender. In Grafana → Explore → Loki, run:
+`git checkout step-05-logs` — adds `SdkLoggerProvider` next to `SdkTracerProvider` and `SdkMeterProvider`, plus a per-service `logback-spring.xml` with the `OpenTelemetryAppender` (OTLP export) wrapped by the MDC injector wrapper appender. Commit `f5c331a` is the load-bearing fix moving `OpenTelemetryAppender.install(...)` into the `@Bean` factory body — `git show f5c331a` for the bug-fix narrative.
 
-```
-{service_name="order-producer"} |~ "<traceId>"
+### Run
+
+```sh
+git checkout step-05-logs
+mise run infra:up
+mise run dev
+mise run demo:order
+# then in Grafana → Explore → Loki:
+#   {service_name="order-producer"} |~ "<traceId>"
 ```
 
-(replace `<traceId>` with the 32-hex value you copied from the console). Click
-the `trace_id` field on a returned log line and Grafana opens the matching trace
-in Tempo's Explore tab. **The triple-signal correlation highlight** lands on the
-deterministic 10th order (Phase 3 APP-04): the consumer's `LOG.error` in
-[`ProcessingService`](./consumer-service/src/main/java/com/example/consumer/domain/ProcessingService.java)
-fires alongside the existing `span.recordException(e)` — the Loki query
-`{service_name="order-consumer"} | severity_text="ERROR"` returns the failure log; click
-its trace_id and Tempo shows the trace whose CONSUMER span carries the
-recordException event AND a metric data point in Mimir for the same priority/method.
-All three signals share the trace_id; the resource attributes (D-05) make the
-identity match across Loki / Tempo / Mimir.
+### What to look for
 
-> **Why `severity_text="ERROR"` instead of `|= "ERROR"`?** The OTLP
-> `OpenTelemetryAppender` ships the formatted message **without** a level
-> prefix — the Logback level lands on the OTLP record as the `severity_text`
-> field, which Loki's OTLP receiver indexes as a detected field / label. A
-> substring filter against the message body (`|= "ERROR"`) returns zero
-> results for `LOG.error("order processing failed: orderId={}", orderId, e)`
-> because the formatted body is just `order processing failed: orderId=<uuid>`.
-> Filter on the OTLP severity field — that's the OTel-idiomatic shape and
-> what Loki's OTLP receiver was built around.
+- **Console output stamps `trace_id` / `span_id`**: every business-logic log line renders with `[trace_id=4b2e... span_id=ad12...]` in the bracketed pattern. Pre-`POST` startup logs render `[trace_id= span_id=]` (empty defaults via Logback's `%mdc{key:-}` syntax — that's the difference between "no active span" and "missing key").
+- **Loki log lines carry the same `trace_id`**: in Grafana → Explore → Loki, run `{service_name="order-producer"} |~ "<traceId>"` (replace `<traceId>` with the 32-hex value from console). Click the `trace_id` field on a returned log line; Grafana opens the matching trace in Tempo's Explore tab. **Click-through working IS LOG-05.**
+- **Triple-signal correlation on the failure path**: the deterministic 10th order fires `LOG.error` in the consumer's `ProcessingService` alongside `span.recordException(e)`. Loki query `{service_name="order-consumer"} | severity_text="ERROR"` returns the failure log; click its trace_id and Tempo shows the trace whose CONSUMER span carries the recordException event AND a metric data point in Mimir for the same priority/method. All three signals share the trace_id.
+- **`severity_text="ERROR"` (not `|= "ERROR"`)** — the OTLP `OpenTelemetryAppender` ships the formatted message **without** a level prefix; the Logback level lands on the OTLP record as the `severity_text` field which Loki's OTLP receiver indexes as a detected field. A substring filter against the message body returns zero results because the formatted body is just `order processing failed: orderId=<uuid>`.
+- **Two `OpenTelemetryAppender` classes in different packages** — `appender.v1_0.OpenTelemetryAppender` is the OTLP exporter (has the `install()` static); `mdc.v1_0.OpenTelemetryAppender` is an appender WRAPPER that reads `Span.current()` and stamps `trace_id`/`span_id` into MDC before forwarding. The MDC injector wraps `CONSOLE` so the bracketed pattern resolves correctly for in-span events.
+
+![Step 5 — Loki log line with trace_id click-through to Tempo](docs/screenshots/step-05-logs-trace-jump.png)
+
+### Why it matters
+
+The `OpenTelemetryAppender.install(sdk)` order-of-operations is the textbook OTel logback gotcha (see [opentelemetry-java-instrumentation#10307](https://github.com/open-telemetry/opentelemetry-java-instrumentation/issues/10307)). Logback initializes BEFORE the Spring `ApplicationContext` is built, so the appender constructed at startup defaults to `OpenTelemetry.noop()`. Calling `install(sdk)` inside the `@Bean` factory body — immediately after `OpenTelemetrySdk.builder()...build()` returns and before `return sdk;` — avoids the Spring self-cycle a `@PostConstruct` shape would create AND tightens the window in which logs land in the noop replay queue. **The install-inline-in-the-`@Bean`-factory shape IS the lesson.** Commit `f5c331a` is the bug-fix narrative; reading the diff is itself part of the workshop. For the per-service-vs-shared design contrast (logs follow the same per-service-duplicated pattern as Phase 2's SDK setup), see *Why is OtelSdkConfiguration.java duplicated?* in the [Concepts & FAQ](#concepts--faq) appendix.
 
 ### Production-readiness callout: do not log untrusted payload fields
 
@@ -374,34 +306,48 @@ consumer-side concern is the symmetric case on the failure path.
 
 ## Step 6: Verification Tests
 
-`step-06-tests` adds a CI-grade proof of the three-signal instrumentation chain. A new top-level [`integration-tests`](./integration-tests) Maven module hosts a single cross-service [`OrderFlowIT.java`](./integration-tests/src/test/java/com/example/e2e/OrderFlowIT.java) that starts a real `RabbitMQContainer` on a random port, launches both `ProducerApplication` and `ConsumerApplication` as two `SpringApplicationBuilder` contexts in one JVM, exercises the full `POST /orders` → publish → consume flow through real broker traffic, and asserts on traces + logs + metrics captured in-memory. Run it with `mise run test`; the build exits non-zero on any assertion failure (TEST-06).
+### What you'll learn
 
-The four `@Test` methods cover the workshop's four signal areas:
+A CI-grade proof of the three-signal instrumentation chain — Testcontainers `RabbitMQContainer` + `InMemorySpanExporter` + `SimpleSpanProcessor` in a `@TestConfiguration` that asserts traceId shared, parentSpanId correct, span kinds correct, and messaging semconv attributes present. Caps the workshop with "now you can prove your instrumentation works in CI without a live OTLP backend."
 
-- **`RabbitMQContainer` on a random port** — the `@BeforeAll` method emits an explicit `LOG.info("RabbitMQ test container available at {}:{}", ...)` line that prints something like `RabbitMQ test container available at localhost:54321` in the test log (NOT the default `:5672`). With your host `docker compose` RabbitMQ stopped, the tests still pass — proof that Testcontainers is genuinely used (TEST-01).
+### Checkpoint
 
-- **`SimpleSpanProcessor` + `InMemorySpanExporter` swap** — production wires `BatchSpanProcessor` + `OtlpGrpcSpanExporter`, but tests use [`TestOtelHolder`](./integration-tests/src/test/java/com/example/e2e/TestOtelHolder.java) which builds the SDK with the synchronous `SimpleSpanProcessor` and the in-memory exporter from `opentelemetry-sdk-testing`. Every `span.end()` exports immediately — no `Thread.sleep` needed in tests. PITFALLS.md #4 / #11 made manifest in code.
+`git checkout step-06-tests` — adds a top-level `integration-tests` Maven module with a single cross-service `OrderFlowIT.java`, a `TestOtelHolder` static-singleton, a `TestOtelConfiguration` `@TestConfiguration`, and a `<classifier>exec</classifier>` repackage execution on producer/consumer service POMs so the test module can depend on the plain classes jars while production builds still produce runnable fat jars.
 
-- **`<classifier>exec</classifier>` on the service POMs** — the producer and consumer service POMs publish TWO artifacts: the plain classes jar (default — exposes `ProducerApplication.class` directly on the classpath) and a separate `-exec` repackaged executable fat jar (runnable with `java -jar`). The integration-tests module depends on the plain jars so `new SpringApplicationBuilder(ProducerApplication.class, ...)` works. See [`producer-service/pom.xml`](./producer-service/pom.xml) for the canonical Spring Boot 3.4.13 syntax — a useful pattern for any multi-module Spring Boot codebase.
+### Run
 
-- **The four `@Test` methods**:
+```sh
+git checkout step-06-tests
+docker compose stop rabbitmq    # IMPORTANT — prove Testcontainers is genuinely used
+mise run test                   # → mvn -T 1C verify; expect 4 green tests in Failsafe summary
+```
+
+The test exits non-zero on any assertion failure — suitable for any CI runner with Docker available.
+
+### What to look for
+
+- **Random RabbitMQ port in test logs**: a `@BeforeAll` line `RabbitMQ test container available at localhost:<random-port>` (e.g., `localhost:54321`) — NOT `localhost:5672`. With your host `docker compose` RabbitMQ stopped, the tests still pass — proof Testcontainers is genuinely used (TEST-01 SC #2).
+- **Four green `@Test` methods** in the Failsafe summary covering the workshop's four signal areas:
   1. **traces** — producer + consumer spans share `traceId`; consumer's `parentSpanId == producer.spanId`; SpanKind set covers SERVER + INTERNAL + PRODUCER + CONSUMER + INTERNAL; messaging semconv attributes (`messaging.system=rabbitmq`, `messaging.operation_type=publish/process`).
   2. **logs** — producer-side `LOG.info` records carry the producer trace's `trace_id` (proves Phase 5's `OpenTelemetryAppender.install(...)` wiring still works through the test SDK).
   3. **metrics** — `orders.created` counter increments to 1 with `order.priority="express"`; `http.server.request.duration` histogram records the POST with `http.request.method=POST` + `http.response.status_code=202`.
   4. **failure path** — the 10th order's CONSUMER span has `Status.ERROR` + a recorded exception event; a `LOG.error` record carries the same trace_id (triple-signal correlation — the workshop's strongest single statement of "all three signals work together").
+- **`SimpleSpanProcessor` + `InMemorySpanExporter` swap** — production wires `BatchSpanProcessor` + `OtlpGrpcSpanExporter`; tests use `TestOtelHolder` which builds the SDK with the synchronous `SimpleSpanProcessor` and the in-memory exporter from `opentelemetry-sdk-testing`. Every `span.end()` exports immediately — **NO Thread.sleep** in tests; Awaitility polling for async settling.
+- **`<classifier>exec</classifier>` Maven trickery** — producer/consumer POMs publish TWO artifacts: the plain classes jar (default, exposes `ProducerApplication.class` directly on classpath) and a separate `-exec` repackaged executable fat jar. The integration-tests module depends on the plain jars so `new SpringApplicationBuilder(ProducerApplication.class, ...)` works. See `producer-service/pom.xml` for the canonical Spring Boot 3.4.13 syntax.
+- **`TestOtelHolder` static-singleton** — the test-side replication of commit `f5c331a` ordering: `OpenTelemetryAppender.install(sdk)` runs AFTER `builder().build()` and BEFORE the SDK reference is published. The static-singleton resolves the @TestConfiguration vs @Bean bootstrap-ordering dance (06-CONTEXT.md D-07.1).
+- **Two `SpringApplicationBuilder` contexts in one JVM** — `OrderFlowIT.@BeforeAll` starts both `ProducerApplication` and `ConsumerApplication` as separate Spring contexts in the same JVM, each `@Import`ing `TestOtelConfiguration`. The shared `TestOtelHolder` lets BOTH contexts emit spans into one `InMemorySpanExporter` — the only way to assert cross-service `traceId`/`parentSpanId` relationships in-process.
 
-- **Production-vs-test SDK divergence as a deliberate pedagogical contrast** — Phase 2's per-service duplication of `OtelSdkConfiguration.java` is a PRODUCTION rule (D-01 / DOC-05). Test infrastructure is exempt: [`TestOtelConfiguration.java`](./integration-tests/src/test/java/com/example/e2e/TestOtelConfiguration.java) is a single `@TestConfiguration` shared by both Spring contexts because the in-memory exporter must see ALL spans across both services in one queue. The contrast itself is the lesson — duplicate when readers benefit from reading the same setup twice; share when the test fixture's purpose requires one shared instance.
+![Step 6 — mvn verify with random RabbitMQ port + four green tests](docs/screenshots/step-06-test-output.png)
 
-Run the suite (with your host `docker compose` RabbitMQ stopped, to prove Testcontainers is genuinely used):
+### Why it matters
 
-```bash
-docker compose stop rabbitmq        # if currently running
-mise run test                       # → mvn -T 1C verify
-```
+Production-vs-test SDK divergence is a deliberate pedagogical contrast. Phase 2's per-service duplication of `OtelSdkConfiguration.java` is a PRODUCTION rule — `TestOtelConfiguration` is a single `@TestConfiguration` shared by both Spring contexts because the in-memory exporter must see ALL spans across both services in one queue. The contrast itself is the lesson: duplicate when readers benefit from reading the same setup twice; share when the test fixture's purpose requires one shared instance. The triple-signal correlation `@Test` (failure path) is the workshop's strongest single statement that all three signals work together — one trace_id, one error, one log, one metric data point, one in-memory queue per signal sink, one assertion suite. For the broader per-service-vs-shared design pattern, see *Why is the propagation pair shared?* and *Why is OtelSdkConfiguration.java duplicated?* in the [Concepts & FAQ](#concepts--faq) appendix.
 
-You should see four green tests in the Failsafe summary plus a `RabbitMQ test container available at localhost:<random-port>` line in the output. The test exits non-zero on any assertion failure — suitable for any CI runner with Docker available.
+## Concepts & FAQ
 
-## Reading the code
+The following four sections collect the narrative deep-dives the per-step *Why it matters* paragraphs cross-reference. They preserve a second reading mode: skim the per-step walkthrough top-to-bottom, then dive into the conceptual narrative — or read this section first and use the per-step blocks as worked examples.
+
+### Reading the code
 
 The two `OtelSdkConfiguration.java` files are the workshop's textbook for the manual SDK setup. Open them in your IDE and read top-to-bottom — every `@Bean` carries an inline comment explaining what each builder call does and why (DOC-03):
 
@@ -412,11 +358,11 @@ The producer adds one extra file — [`HttpServerSpanFilter.java`](./producer-se
 
 The five business-code span sites (one `SERVER`, two `INTERNAL`, one `PRODUCER`, one `CONSUMER`) all use the same pure-inline `try`/`Scope`/`try`/`catch`/`finally` template — no helper, no AOP. The boilerplate IS the lesson.
 
-## Why is OtelSdkConfiguration.java duplicated?
+### Why is OtelSdkConfiguration.java duplicated?
 
 The two SDK config files are duplicated per service on purpose (DOC-05). Refactoring them into a shared `@AutoConfiguration` bean in the `otel-bootstrap` module would hide one of the two readings the workshop is built around — the whole point of Phase 2 is that an attendee reads `OpenTelemetrySdk.builder()`, `Resource.getDefault().merge(...)`, `BatchSpanProcessor.builder(...)`, `Sampler.parentBased(Sampler.alwaysOn())`, `OtlpGrpcSpanExporter.builder().setEndpoint(...)`, and `ContextPropagators.create(...)` _twice_, in two slightly different files, and develops a feel for which lines are workshop-pedagogy boilerplate and which lines are service-identity. The two files differ in only five small ways (package, JavaDoc cross-reference, the service.name string, the tracer scope name, plus the producer-only `HttpServerSpanFilter` bean) — the diff is small enough to read in one viewing. The propagation pair Phase 3 introduces, by contrast, IS shared in `otel-bootstrap` because the symmetry of one inject method matched by one extract method IS that lesson. Different design forces drive different choices; the workshop teaches both.
 
-## Why is the propagation pair shared?
+### Why is the propagation pair shared?
 
 The propagation pair lives in `otel-bootstrap/src/main/java/com/example/otel/amqp/` (PROP-04) and is shared across both services on purpose — the deliberate counterpart of Phase 2's per-service-duplicated `OtelSdkConfiguration.java`. Read these two callouts as a pair: per-service code (the SDK setup) is duplicated so attendees read it twice; cross-service code (the messaging boundary) is shared so attendees read ONE inject method matched by ONE extract method, and the symmetry IS the lesson.
 
@@ -430,9 +376,18 @@ The four classes carry zero Spring annotations; each service's `RabbitConfig.jav
 
 Phase 3 also corrects an OTel messaging semconv divergence from Phase 2: the producer's `messaging.destination.name` attribute is now the **exchange** (`orders`), not the queue (`orders.created`). This is visible in Tempo across the `step-02-traces` → `step-03-context-propagation` tags.
 
-## What's NOT here yet
+### What's NOT here yet
 
-The following are deliberate Phase 1 omissions — the repo isn't incomplete, it's **uninstrumented on purpose** so each later phase has something concrete to add:
+The workshop ships at main HEAD with all six steps' instrumentation, the auto-provisioned dashboard, the continuous-load script, and the per-step screenshot set. Deliberate v1 omissions (deferred to v2):
 
-- No `OtelSdkConfiguration.java` (Phase 2)
-- No pre-built Grafana dashboard or load script (Phase 7)
+- **Sampling-variant checkpoint** (`step-07-sampling-variant` / SAMP-01) — `TraceIdRatioBased` and `ParentBased` samplers side-by-side with environment-driven config.
+- **Baggage propagation checkpoint** (`step-08-baggage` / PROP-V2-01) — `W3CBaggagePropagator` carrying business attributes across the AMQP boundary. Phase 2 already wired the propagator; a v2 phase exercises it.
+- **DLX/retry checkpoint** (`step-09-dlx-retry` / FAIL-01) — dead-letter exchange and retry instrumentation with messaging-semconv `messaging.rabbitmq.destination_routing_key`.
+- **`docs/FACILITATOR.md`** (FAC-01) — timing notes, common questions, "if you see X, do Y" — only needed when someone other than the original author delivers the workshop.
+- **CI YAML** for `mise run test` on PRs — the test exits non-zero (TEST-06), sufficient for any CI runner; YAML belongs in v2 if the workshop becomes a maintained shared artifact across cohorts.
+- **Pyroscope / continuous profiling** — fourth-signal extension if a future cohort wants it.
+- **Vendor-specific exporter swap demo** (Honeycomb, Datadog, etc.) — one-line OTLP endpoint change attendees can do themselves.
+
+---
+
+Workshop is at main HEAD past `step-06-tests`; dashboard, load script, and full walkthrough are here. To revisit any step, `git checkout step-NN-*`.
