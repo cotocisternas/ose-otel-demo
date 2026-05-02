@@ -130,6 +130,7 @@ None yet.
 |---|-------------|------|--------|--------|-----------|
 | 260502-8gk | Add Valkey + PostgreSQL + Phase 8 manual OTel instrumentation (tag `step-08-db-cache`) | 2026-05-02 | 7ac45e0 | Verified | [260502-8gk-add-new-random-features-to-have-more-poi](./quick/260502-8gk-add-new-random-features-to-have-more-poi/) |
 | 260502-ld1 | Fix `scripts/load.sh` — add `--no-tui` and finite `-z` duration; oha TUI was corrupting parallel children | 2026-05-02 | 1874d1d | Verified | [260502-ld1-fix-load-sh-oha-no-tui](./quick/260502-ld1-fix-load-sh-oha-no-tui/) |
+| 260502-ld2 | Add burst mode to `scripts/load.sh` (`BURST_RPS` + 4 knobs); produces dashboard ramp-up/plateau/drain shape on demand | 2026-05-02 | (pending) | Verified | [260502-ld2-load-sh-burst-mode](./quick/260502-ld2-load-sh-burst-mode/) |
 
 ## Deferred Items
 
