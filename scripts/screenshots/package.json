@@ -1,0 +1,13 @@
+{
+  "name": "ose-otel-demo-screenshots",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Workshop screenshot capture pipeline (DOC-04 / Phase 7 D-05). Drives Grafana headlessly across the six step-NN-* git tags.",
+  "scripts": {
+    "capture": "playwright install --with-deps chromium && node capture.mjs"
+  },
+  "dependencies": {
+    "playwright": "1.49.1"
+  }
+}
