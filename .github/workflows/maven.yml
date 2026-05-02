@@ -1,0 +1,66 @@
+# Builds and tests a multi-module Maven project using Amazon Corretto 17.
+# On pushes to main it also submits the dependency graph for Dependabot alerts.
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
+
+name: Java CI with Maven
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+# Cancel any in-progress run for the same branch/PR to save CI minutes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least-privilege default: each job overrides only what it needs.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout source
+      # actions/checkout v4.3.1
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+    - name: Set up JDK 17 (Amazon Corretto)
+      # actions/setup-java v4.8.0
+      uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
+      with:
+        java-version: '17'
+        distribution: 'corretto'
+        cache: maven
+
+    - name: Build and verify with Maven
+      run: mvn -B -T 1C verify
+
+  # Uploads the dependency graph to GitHub to improve Dependabot alert quality.
+  # Separated into its own job so contents:write is not granted to the build job.
+  # Only runs on push events to avoid leaking write access in fork PRs.
+  dependency-submission:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout source
+      # actions/checkout v4.3.1
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+    - name: Set up JDK 17 (Amazon Corretto)
+      # actions/setup-java v4.8.0
+      uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
+      with:
+        java-version: '17'
+        distribution: 'corretto'
+        cache: maven
+
+    - name: Update dependency graph
+      # advanced-security/maven-dependency-submission-action v4.1.3
+      uses: advanced-security/maven-dependency-submission-action@fe8d4d650a4b66508612d0683ce4726d51dfe6ac
