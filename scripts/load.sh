@@ -4,6 +4,22 @@
 #
 # Steady streams (always on): two parallel oha invocations, one per priority.
 #   QUERY_PER_SECOND per priority, N_CONNECTIONS per priority.
+#   These streams send NO X-Idempotency-Key header — the controller's
+#   idempotency gate is bypassed and every request flows straight to AMQP.
+#   This keeps the steady demo throughput consistent with pre-Phase-8 behavior.
+#
+# Idempotency stream (always on, post-Phase-8): a third low-rate stream sends
+# requests carrying a fresh X-Idempotency-Key per request, generated from
+# /proc/sys/kernel/random/uuid. This drives the producer's
+# InstrumentedJedisPool.setIfAbsent path so:
+#   - SET CLIENT spans flow continuously into Tempo (Infra dashboard panel
+#     "Recent SET spans"); and
+#   - idempotency_cache_miss_total increments per request (every key is unique
+#     in the TTL window so every request is a "miss"/NEW); and
+#   - rate(redis_commands_processed_total[5m]) becomes non-zero.
+# Rate is intentionally a few %% of the steady streams (default 5 rps) so it
+# doesn't materially shift queue/AMQP/Postgres dynamics that the rest of the
+# demo teaches.
 #
 # Burst stream (set BURST_RPS>0 to enable): a third oha is fired every
 # BURST_INTERVAL seconds for BURST_DURATION, hitting BURST_PRIORITY at
@@ -14,10 +30,11 @@
 #
 # Override via env:
 #   TARGET, DURATION, QUERY_PER_SECOND, N_CONNECTIONS,
+#   IDEMPOTENT_RPS (0=off; default 5),
 #   BURST_RPS (0=off), BURST_DURATION, BURST_INTERVAL, BURST_CONNECTIONS,
 #   BURST_PRIORITY (default: standard)
 #
-# Defaults: ~200 rps total (100 per priority), no burst.
+# Defaults: ~200 rps total (100 per priority) + 5 rps idempotent + no burst.
 #
 # Validated 2026-05-02 against running infra:
 #   - Steady at defaults: rate(orders_created_total[1m]) ≈ 100/s per priority,
@@ -40,6 +57,11 @@
 #     foreground process group receives SIGINT and any in-flight burst oha
 #     dies with it. On programmatic SIGTERM, cleanup kills the loop and
 #     pkills its direct children to catch any in-flight oha.
+#   - The idempotency stream uses curl, not oha: oha sends a single fixed
+#     header value per process (no per-request templating), so a fresh UUID
+#     per request requires shelling out per request. /proc/sys/kernel/random/uuid
+#     is the kernel-provided fast UUID source (no fork to uuidgen) — Linux only,
+#     which matches the workshop's docker-compose Linux runtime.
 
 set -euo pipefail
 
@@ -47,6 +69,9 @@ TARGET="${TARGET:-http://localhost:8080/orders}"
 DURATION="${DURATION:-24h}"
 QUERY_PER_SECOND="${QUERY_PER_SECOND:-100}"
 N_CONNECTIONS="${N_CONNECTIONS:-10}"
+
+# Idempotency stream — set IDEMPOTENT_RPS=0 to disable.
+IDEMPOTENT_RPS="${IDEMPOTENT_RPS:-5}"
 
 # Burst stream — disabled by default.
 BURST_RPS="${BURST_RPS:-0}"
@@ -60,7 +85,8 @@ cleanup() {
   # burst oha that the burst loop spawned. Order matters: pkill the loop's
   # children before killing the loop itself, so they're still findable.
   [[ -n "${PID_BURST_LOOP:-}" ]] && pkill -P "$PID_BURST_LOOP" 2>/dev/null || true
-  for pid in "${PID_EXPRESS:-}" "${PID_STANDARD:-}" "${PID_BURST_LOOP:-}" "${PID_HEARTBEAT:-}"; do
+  [[ -n "${PID_IDEMPOTENT:-}" ]] && pkill -P "$PID_IDEMPOTENT" 2>/dev/null || true
+  for pid in "${PID_EXPRESS:-}" "${PID_STANDARD:-}" "${PID_IDEMPOTENT:-}" "${PID_BURST_LOOP:-}" "${PID_HEARTBEAT:-}"; do
     [[ -n "$pid" ]] && kill "$pid" 2>/dev/null || true
   done
   wait 2>/dev/null || true
@@ -71,6 +97,12 @@ echo "WORK-03: continuous load against ${TARGET}"
 echo "Steady streams:"
 echo "  priority=express  @ ${QUERY_PER_SECOND} rps (c=${N_CONNECTIONS})"
 echo "  priority=standard @ ${QUERY_PER_SECOND} rps (c=${N_CONNECTIONS})"
+if [[ "$IDEMPOTENT_RPS" -gt 0 ]]; then
+  echo "Idempotency stream:"
+  echo "  X-Idempotency-Key per request @ ${IDEMPOTENT_RPS} rps (priority=standard)"
+else
+  echo "Idempotency stream: disabled (set IDEMPOTENT_RPS>0 to enable)"
+fi
 if [[ "$BURST_RPS" -gt 0 ]]; then
   echo "Burst stream:"
   echo "  priority=${BURST_PRIORITY} @ ${BURST_RPS} rps (c=${BURST_CONNECTIONS})"
@@ -102,6 +134,36 @@ oha -z "${DURATION}" \
     --no-tui \
     "${TARGET}" >/dev/null 2>&1 &
 PID_STANDARD=$!
+
+# --- Idempotency stream -----------------------------------------------------
+#
+# Fresh UUID per request → every request is a cache miss (NEW) within the
+# Phase 8 default TTL of 1h, so every request also publishes to AMQP and
+# downstream Postgres — same flow shape as the steady streams, just with the
+# extra Valkey SET CLIENT span on the producer side.
+#
+# Rate is governed by `sleep $sleep_interval` between requests. Computed once
+# from IDEMPOTENT_RPS to avoid bc/awk in the hot path. Not exact (kernel sleep
+# resolution + curl fork latency add jitter) but accurate to ~10%% which is
+# fine for "keep the SET-spans panel populated".
+
+if [[ "$IDEMPOTENT_RPS" -gt 0 ]]; then
+  (
+    sleep_interval=$(awk "BEGIN {printf \"%.3f\", 1.0 / ${IDEMPOTENT_RPS}}")
+    idempotent_payload='{"sku":"WIDGET-IDEMPOTENT","quantity":1,"priority":"standard"}'
+    while :; do
+      key=$(< /proc/sys/kernel/random/uuid)
+      curl -sS -o /dev/null \
+        -X POST \
+        -H "Content-Type: application/json" \
+        -H "X-Idempotency-Key: ${key}" \
+        -d "${idempotent_payload}" \
+        "${TARGET}" || true
+      sleep "${sleep_interval}"
+    done
+  ) &
+  PID_IDEMPOTENT=$!
+fi
 
 # --- Burst loop (optional) ---------------------------------------------------
 
