@@ -193,51 +193,43 @@ Phase 3 is the workshop's headline lesson. The broken-then-fixed delta from Step
 
 ## Step 4: Metrics
 
-`step-04-metrics` adds the **second** OTel signal — metrics — to both services. The two
-`OtelSdkConfiguration.java` files now build a `SdkMeterProvider` next to the
-`SdkTracerProvider` (D-01 in `04-CONTEXT.md` extracted Phase 2's tracer pipeline
-into `buildTracerProvider(Resource)` and added a sibling `buildMeterProvider(Resource)`,
-so the diff against `step-03-context-propagation` reads as "we added a sibling
-pipeline next to the trace pipeline"). The producer adds a Counter and a Histogram
-to its existing instrumentation surfaces; the consumer adds an ObservableGauge.
+### What you'll learn
 
-The three instrument shapes — one Counter, one Histogram, one ObservableGauge —
-cover the OTel SDK's three primary metric kinds:
+Three OTel instrument shapes — `LongCounter` (`orders.created`), `DoubleHistogram` (`http.server.request.duration`, **seconds**), and `ObservableLongGauge` (`orders.queue.depth.estimate`) — wired into both services as a sibling pipeline alongside the existing trace pipeline, with a 10-second `PeriodicMetricReader` interval that overrides OTel's 60-second default.
 
-- **`orders.created`** (`LongCounter`, producer-side) — fires after each successful
-  `POST /orders` from inside [`OrderService.place(...)`](./producer-service/src/main/java/com/example/producer/domain/OrderService.java)
-  with the business attribute `order.priority` from the request payload (fallback `"standard"`).
-  The counter does NOT fire on the failure path — failures are visible via the trace's
-  ERROR status, not as a metric. `order.priority` is a string-literal `AttributeKey`
-  because it is NOT in the OTel semconv catalog (contrast with the histogram's
-  `HttpAttributes.HTTP_REQUEST_METHOD` which IS semconv).
-- **`http.server.request.duration`** (`DoubleHistogram`, producer-side) — recorded from
-  inside the existing [`HttpServerSpanFilter`](./producer-service/src/main/java/com/example/producer/config/HttpServerSpanFilter.java)
-  finally block, BEFORE `span.end()`. **Unit is seconds (`"s"`), not milliseconds.**
-  The seconds-not-millis trap (D-13) is the textbook OTel-porting mistake — semconv 1.40.0
-  specifies seconds, and Mimir's default `http_server_request_duration_seconds` dashboards
-  assume seconds. Attributes follow HTTP semconv: `http.request.method` and
-  `http.response.status_code` only — `url.path` is intentionally excluded because
-  high-cardinality path values would explode the metric series count.
-- **`orders.queue.depth.estimate`** (`ObservableGauge`, consumer-side) — registered by
-  [`QueueDepthGauge`](./consumer-service/src/main/java/com/example/consumer/observability/QueueDepthGauge.java).
-  Callback fires on every 10-second collection interval (METRIC-01 — overrides OTel's
-  60-second default `PeriodicMetricReader`) and returns a synthetic
-  `ThreadLocalRandom.current().nextInt(0, 50)` value. The lesson is the
-  callback-on-interval mechanism, not the value semantics; a real implementation would
-  poll the RabbitMQ Management API (out of scope for this workshop).
+### Checkpoint
 
-`mise run demo:order` now sends two payloads — `priority=express` and `priority=standard`
-— so Mimir shows two series for `orders.created`. Try the Mimir query
-`orders_created_total{order_priority="express"}` to see one of them. **Note the name
-mangling:** the OTel-to-Prometheus exporter (running inside `otel-lgtm`'s collector)
-converts dots to underscores and appends `_total` for monotonic counters, so the
-OTel-side `orders.created` surfaces in Mimir as `orders_created_total` and
-`http.server.request.duration` (unit `s`) surfaces as `http_server_request_duration_seconds`.
-The same Resource attributes from Phase 2 (`service.name`, `service.namespace`,
-`service.instance.id`, `deployment.environment.name`) appear on every metric data
-point (D-05 — built once and shared between traces and metrics for cross-signal
-correlation in Grafana).
+`git checkout step-04-metrics` — adds `SdkMeterProvider` per service. The diff against `step-03-context-propagation` reads as "we added a sibling pipeline next to the trace pipeline" because Phase 4 D-01 extracted Phase 2's inline tracer pipeline into `private SdkTracerProvider buildTracerProvider(Resource)` and added a sibling `private SdkMeterProvider buildMeterProvider(Resource)`. Zero new dependencies (`opentelemetry-exporter-otlp` ships traces + metrics + logs from one jar; on classpath since Phase 2).
+
+### Run
+
+```sh
+git checkout step-04-metrics
+mise run infra:up
+mise run dev
+mise run demo:order        # alternates priority=express + priority=standard
+mise run load              # in another terminal — populates per-priority panels
+```
+
+### What to look for
+
+- **`orders_created_total`** in Mimir (Grafana → Explore → Prometheus): increments on every successful POST. Two series — `order_priority="express"` and `order_priority="standard"`. **Note the name mangling**: the OTel-to-Prometheus exporter (running inside `otel-lgtm`'s collector) converts dots to underscores and appends `_total` for monotonic counters, so OTel-side `orders.created` surfaces as Prometheus `orders_created_total`. The counter does NOT fire on the failure path (D-08) — failures are visible via the trace's ERROR status, not as a metric.
+- **`http_server_request_duration_seconds`** (Histogram, **seconds**): query `histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket[1m])))` for p95. **Unit is seconds (`"s"`), not milliseconds.** The seconds-not-millis trap (Phase 4 D-13) is the textbook OTel-porting mistake — semconv 1.40.0 specifies seconds, and Mimir's default `http_server_request_duration_seconds` dashboards assume seconds. Attributes follow HTTP semconv: `http.request.method` and `http.response.status_code` only — `url.path` is intentionally excluded for cardinality reasons.
+- **`orders_queue_depth_estimate`** (ObservableGauge, consumer-side): a synthetic value from `ThreadLocalRandom.current().nextInt(0, 50)` reported on every 10-second collection cycle. The `PeriodicMetricReader` interval is set to **10 seconds** (METRIC-01 — overrides OTel's 60-second default; this is the difference between "fresh metric every demo" and "wait a minute every demo").
+- **Attribute-key contrast** — `order.priority` is a string-literal `AttributeKey<String>` because it is NOT in the OTel semconv catalog (a *business* attribute), while `http.request.method` and `http.response.status_code` come from `HttpAttributes.HTTP_REQUEST_METHOD` and `HttpAttributes.HTTP_RESPONSE_STATUS_CODE` (semconv constants from `io.opentelemetry.semconv:1.40.0`).
+- **Same Resource attributes on every metric data point** — `service.name`, `service.namespace`, `service.instance.id`, `deployment.environment.name` (Phase 4 D-05 — Resource built once and shared between tracer + meter pipelines for cross-signal correlation in Grafana).
+
+<!-- TODO(DOC-04 v1.x): docs/screenshots/step-04-metrics.png — Mimir RED metrics panel.
+     Capture deferred per Phase 7 wave-4 SUMMARY (07-04); referenced here as a placeholder
+     so the screenshot embed can be re-introduced without re-touching the surrounding prose.
+     Until then, the dashboard URL below carries the visual: open the auto-provisioned
+     "OSE OTel Demo — Three Signals" dashboard at http://localhost:3000/d/ose-otel-demo with
+     `mise run load` running in another terminal — the per-priority `orders_created_total`
+     panel and the `http_server_request_duration_seconds` p50/p95/p99 panel populate live. -->
+
+### Why it matters
+
+The three instrument shapes cover OTel's primary metric kinds. The textbook traps Phase 4 surfaces — seconds-not-millis, dots-to-underscores name mangling, the 60-second-vs-10-second reader interval, semconv-vs-business attribute keys — are the specific shapes that bite teams porting from custom metrics libraries. The "sibling pipeline" structure is a deliberate carryforward from Phase 2's helper extraction; the diff against the previous tag reads as a focused addition, not a tangled refactor. For why both services repeat the same `OtelSdkConfiguration.java` shape rather than sharing one — see *Why is OtelSdkConfiguration.java duplicated?* in the [Concepts & FAQ](#concepts--faq) appendix.
 
 ## Step 5: Logs Correlation
 
