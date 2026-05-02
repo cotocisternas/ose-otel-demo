@@ -3,6 +3,8 @@ package com.example.producer.messaging;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
@@ -30,6 +32,7 @@ import com.example.producer.config.RabbitConfig;
  */
 @Component
 public class OrderPublisher {
+    private static final Logger LOG = LoggerFactory.getLogger(OrderPublisher.class);
     private final RabbitTemplate rabbitTemplate;
 
     public OrderPublisher(RabbitTemplate rabbitTemplate) {
@@ -39,6 +42,7 @@ public class OrderPublisher {
     public void publish(String orderId, Map<String, Object> payload) {
         Map<String, Object> message = new HashMap<>(payload);
         message.put("orderId", orderId);
+        LOG.info("publishing orderId={} to exchange={}", orderId, RabbitConfig.EXCHANGE);
         rabbitTemplate.convertAndSend(RabbitConfig.EXCHANGE, RabbitConfig.ROUTING_KEY, message);
     }
 }
