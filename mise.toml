@@ -131,6 +131,13 @@ curl -sf -X POST http://localhost:${PRODUCER_PORT}/orders \
   -d '{"sku":"WIDGET-2","quantity":1,"priority":"standard"}' && echo
 """
 
+# ──────────────────────────────────────────────────────────────────
+# Continuous load (Phase 7 / WORK-03 / D-04.1)
+# ──────────────────────────────────────────────────────────────────
+[tasks.load]
+description = "Continuous POST /orders load (~1 req/sec, ~50/50 express/standard). Run alongside `mise run dev`. Ctrl-C stops both child loaders."
+run = "./scripts/load.sh"
+
 [tasks."verify:bom"]
 description = "Phase 2 invariant: one version per io.opentelemetry* artifact across the reactor"
 run = """
