@@ -39,6 +39,7 @@
       "type": "stat",
       "id": 100,
       "title": "Orders / sec",
+      "description": "Producer-side throughput: rate of orders_created_total — one increment per accepted POST /orders. This is the BUSINESS rate (orders), measured at the system's ingress. Pairs with the consumer-side MESSAGE rate; the two are 1:1 in this demo (no retries / DLQ), so divergence between them would itself be a signal.",
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "gridPos": {"h": 5, "w": 4, "x": 0, "y": 0},
       "fieldConfig": {
@@ -71,7 +72,7 @@
       "type": "stat",
       "id": 101,
       "title": "Message error rate (5m)",
-      "description": "Per-message error rate at the consumer: ERROR vs total over CONSUMER-kind spans on order-consumer (one such span per delivered message). Expect ~10% at steady state — the deterministic 1-in-10 failure in ProcessingService. The earlier 'all spans on order-.*' formulation diluted this to ~3% because it counted producer SERVER/INTERNAL/PRODUCER spans in the denominator while only consumer-side spans get ERROR status.",
+      "description": "Consumer-side processing health: ERROR vs total over CONSUMER-kind spans on order-consumer — one span per AMQP message the consumer pulls off orders.created. NOC-flavoured framing: 'message' = one delivery attempt at the broker boundary; 'order' = one business event from the producer. With no retries / DLQ wired up they're 1:1 in this demo, but they would diverge if redeliveries kicked in (then this rate would also include re-attempts of orders that already counted once at ingress). Expect ~10% at steady state — the deterministic 1-in-10 failure in ProcessingService.",
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "gridPos": {"h": 5, "w": 4, "x": 4, "y": 0},
       "fieldConfig": {
