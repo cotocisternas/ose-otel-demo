@@ -68,7 +68,7 @@ Requirements for initial release. Each maps to a roadmap phase. All requirements
 
 ### Documentation (DOC)
 
-- [ ] **DOC-01**: A `README.md` walks the workshop attendee through each step keyed to the matching annotated git tag (`step-01-baseline` through `step-06-tests`) with copy-pasteable curl commands
+- [x] **DOC-01**: A `README.md` walks the workshop attendee through each step keyed to the matching annotated git tag (`step-01-baseline` through `step-06-tests`) with copy-pasteable curl commands *(Phase 07-05 + 07-06 shipped 2026-05-02 — all 6 Steps in lean 5-section template; Concepts & FAQ appendix; D-09 close)*
 - [ ] **DOC-02**: README "Prerequisites" section lists ports, tools, and the `mise run preflight` task; first-time attendees can self-diagnose tooling issues before getting stuck
 - [x] **DOC-03**: `OtelSdkConfiguration.java` is heavily commented — every SDK builder call has an inline comment explaining what it does and why; the code IS the workshop's textbook
 - [x] **DOC-04**: README includes Grafana screenshots that pair `step-02-traces` (TWO disconnected traces) with `step-03-context-propagation` (ONE joined trace) so the broken-then-fixed delta is visible without running the steps *(Phase 07-04 shipped 2026-05-02 — DOC-04 anchor pair (step-02-disconnected + step-03-joined) hand-captured + 4 supplemental PNGs. README embedding lands in 07-05/07-06.)*
@@ -164,7 +164,7 @@ Every v1 requirement maps to exactly one phase. Updated by `gsd-roadmapper` 2026
 | TEST-04 | Phase 6 | Complete |
 | TEST-05 | Phase 6 | Complete |
 | TEST-06 | Phase 6 | Complete |
-| DOC-01 | Phase 7 | Pending |
+| DOC-01 | Phase 7 | Complete (07-05 + 07-06, 2026-05-02) |
 | DOC-02 | Phase 1 | Pending |
 | DOC-03 | Phase 2 | Complete |
 | DOC-04 | Phase 7 | Complete (07-04, 2026-05-02) |

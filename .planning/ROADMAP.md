@@ -205,7 +205,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [x] `07-04-screenshot-capture` — DOC-04 — Tag-cycling driver via `git worktree`; produces 6-8 PNGs in docs/screenshots/ committed to git (DOC-04 broken/fixed pair = step-02-disconnected + step-03-joined) **(shipped 2026-05-02; 6/7 PNGs landed via hand-capture incl. DOC-04 anchor pair; step-04-metrics.png deferred — automated pipeline + Grafana anon-access committed; 4 Rule-3 deviations recorded)**
 - **Wave 3** *(blocked on Wave 2; parallelizable across the README halves)*
   - [x] `07-05-readme-steps-1-2-3` — DOC-01, DOC-04 — Steps 1/2/3 written from scratch in lean 5-section template (D-08); DOC-04 broken/fixed PNG pair side-by-side via HTML \<table\> in Step 2 **(shipped 2026-05-02; README +10KB; anon-access copy used per 07-04 carryforward)**
-  - [ ] `07-06-readme-steps-4-5-6-and-appendix` — DOC-01 — Steps 4/5/6 rewritten to fit the same template; four standalone narrative sections consolidated as `## Concepts & FAQ` appendix; D-09 final paragraph appended; D-07 invariant grep audit
+  - [x] `07-06-readme-steps-4-5-6-and-appendix` — DOC-01 — Steps 4/5/6 rewritten to fit the same template; four standalone narrative sections consolidated as `## Concepts & FAQ` appendix; D-09 final paragraph appended; D-07 invariant grep audit **(shipped 2026-05-02; all 6 Steps in lean template; appendix consolidated; D-07 invariants grep-verified)**
 - **Wave 4** *(blocked on Wave 3; contains human checkpoint; NO TAG per D-09)*
   - [ ] `07-07-exit-gate` — WORK-02, WORK-03, DOC-01, DOC-04 — Smoke-verify all 4 ROADMAP SCs simultaneously green; STATE/ROADMAP/REQUIREMENTS atomic flip; D-09 honored: NO step-07-* tag applied (main HEAD past step-06-tests IS the polish state)
 
@@ -237,7 +237,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [x] `07-04-screenshot-capture` — DOC-04 — Tag-cycling driver via `git worktree`; produces 6-8 PNGs in docs/screenshots/ committed to git (DOC-04 broken/fixed pair = step-02-disconnected + step-03-joined) **(shipped 2026-05-02; 6/7 PNGs landed via hand-capture incl. DOC-04 anchor pair; step-04-metrics.png deferred — automated pipeline + Grafana anon-access committed; 4 Rule-3 deviations recorded)**
 - **Wave 3** *(blocked on Wave 2; parallelizable across the README halves)*
   - [x] `07-05-readme-steps-1-2-3` — DOC-01, DOC-04 — Steps 1/2/3 written from scratch in lean 5-section template (D-08); DOC-04 broken/fixed PNG pair side-by-side via HTML \<table\> in Step 2 **(shipped 2026-05-02; README +10KB; anon-access copy used per 07-04 carryforward)**
-  - [ ] `07-06-readme-steps-4-5-6-and-appendix` — DOC-01 — Steps 4/5/6 rewritten to fit the same template; four standalone narrative sections consolidated as `## Concepts & FAQ` appendix; D-09 final paragraph appended; D-07 invariant grep audit
+  - [x] `07-06-readme-steps-4-5-6-and-appendix` — DOC-01 — Steps 4/5/6 rewritten to fit the same template; four standalone narrative sections consolidated as `## Concepts & FAQ` appendix; D-09 final paragraph appended; D-07 invariant grep audit **(shipped 2026-05-02; all 6 Steps in lean template; appendix consolidated; D-07 invariants grep-verified)**
 - **Wave 4** *(blocked on Wave 3; contains human checkpoint; NO TAG per D-09)*
   - [ ] `07-07-exit-gate` — WORK-02, WORK-03, DOC-01, DOC-04 — Smoke-verify all 4 ROADMAP SCs simultaneously green; STATE/ROADMAP/REQUIREMENTS atomic flip; D-09 honored: NO step-07-* tag applied (main HEAD past step-06-tests IS the polish state)
 
