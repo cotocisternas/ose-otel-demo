@@ -294,6 +294,11 @@ public class OtelSdkConfiguration {
         //
         // The endpoint Javadoc requires the http:// or https:// prefix.
         // Bare "localhost:4317" throws IllegalArgumentException at build().
+        // The same two-line read-env-with-fallback shape is duplicated in
+        // buildMeterProvider and buildLoggerProvider — intentional
+        // parallel-pipeline readability (the three helpers are byte-symmetric
+        // by design; refactoring this into a private otlpEndpoint() helper
+        // would lose the side-by-side teaching surface, DOC-05).
         String endpoint = Optional.ofNullable(System.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"))
             .orElse(DEFAULT_OTLP_ENDPOINT);
         SpanExporter spanExporter = OtlpGrpcSpanExporter.builder()
@@ -374,6 +379,9 @@ public class OtelSdkConfiguration {
         // ships OtlpGrpcSpanExporter, OtlpGrpcMetricExporter, and
         // OtlpGrpcLogRecordExporter from one jar — single artifact for all three
         // signals. Verify with `mvn dependency:tree -Dincludes=io.opentelemetry`.
+        // (Duplicated for parallel-pipeline readability — see the matching
+        // comment in buildTracerProvider; the three helpers are byte-symmetric
+        // on purpose, DOC-05.)
         String endpoint = Optional.ofNullable(System.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"))
             .orElse(DEFAULT_OTLP_ENDPOINT);
         OtlpGrpcMetricExporter metricExporter = OtlpGrpcMetricExporter.builder()
@@ -445,6 +453,9 @@ public class OtelSdkConfiguration {
         // OtlpGrpcSpanExporter, OtlpGrpcMetricExporter, AND OtlpGrpcLogRecordExporter
         // — three sub-packages, one jar. Verify with
         // `mvn dependency:tree -Dincludes=io.opentelemetry:opentelemetry-exporter-otlp`.
+        // (Duplicated for parallel-pipeline readability — see the matching
+        // comment in buildTracerProvider; the three helpers are byte-symmetric
+        // on purpose, DOC-05.)
         String endpoint = Optional.ofNullable(System.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"))
             .orElse(DEFAULT_OTLP_ENDPOINT);
         LogRecordExporter logExporter = OtlpGrpcLogRecordExporter.builder()
