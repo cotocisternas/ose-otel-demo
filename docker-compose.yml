@@ -6,9 +6,17 @@ services:
   rabbitmq:
     image: rabbitmq:4.3-management
     container_name: ose-otel-rabbitmq
+    environment:
+      # Step 9 (quick-260502-j00): enable the rabbitmq_prometheus plugin at
+      # boot so /metrics is exposed on :15692. The `rabbitmq_management` plugin
+      # MUST also be listed — RABBITMQ_PLUGINS replaces, not appends, the
+      # default plugin set, and the management UI on :15672 is part of the
+      # workshop UX (header injection inspection, queue browsing).
+      RABBITMQ_PLUGINS: "rabbitmq_management rabbitmq_prometheus"
     ports:
       - "5672:5672"      # AMQP
       - "15672:15672"    # Management UI (guest/guest)
+      - "15692:15692"    # Prometheus plugin /metrics — Step 9
     healthcheck:
       # Stage 1 healthcheck — lightest with lowest false-positive rate.
       # Source: rabbitmq.com/docs/monitoring
@@ -51,6 +59,35 @@ services:
       start_period: 20s
     restart: unless-stopped
 
+  # Step 9 (quick-260502-j00): redis_exporter scrapes Valkey and exposes
+  # Prometheus metrics on :9121. No host port mapping needed — only the
+  # bundled Prometheus inside lgtm scrapes it (over the compose default
+  # network as `redis-exporter:9121`). Per RESEARCH §Pitfalls #5 we do NOT
+  # add a healthcheck — `redis_up=0` on the dashboard is a teaching moment,
+  # not a startup blocker.
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.83.0
+    container_name: ose-otel-redis-exporter
+    environment:
+      REDIS_ADDR: "redis://valkey:6379"
+    depends_on:
+      valkey:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Step 9 (quick-260502-j00): postgres_exporter — connects via the
+  # application's `orders` user (Path A per RESEARCH §4; production-fidelity
+  # callout lives in README Step 9). Default metrics port is :9187.
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.19.1
+    container_name: ose-otel-postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://orders:orders@postgres:5432/orders?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
   lgtm:
     # Image's built-in HEALTHCHECK checks all 5 backends — do NOT override.
     image: grafana/otel-lgtm:0.26.0
@@ -72,6 +109,7 @@ services:
     volumes:
       - lgtm-data:/data  # persists Grafana state across infra:down/up cycles (Pitfall D)
       - ./grafana/dashboards:/otel-lgtm/grafana/conf/provisioning/dashboards:ro  # WORK-02 / Phase 7 D-01 — auto-provision dashboards
+      - ./grafana/prometheus.yaml:/otel-lgtm/prometheus.yaml:ro  # Step 9 — custom scrape config (preserves bundled otlp ingest block + adds rabbitmq/redis/postgres exporters)
     # NOTE: We deliberately do NOT add a `healthcheck:` block here.
     # The image's Dockerfile already declares:
     #   HEALTHCHECK --interval=30s --timeout=5s --retries=3 \

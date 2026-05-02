@@ -1,0 +1,416 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {"type": "grafana", "uid": "-- Grafana --"},
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Step 9 Infra & Deps dashboard — pairs app-emitted OTel telemetry (HikariCP gauge, SET/INSERT spans, HTTP histogram) with infrastructure exporter metrics (RabbitMQ Prometheus plugin via /metrics/per-object, redis_exporter, postgres_exporter). The Database row is the two-lens money panel: HikariCP db_client_connection_count (app view) sits next to pg_stat_database_numbackends (server view). Companion to /d/ose-otel-demo (workshop) and /d/ose-otel-noc (NOC).",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [
+    {"asDropdown": false, "icon": "external link", "includeVars": false, "keepTime": true, "tags": [], "targetBlank": false, "title": "Workshop dashboard", "tooltip": "", "type": "link", "url": "/d/ose-otel-demo"},
+    {"asDropdown": false, "icon": "external link", "includeVars": false, "keepTime": true, "tags": [], "targetBlank": false, "title": "NOC dashboard", "tooltip": "", "type": "link", "url": "/d/ose-otel-noc"}
+  ],
+  "liveNow": false,
+  "panels": [
+    {
+      "type": "stat",
+      "id": 1,
+      "title": "Redis (Valkey) up",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]},
+          "mappings": [
+            {"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}}},
+            {"type": "value", "options": {"1": {"text": "UP", "color": "green"}}}
+          ],
+          "unit": "short", "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "graphMode": "none", "colorMode": "value", "orientation": "auto", "textMode": "auto", "justifyMode": "auto"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "redis_up", "refId": "A"}]
+    },
+    {
+      "type": "stat",
+      "id": 2,
+      "title": "Postgres up",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]},
+          "mappings": [
+            {"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}}},
+            {"type": "value", "options": {"1": {"text": "UP", "color": "green"}}}
+          ],
+          "unit": "short", "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "graphMode": "none", "colorMode": "value", "orientation": "auto", "textMode": "auto", "justifyMode": "auto"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "pg_up", "refId": "A"}]
+    },
+    {
+      "type": "stat",
+      "id": 3,
+      "title": "RabbitMQ exporter up",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]},
+          "mappings": [
+            {"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}}},
+            {"type": "value", "options": {"1": {"text": "UP", "color": "green"}}}
+          ],
+          "unit": "short", "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "graphMode": "none", "colorMode": "value", "orientation": "auto", "textMode": "auto", "justifyMode": "auto"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "up{job=\"rabbitmq\"}", "refId": "A"}]
+    },
+    {
+      "type": "stat",
+      "id": 4,
+      "title": "Active OTel services",
+      "description": "Distinct service.name values seen in OTLP-ingested resource info. Mirrors NOC dashboard panel 105.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 1}, {"color": "green", "value": 2}]},
+          "unit": "short", "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "graphMode": "none", "colorMode": "value", "orientation": "auto", "textMode": "auto", "justifyMode": "auto"},
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "count(group by (service_name) (target_info{service_name=~\"order-.*\"}))", "refId": "A"}]
+    },
+    {
+      "type": "row",
+      "id": 100,
+      "title": "HTTP / AMQP — request flow",
+      "collapsed": true,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 4},
+      "panels": [
+        {
+          "type": "timeseries",
+          "id": 5,
+          "title": "RED — request rate by status",
+          "description": "App-emitted http.server.request.duration histogram. Rate of _count by HTTP status code.",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 8, "w": 6, "x": 0, "y": 5},
+          "fieldConfig": {
+            "defaults": {"custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "stacking": {"mode": "none"}}, "unit": "reqps"},
+            "overrides": []
+          },
+          "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (http_response_status_code) (rate(http_server_request_duration_seconds_count[1m]))", "legendFormat": "HTTP {{http_response_status_code}}", "refId": "A"}]
+        },
+        {
+          "type": "timeseries",
+          "id": 19,
+          "title": "RED — latency p95 (server)",
+          "description": "p95 of http_server_request_duration_seconds_bucket — same OTel histogram as panel 5 (lens 1: app). Compare with the spans table in the workshop dashboard for span-level evidence.",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 8, "w": 6, "x": 6, "y": 5},
+          "fieldConfig": {
+            "defaults": {"custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10}, "unit": "s"},
+            "overrides": []
+          },
+          "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "histogram_quantile(0.95, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket[1m])))", "legendFormat": "p95 {{http_route}}", "refId": "A"}]
+        },
+        {
+          "type": "timeseries",
+          "id": 6,
+          "title": "AMQP queue depth (broker view)",
+          "description": "rabbitmq_queue_messages from rabbitmq_prometheus /metrics/per-object — what the broker says is in each queue right now. Pairs with panel 7 (client estimate).",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 8, "w": 6, "x": 12, "y": 5},
+          "fieldConfig": {
+            "defaults": {"custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10}, "unit": "short"},
+            "overrides": []
+          },
+          "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (queue) (rabbitmq_queue_messages{queue!=\"\"})", "legendFormat": "{{queue}} (broker)", "refId": "A"}]
+        },
+        {
+          "type": "timeseries",
+          "id": 7,
+          "title": "AMQP queue depth (client estimate)",
+          "description": "App-emitted orders_queue_depth_estimate gauge. Side-by-side with panel 6 — same physical queue measured from two perspectives.",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 8, "w": 6, "x": 18, "y": 5},
+          "fieldConfig": {
+            "defaults": {"custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10}, "unit": "short"},
+            "overrides": []
+          },
+          "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "orders_queue_depth_estimate", "legendFormat": "client estimate", "refId": "A"}]
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "id": 200,
+      "title": "Cache (Valkey)",
+      "collapsed": true,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 13},
+      "panels": [
+        {
+          "type": "timeseries",
+          "id": 8,
+          "title": "Valkey memory used",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 8, "w": 6, "x": 0, "y": 14},
+          "fieldConfig": {
+            "defaults": {"custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10}, "unit": "bytes"},
+            "overrides": []
+          },
+          "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "single", "sort": "none"}},
+          "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "redis_memory_used_bytes", "legendFormat": "memory used", "refId": "A"}]
+        },
+        {
+          "type": "timeseries",
+          "id": 20,
+          "title": "Commands processed (rate/1m)",
+          "description": "Throughput. redis_commands_processed_total is a monotonic counter from redis_exporter — rate gives ops/sec.",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 8, "w": 6, "x": 6, "y": 14},
+          "fieldConfig": {
+            "defaults": {"custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10}, "unit": "ops"},
+            "overrides": []
+          },
+          "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "single", "sort": "none"}},
+          "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(redis_commands_processed_total[1m])", "legendFormat": "commands/s", "refId": "A"}]
+        },
+        {
+          "type": "timeseries",
+          "id": 9,
+          "title": "Hits vs misses (rate/1m)",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 8, "w": 6, "x": 12, "y": 14},
+          "fieldConfig": {
+            "defaults": {"custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10}, "unit": "ops"},
+            "overrides": []
+          },
+          "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "targets": [
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(redis_keyspace_hits_total[1m])", "legendFormat": "hits", "refId": "A"},
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(redis_keyspace_misses_total[1m])", "legendFormat": "misses", "refId": "B"}
+          ]
+        },
+        {
+          "type": "timeseries",
+          "id": 10,
+          "title": "Connected clients & evictions",
+          "description": "redis_connected_clients (gauge) + rate of redis_evicted_keys_total. Evictions are usually 0 in this demo — they spike when maxmemory triggers.",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 8, "w": 6, "x": 18, "y": 14},
+          "fieldConfig": {
+            "defaults": {"custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10}, "unit": "short"},
+            "overrides": []
+          },
+          "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "targets": [
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "redis_connected_clients", "legendFormat": "clients", "refId": "A"},
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(redis_evicted_keys_total[1m])", "legendFormat": "evictions/s", "refId": "B"}
+          ]
+        },
+        {
+          "type": "table",
+          "id": 11,
+          "title": "Recent SET spans (app perspective)",
+          "description": "Producer-emitted CLIENT spans for the Valkey idempotency SET. Span name literal is 'SET' (from InstrumentedJedisPool.java). Pairs with panel 9 — span-level evidence aggregating into rate-of-events metrics.",
+          "datasource": {"type": "tempo", "uid": "tempo"},
+          "gridPos": {"h": 7, "w": 24, "x": 0, "y": 22},
+          "options": {"showHeader": true, "cellHeight": "sm"},
+          "fieldConfig": {"defaults": {"custom": {"align": "auto", "cellOptions": {"type": "auto"}, "inspect": false}}, "overrides": []},
+          "targets": [{"datasource": {"type": "tempo", "uid": "tempo"}, "query": "{resource.service.name=\"order-producer\" && name=\"SET\"}", "queryType": "traceql", "tableType": "traces", "limit": 20, "refId": "A"}]
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "id": 300,
+      "title": "Database (Postgres + HikariCP) — the two-lens money row",
+      "collapsed": true,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 29},
+      "panels": [
+        {
+          "type": "timeseries",
+          "id": 12,
+          "title": "Connections — app view (HikariCP)",
+          "description": "db_client_connection_count emitted by consumer's HikariCpConnectionGauge ObservableGauge. Lens 1: what the application's pool reports.",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 8, "w": 6, "x": 0, "y": 30},
+          "fieldConfig": {
+            "defaults": {"custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10, "stacking": {"mode": "none"}}, "unit": "short"},
+            "overrides": []
+          },
+          "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (state) (db_client_connection_count{service_name=\"order-consumer\"})", "legendFormat": "{{state}}", "refId": "A"}]
+        },
+        {
+          "type": "timeseries",
+          "id": 13,
+          "title": "Connections — server view (postgres_exporter)",
+          "description": "pg_stat_database_numbackends scraped from postgres_exporter. Lens 2: what Postgres itself sees in the same pool. Should approximately equal panel 12 (used + idle ≈ numbackends); skew is the lesson.",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 8, "w": 6, "x": 6, "y": 30},
+          "fieldConfig": {
+            "defaults": {"custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10}, "unit": "short"},
+            "overrides": []
+          },
+          "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "single", "sort": "none"}},
+          "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "pg_stat_database_numbackends{datname=\"orders\"}", "legendFormat": "numbackends", "refId": "A"}]
+        },
+        {
+          "type": "timeseries",
+          "id": 14,
+          "title": "Tuple activity (rate/1m)",
+          "description": "pg_stat_database_tup_inserted/updated/fetched as rates. Inserts come from the consumer's processed_orders write path; fetched is read activity (could be the producer's idempotency lookup if it falls through to Postgres).",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 8, "w": 6, "x": 12, "y": 30},
+          "fieldConfig": {
+            "defaults": {"custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10}, "unit": "ops"},
+            "overrides": []
+          },
+          "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "targets": [
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_tup_inserted{datname=\"orders\"}[1m])", "legendFormat": "inserts/s", "refId": "A"},
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_tup_updated{datname=\"orders\"}[1m])", "legendFormat": "updates/s", "refId": "B"},
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_tup_fetched{datname=\"orders\"}[1m])", "legendFormat": "fetched/s", "refId": "C"}
+          ]
+        },
+        {
+          "type": "timeseries",
+          "id": 21,
+          "title": "Transactions & deadlocks (rate/1m)",
+          "description": "xact_commit and xact_rollback show transaction outcomes; deadlocks should be 0 — any spike is a teaching moment about retry semantics in the consumer.",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 8, "w": 6, "x": 18, "y": 30},
+          "fieldConfig": {
+            "defaults": {"custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10}, "unit": "ops"},
+            "overrides": []
+          },
+          "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "targets": [
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_xact_commit{datname=\"orders\"}[1m])", "legendFormat": "commits/s", "refId": "A"},
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_xact_rollback{datname=\"orders\"}[1m])", "legendFormat": "rollbacks/s", "refId": "B"},
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_deadlocks{datname=\"orders\"}[1m])", "legendFormat": "deadlocks/s", "refId": "C"}
+          ]
+        },
+        {
+          "type": "table",
+          "id": 15,
+          "title": "Recent INSERT spans (app view)",
+          "description": "Consumer-emitted CLIENT spans for processed_orders INSERT. Span name literal is 'INSERT processed_orders' (from OrderRepository.java tracer.spanBuilder(\"INSERT \" + TABLE)).",
+          "datasource": {"type": "tempo", "uid": "tempo"},
+          "gridPos": {"h": 7, "w": 24, "x": 0, "y": 38},
+          "options": {"showHeader": true, "cellHeight": "sm"},
+          "fieldConfig": {"defaults": {"custom": {"align": "auto", "cellOptions": {"type": "auto"}, "inspect": false}}, "overrides": []},
+          "targets": [{"datasource": {"type": "tempo", "uid": "tempo"}, "query": "{resource.service.name=\"order-consumer\" && name=\"INSERT processed_orders\"}", "queryType": "traceql", "tableType": "traces", "limit": 20, "refId": "A"}]
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "id": 400,
+      "title": "Broker (RabbitMQ Prometheus plugin /metrics/per-object)",
+      "collapsed": true,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 45},
+      "panels": [
+        {
+          "type": "timeseries",
+          "id": 16,
+          "title": "Queue depth per queue",
+          "description": "rabbitmq_queue_messages aggregated by queue. Per-object scrape required (see prometheus.yaml — /metrics/per-object).",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 8, "w": 6, "x": 0, "y": 46},
+          "fieldConfig": {
+            "defaults": {"custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10}, "unit": "short"},
+            "overrides": []
+          },
+          "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (queue) (rabbitmq_queue_messages{queue!=\"\"})", "legendFormat": "{{queue}}", "refId": "A"}]
+        },
+        {
+          "type": "timeseries",
+          "id": 17,
+          "title": "Consumers per queue",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 8, "w": 6, "x": 6, "y": 46},
+          "fieldConfig": {
+            "defaults": {"custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10}, "unit": "short"},
+            "overrides": []
+          },
+          "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (queue) (rabbitmq_queue_consumers{queue!=\"\"})", "legendFormat": "{{queue}}", "refId": "A"}]
+        },
+        {
+          "type": "timeseries",
+          "id": 18,
+          "title": "Global publish/deliver (rate/1m)",
+          "description": "rabbitmq_global_messages_received_total counts messages received by the broker (i.e. published into it). delivered_total counts deliveries to consumers.",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 8, "w": 6, "x": 12, "y": 46},
+          "fieldConfig": {
+            "defaults": {"custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10}, "unit": "ops"},
+            "overrides": []
+          },
+          "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "targets": [
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(rabbitmq_global_messages_received_total[1m])", "legendFormat": "published", "refId": "A"},
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(rabbitmq_global_messages_delivered_total[1m])", "legendFormat": "delivered", "refId": "B"}
+          ]
+        },
+        {
+          "type": "timeseries",
+          "id": 22,
+          "title": "Acks & redeliveries per queue (rate/1m)",
+          "description": "rabbitmq_queue_messages_acked_total — clean consumer commits; rabbitmq_queue_messages_redelivered_total — anything consumer NACKed/timed out and the broker re-queued. Healthy demo: acks track publish rate, redeliveries flat at 0.",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "gridPos": {"h": 8, "w": 6, "x": 18, "y": 46},
+          "fieldConfig": {
+            "defaults": {"custom": {"drawStyle": "line", "lineWidth": 1, "fillOpacity": 10}, "unit": "ops"},
+            "overrides": []
+          },
+          "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "targets": [
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (queue) (rate(rabbitmq_queue_messages_acked_total{queue!=\"\"}[1m]))", "legendFormat": "{{queue}} acked/s", "refId": "A"},
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (queue) (rate(rabbitmq_queue_messages_redelivered_total{queue!=\"\"}[1m]))", "legendFormat": "{{queue}} redelivered/s", "refId": "B"}
+          ]
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["ose-otel-demo", "infra", "otel"],
+  "templating": {"list": []},
+  "time": {"from": "now-15m", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "OSE OTel Demo — Infra & Deps",
+  "uid": "ose-otel-infra",
+  "weekStart": ""
+}
