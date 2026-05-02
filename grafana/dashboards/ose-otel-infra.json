@@ -200,7 +200,7 @@
             "overrides": []
           },
           "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "single", "sort": "none"}},
-          "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(redis_commands_processed_total[1m])", "legendFormat": "commands/s", "refId": "A"}]
+          "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(redis_commands_processed_total[5m])", "legendFormat": "commands/s", "refId": "A"}]
         },
         {
           "type": "timeseries",
@@ -214,8 +214,8 @@
           },
           "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
           "targets": [
-            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(redis_keyspace_hits_total[1m])", "legendFormat": "hits", "refId": "A"},
-            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(redis_keyspace_misses_total[1m])", "legendFormat": "misses", "refId": "B"}
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(redis_keyspace_hits_total[5m])", "legendFormat": "hits", "refId": "A"},
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(redis_keyspace_misses_total[5m])", "legendFormat": "misses", "refId": "B"}
           ]
         },
         {
@@ -232,7 +232,7 @@
           "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
           "targets": [
             {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "redis_connected_clients", "legendFormat": "clients", "refId": "A"},
-            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(redis_evicted_keys_total[1m])", "legendFormat": "evictions/s", "refId": "B"}
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(redis_evicted_keys_total[5m])", "legendFormat": "evictions/s", "refId": "B"}
           ]
         },
         {
@@ -296,9 +296,9 @@
           },
           "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
           "targets": [
-            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_tup_inserted{datname=\"orders\"}[1m])", "legendFormat": "inserts/s", "refId": "A"},
-            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_tup_updated{datname=\"orders\"}[1m])", "legendFormat": "updates/s", "refId": "B"},
-            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_tup_fetched{datname=\"orders\"}[1m])", "legendFormat": "fetched/s", "refId": "C"}
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_tup_inserted{datname=\"orders\"}[5m])", "legendFormat": "inserts/s", "refId": "A"},
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_tup_updated{datname=\"orders\"}[5m])", "legendFormat": "updates/s", "refId": "B"},
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_tup_fetched{datname=\"orders\"}[5m])", "legendFormat": "fetched/s", "refId": "C"}
           ]
         },
         {
@@ -314,9 +314,9 @@
           },
           "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
           "targets": [
-            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_xact_commit{datname=\"orders\"}[1m])", "legendFormat": "commits/s", "refId": "A"},
-            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_xact_rollback{datname=\"orders\"}[1m])", "legendFormat": "rollbacks/s", "refId": "B"},
-            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_deadlocks{datname=\"orders\"}[1m])", "legendFormat": "deadlocks/s", "refId": "C"}
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_xact_commit{datname=\"orders\"}[5m])", "legendFormat": "commits/s", "refId": "A"},
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_xact_rollback{datname=\"orders\"}[5m])", "legendFormat": "rollbacks/s", "refId": "B"},
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_deadlocks{datname=\"orders\"}[5m])", "legendFormat": "deadlocks/s", "refId": "C"}
           ]
         },
         {
@@ -379,8 +379,8 @@
           },
           "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
           "targets": [
-            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(rabbitmq_global_messages_received_total[1m])", "legendFormat": "published", "refId": "A"},
-            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(rabbitmq_global_messages_delivered_total[1m])", "legendFormat": "delivered", "refId": "B"}
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(rabbitmq_global_messages_received_total[5m])", "legendFormat": "published", "refId": "A"},
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(rabbitmq_global_messages_delivered_total[5m])", "legendFormat": "delivered", "refId": "B"}
           ]
         },
         {
@@ -396,8 +396,8 @@
           },
           "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
           "targets": [
-            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (queue) (rate(rabbitmq_queue_messages_acked_total{queue!=\"\"}[1m]))", "legendFormat": "{{queue}} acked/s", "refId": "A"},
-            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (queue) (rate(rabbitmq_queue_messages_redelivered_total{queue!=\"\"}[1m]))", "legendFormat": "{{queue}} redelivered/s", "refId": "B"}
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (queue) (rate(rabbitmq_queue_messages_acked_total{queue!=\"\"}[5m]))", "legendFormat": "{{queue}} acked/s", "refId": "A"},
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (queue) (rate(rabbitmq_queue_messages_redelivered_total{queue!=\"\"}[5m]))", "legendFormat": "{{queue}} redelivered/s", "refId": "B"}
           ]
         }
       ]
