@@ -68,6 +68,29 @@
       <scope>test</scope>
     </dependency>
 
+    <!--
+      Phase 8: Testcontainers PostgreSQL module — BOM-managed by Spring Boot 3.4.13.
+      PostgreSQLContainer implements JdbcDatabaseContainer so @ServiceConnection
+      auto-wires spring.datasource.* properties (RESEARCH §5).
+    -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!--
+      Phase 8: Testcontainers core (GenericContainer for Valkey).
+      Testcontainers 1.20.6 has NO redis/valkey module; use GenericContainer +
+      System.setProperty to wire valkey.host / valkey.port (RESEARCH §5).
+      Core module is transitively present; explicit dep for clarity.
+    -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
+
     <!-- OTel in-memory exporters (BOM-managed by opentelemetry-bom:1.61.0). -->
     <dependency>
       <groupId>io.opentelemetry</groupId>
