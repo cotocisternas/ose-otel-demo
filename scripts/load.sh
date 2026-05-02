@@ -11,36 +11,58 @@
 # NOTE: do NOT add env-var-driven RPS / DURATION / payload arg parsing without
 # re-validating shell-injection surface. D-04 explicitly forbids env-var arg
 # parsing in v1; per-attendee tweakability is a v1.x ask (T-07-02-01).
+#
+# IMPLEMENTATION NOTES (260502-ld1):
+#   - `--no-tui` is REQUIRED. Without it, both oha children render their 16fps
+#     TUI to the same terminal alternate-screen buffer and corrupt each other.
+#   - `-z 24h` stands in for "run forever until Ctrl-C". oha rejects `-z 0`,
+#     and `-z` cannot be combined with `-n` to mean unlimited. 24h is well
+#     beyond any plausible demo session; the trap below tears children down.
+#   - With --no-tui oha is silent until each run finishes, so the bash wrapper
+#     prints a heartbeat every 30s to confirm the load is still flowing.
 
 set -euo pipefail
 
 TARGET="${TARGET:-http://localhost:8080/orders}"
+DURATION="${DURATION:-24h}"
 
 cleanup() {
-  # SIGINT/SIGTERM/EXIT — kill both children if alive, then wait so we don't leave zombies.
+  # SIGINT/SIGTERM/EXIT — kill all children if alive, then wait so we don't leave zombies.
   [[ -n "${PID_EXPRESS:-}" ]] && kill "$PID_EXPRESS" 2>/dev/null || true
   [[ -n "${PID_STANDARD:-}" ]] && kill "$PID_STANDARD" 2>/dev/null || true
+  [[ -n "${PID_HEARTBEAT:-}" ]] && kill "$PID_HEARTBEAT" 2>/dev/null || true
   wait 2>/dev/null || true
 }
 trap cleanup SIGINT SIGTERM EXIT
 
 echo "WORK-03: continuous load against ${TARGET}"
 echo "Two parallel oha invocations: priority=express @ 0.5 rps, priority=standard @ 0.5 rps"
-echo "Press Ctrl-C to stop both."
+echo "Duration: ${DURATION} (Ctrl-C to stop early)"
 echo
 
-oha -z 0 -q 0.5 \
+oha -z "${DURATION}" -q 0.5 --no-tui \
     -m POST \
     -T application/json \
     -d '{"sku":"WIDGET-EXPRESS","quantity":3,"priority":"express"}' \
-    "${TARGET}" &
+    "${TARGET}" >/dev/null 2>&1 &
 PID_EXPRESS=$!
 
-oha -z 0 -q 0.5 \
+oha -z "${DURATION}" -q 0.5 --no-tui \
     -m POST \
     -T application/json \
     -d '{"sku":"WIDGET-STANDARD","quantity":1,"priority":"standard"}' \
-    "${TARGET}" &
+    "${TARGET}" >/dev/null 2>&1 &
 PID_STANDARD=$!
 
-wait
+# Heartbeat: prove the script is alive while oha is silent under --no-tui.
+(
+  start=$(date +%s)
+  while sleep 30; do
+    elapsed=$(( $(date +%s) - start ))
+    printf '[load] alive — elapsed=%ds (express=%d, standard=%d)\n' \
+      "$elapsed" "$PID_EXPRESS" "$PID_STANDARD"
+  done
+) &
+PID_HEARTBEAT=$!
+
+wait "$PID_EXPRESS" "$PID_STANDARD"
