@@ -166,19 +166,25 @@ flows into a log line:
   its child appender. The MDC injector is wrapped around `CONSOLE` so the
   bracketed pattern `[trace_id=%mdc{trace_id:-} span_id=%mdc{span_id:-}]`
   resolves correctly for in-span events.
-- **`@PostConstruct installLogbackAppender()`** — the load-bearing PITFALL #5
-  mitigation (LOG-03 / D-08 / D-09). **The order-of-operations problem:** Logback
-  initializes BEFORE the Spring `ApplicationContext` is built, so the
-  `OpenTelemetryAppender` constructed at startup defaults to `OpenTelemetry.noop()`.
-  The `@PostConstruct` method on `OtelSdkConfiguration` runs AFTER the `@Bean`
-  factory returns, giving Spring a guaranteed point to call
-  `OpenTelemetryAppender.install(this.openTelemetry)` — which walks the global
-  `LoggerContext`, finds the OTEL appender, and swaps the noop reference for the
-  real SDK. Logs emitted before this method runs are buffered in the appender's
-  replay queue (1000-event default) and replayed on install — so nothing is lost
-  in normal Spring Boot startup, but if `install()` is never called, log records
-  beyond the buffer are silently dropped. **The `@PostConstruct` IS the lesson** —
-  the silent-no-op trap is a textbook OTel logback gotcha (see
+- **Inline `OpenTelemetryAppender.install(sdk)` in the `@Bean` factory** —
+  the load-bearing PITFALL #5 mitigation (LOG-03 / D-08 / D-09). **The
+  order-of-operations problem:** Logback initializes BEFORE the Spring
+  `ApplicationContext` is built, so the `OpenTelemetryAppender` constructed
+  at startup defaults to `OpenTelemetry.noop()`. We call `install(sdk)`
+  inside the `@Bean` factory itself, immediately after
+  `OpenTelemetrySdk.builder()...build()` returns and before `return sdk` —
+  this avoids the Spring self-cycle that a `@PostConstruct` shape would
+  create (the `@Configuration` bean would have to autowire the
+  `OpenTelemetry` it itself produces) AND tightens the window in which logs
+  can land in the noop replay queue. `install()` walks the global
+  `LoggerContext`, finds every OTEL appender (including ones nested inside
+  wrapper appenders like the MDC injector), and swaps the noop reference
+  for the real SDK; the replay queue (1000-event default) is then drained.
+  Nothing is lost in normal Spring Boot startup, but if `install()` is
+  never called, log records beyond the buffer are silently dropped. **The
+  install-inline-in-the-`@Bean`-factory shape IS the lesson** — the
+  silent-no-op trap PLUS the Spring self-cycle that `@PostConstruct` would
+  create are textbook OTel logback gotchas (see
   [opentelemetry-java-instrumentation#10307](https://github.com/open-telemetry/opentelemetry-java-instrumentation/issues/10307)).
 
 `mise run demo:order` now produces a console line per service with `trace_id` /
