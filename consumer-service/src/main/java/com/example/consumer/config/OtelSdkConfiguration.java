@@ -44,7 +44,7 @@ import org.springframework.context.annotation.Configuration;
  * README "Why is OtelSdkConfiguration.java duplicated?" (DOC-05).
  *
  * <p><b>Why no autoconfigure?</b> The opentelemetry-sdk-extension-autoconfigure
- * artifact would read OTEL_* env vars magically and build the SDK behind
+ * artefact would read OTEL_* env vars magically and build the SDK behind
  * the scenes. We deliberately do NOT pull it in (see consumer-service/pom.xml).
  * The env-var contract is visible in code below — System.getenv()
  * with an explicit fallback. Phase 5 will reuse the same pattern
@@ -53,7 +53,7 @@ import org.springframework.context.annotation.Configuration;
  * <p><b>Why semconv-incubating?</b> The messaging conventions
  * (MessagingIncubatingAttributes — used by Plan 02-05 for the CONSUMER span)
  * and the deployment.environment.name attribute used below
- * (DeploymentIncubatingAttributes) live in the -incubating coord because
+ * (DeploymentIncubatingAttributes) live in the -incubating cord because
  * they are still evolving in the OTel spec. The stable semconv 1.40.0 jar
  * alone is NOT enough; both jars are pinned in consumer-service/pom.xml.
  *
@@ -81,7 +81,7 @@ public class OtelSdkConfiguration {
      *
      * Workshop default points at grafana/otel-lgtm exposed by docker-compose.
      * The endpoint MUST start with http:// or https:// — bare localhost:4317
-     * throws at builder time (verified in OtlpGrpcSpanExporterBuilder javadoc).
+     * throws at builder time (verified in OtlpGrpcSpanExporterBuilder Javadoc).
      */
     private static final String DEFAULT_OTLP_ENDPOINT = "http://localhost:4317";
 
@@ -115,7 +115,7 @@ public class OtelSdkConfiguration {
         // Resource.getDefault() carries the OTel-defined defaults including
         // SERVICE_NAME=unknown_service:java. We .merge() our overrides on
         // top — merge(other) puts `other` last, so OUR service.name wins.
-        // This neutralises the textbook "unknown_service:java" pitfall.
+        // This neutralizes the textbook "unknown_service:java" pitfall.
         //
         // service.instance.id uses UUID.randomUUID() so each `mise run dev:consumer`
         // appears as a distinct instance in Tempo. Correct for a workshop;
@@ -169,7 +169,7 @@ public class OtelSdkConfiguration {
     /**
      * Builds Phase 2's tracer pipeline. Extracted in Phase 4 (D-01) so the
      * sibling {@link #buildMeterProvider(Resource)} reads as a parallel block.
-     * Body is byte-for-byte identical to Phase 2's inline code — no behavior
+     * Body is byte-for-byte identical to Phase 2's inline code — no behaviour
      * change.
      */
     private SdkTracerProvider buildTracerProvider(Resource resource) {
@@ -197,7 +197,7 @@ public class OtelSdkConfiguration {
         //   max queue size  = 2048
         //   max export batch = 512
         //   exporter timeout = 30000 ms
-        // We deliberately use defaults — they're production-grade and they
+        // We deliberately use defaults — they're production-grade, and they
         // expose the right tradeoff (latency vs throughput). Phase 6 will
         // swap to SimpleSpanProcessor in @TestConfiguration so test
         // assertions are deterministic.
@@ -212,7 +212,7 @@ public class OtelSdkConfiguration {
         //
         // For production, swap to:
         //   Sampler.parentBased(Sampler.traceIdRatioBased(0.1))
-        // which keeps the parent-respecting behavior for distributed traces
+        // which keeps the parent-respecting behaviour for distributed traces
         // (so a sampled trace stays sampled across all hops via traceparent)
         // while sampling only 10% of brand-new root spans.
         //
@@ -236,7 +236,7 @@ public class OtelSdkConfiguration {
      *
      * <p>Three new SDK touch points (read top-to-bottom):
      * <ol>
-     *   <li>{@link OtlpGrpcMetricExporter} — same artifact and same env-var
+     *   <li>{@link OtlpGrpcMetricExporter} — same artefact and same env-var
      *       fallback as the trace exporter (D-04). The opentelemetry-exporter-otlp
      *       jar already on the classpath from Phase 2 ships span + metric + log
      *       exporters; no new pom dependency is needed.</li>
@@ -260,9 +260,9 @@ public class OtelSdkConfiguration {
         // Reuses the SAME endpoint pattern as the span exporter (D-04 / Phase 2 D-12
         // carryforward) — System.getenv with the DEFAULT_OTLP_ENDPOINT fallback. No
         // new env var; metrics flow to the same OTLP endpoint as traces. The
-        // opentelemetry-exporter-otlp artifact (already pulled in by Phase 2)
+        // opentelemetry-exporter-otlp artefact (already pulled in by Phase 2)
         // ships OtlpGrpcSpanExporter, OtlpGrpcMetricExporter, and
-        // OtlpGrpcLogRecordExporter from one jar — single artifact for all three
+        // OtlpGrpcLogRecordExporter from one jar — single artefact for all three
         // signals. Verify with `mvn dependency:tree -Dincludes=io.opentelemetry`.
         String endpoint = Optional.ofNullable(System.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"))
             .orElse(DEFAULT_OTLP_ENDPOINT);
@@ -291,7 +291,7 @@ public class OtelSdkConfiguration {
         //
         // No custom View / ExplicitBucketHistogramAggregation (D-15) — the SDK's
         // default bucket boundaries for http.server.request.duration (seconds)
-        // are spec'd by OTel and produce sensible workshop values. Tuning buckets
+        // are spec by OTel and produce sensible workshop values. Tuning buckets
         // for production is a real-world concern outside the SDK lesson.
         return SdkMeterProvider.builder()
             .setResource(resource)

@@ -5,7 +5,7 @@ import org.springframework.amqp.core.MessageProperties;
 
 /**
  * {@link TextMapGetter} that reads W3C trace-context header values from a
- * Spring AMQP {@link MessageProperties} carrier, defensively normalising
+ * Spring AMQP {@link MessageProperties} carrier, defensively normalizing
  * any non-String storage (AMQP {@code LongString}, raw {@code byte[]})
  * back to a {@link String} via {@link Object#toString()}.
  *
@@ -19,7 +19,7 @@ import org.springframework.amqp.core.MessageProperties;
  * real {@code String}, well-defined for {@code LongString}, and degrades
  * gracefully (UTF-8 decode) for unexpected {@code byte[]} arrivals.
  *
- * <p>Without this normalisation, an {@code instanceof String} check on the
+ * <p>Without this normalization, an {@code instanceof String} check on the
  * header value would fail for {@code LongString} arrivals → the W3C
  * extract returns {@code Context.root()} → the consumer span starts a NEW
  * root trace, recreating the Phase 2 broken state.

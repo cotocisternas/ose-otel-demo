@@ -10,11 +10,11 @@ You will run two Spring Boot apps on your laptop's JVM and two infrastructure co
 
 ### Required tools
 
-| Tool                          | Version       | Install                                                   |
-|-------------------------------|---------------|-----------------------------------------------------------|
-| mise                          | `≥ 2025.1.0`  | `curl https://mise.run \| sh`                              |
-| Docker Engine + Compose v2    | `≥ 24.0`      | https://docs.docker.com/engine/install/                   |
-| Git                           | `≥ 2.30`      | `brew install git` / `apt install git` / `pacman -S git`  |
+| Tool                       | Version      | Install                                                  |
+|----------------------------|--------------|----------------------------------------------------------|
+| mise                       | `≥ 2025.1.0` | `curl https://mise.run \| sh`                            |
+| Docker Engine + Compose v2 | `≥ 24.0`     | https://docs.docker.com/engine/install/                  |
+| Git                        | `≥ 2.30`     | `brew install git` / `apt install git` / `pacman -S git` |
 
 mise will install the right JDK and Maven for you on first `mise install`:
 
@@ -25,15 +25,15 @@ mise will install the right JDK and Maven for you on first `mise install`:
 
 ### Required free ports
 
-| Port | Service | Why |
-|------|---------|-----|
-| 3000 | Grafana UI | Common collision (React/Next.js dev servers) |
-| 4317 | OTLP gRPC ingest | Used from Phase 2 onwards |
-| 4318 | OTLP HTTP ingest | Reserved for HTTP-fallback variant |
-| 5672 | RabbitMQ AMQP | Standard AMQP port |
-| 15672 | RabbitMQ Management UI | Standard management port |
-| 8080 | producer-service HTTP | Spring Boot default |
-| 8081 | consumer-service HTTP | `/actuator/health` only |
+| Port  | Service                | Why                                          |
+|-------|------------------------|----------------------------------------------|
+| 3000  | Grafana UI             | Common collision (React/Next.js dev servers) |
+| 4317  | OTLP gRPC ingest       | Used from Phase 2 onwards                    |
+| 4318  | OTLP HTTP ingest       | Reserved for HTTP-fallback variant           |
+| 5672  | RabbitMQ AMQP          | Standard AMQP port                           |
+| 15672 | RabbitMQ Management UI | Standard management port                     |
+| 8080  | producer-service HTTP  | Spring Boot default                          |
+| 8081  | consumer-service HTTP  | `/actuator/health` only                      |
 
 If a port is in use, `mise run preflight` will tell you which one and suggest `lsof -i:<port>` to identify the conflicting process.
 

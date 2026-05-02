@@ -19,7 +19,7 @@ import org.springframework.stereotype.Component;
  * {@code @PostConstruct} that doesn't exist on the producer side. The
  * planner choice between D-18a (inline {@code @PostConstruct} in
  * OtelSdkConfiguration) and D-18b (this class) is documented in
- * 04-CONTEXT.md and 04-PATTERNS.md; the recommendation favors this shape
+ * 04-CONTEXT.md and 04-PATTERNS.md; the recommendation favours this shape
  * because it preserves the duplication-pedagogy of Phase 2 D-01 / DOC-05.
  *
  * <p><b>Why {@code ofLongs()} (D-19)?</b> The synthetic value is an
@@ -99,7 +99,7 @@ public class QueueDepthGauge {
      * {@code SdkMeterProvider.shutdown()}, which closes all registered
      * instruments including this one. So strictly speaking this method
      * is defensive: closing the gauge handle here gives us a single,
-     * readable cleanup point and prevents stale callback invocations
+     * readable clean-up point and prevents stale callback invocations
      * during the brief window between Spring tearing down beans (which
      * happens in DI-graph order) and the SDK actually shutting down.
      */
