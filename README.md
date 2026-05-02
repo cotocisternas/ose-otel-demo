@@ -412,6 +412,48 @@ Two new SDK patterns appear in this step that Phase 2–6 did not cover:
 
 2. Add a `db.client.operation.duration` histogram to `OrderRepository` — record `System.nanoTime()` before and after `jdbcTemplate.update(...)` and call `histogram.record(durationMs, ...)`. Verify the histogram appears in Mimir. Compare this with Phase 4's `http.server.request.duration` histogram — what attributes does each use?
 
+## Step 9: Dashboards & Infrastructure Telemetry
+
+### What you'll learn
+
+- The **two-lens telemetry model** that real production observability requires: app-emitted OTel telemetry (your code's spans + business metrics) sits next to dedicated infrastructure exporter metrics (the dependency's own view of itself).
+- How to scrape Prometheus exporters from inside the bundled `otel-lgtm` container by overriding `/otel-lgtm/prometheus.yaml` — without breaking the bundled `otlp:` ingest block that app metrics depend on.
+- Why the same physical thing — a connection, a queue, a memory page — looks different through each lens, and why the skew between the two is itself the lesson, not a bug.
+- How to enable the `rabbitmq_prometheus` plugin without swapping the RabbitMQ image, and how to run `oliver006/redis_exporter` against Valkey 8.x and `prometheuscommunity/postgres-exporter` against the workshop's PostgreSQL.
+
+### Checkpoint
+
+Workshop is at `main` HEAD past the most recent `step-NN` tag; Step 9 is delivered as quick task `260502-j00`. The orchestrator MAY apply an annotated tag `step-09-dashboards` at exit gate per WORK-01 / D-09 — if applied, `git checkout step-09-dashboards` jumps to this point. Otherwise reference the quick task ID `260502-j00` in `.planning/STATE.md`.
+
+### Run
+
+```bash
+mise run infra:up
+# Validate the new exporters are scrapable:
+curl -sS http://localhost:15692/metrics | head -5
+docker exec ose-otel-lgtm wget -qO- 'http://localhost:9090/api/v1/query?query=up{job=~"rabbitmq|redis_exporter|postgres_exporter"}' | python3 -m json.tool
+# Generate traffic so panels populate:
+mise run dev      # in another terminal
+mise run load     # in a third terminal — drives ~1 req/sec for 60s
+# Open the new dashboard:
+open http://localhost:3000/d/ose-otel-infra
+```
+
+### What to look for
+
+- **Header row, 4 stat panels, all green** — `redis_up=1`, `pg_up=1`, `up{job="rabbitmq"}=1`, "Active OTel services" ≥ 2 once `mise run dev` is running.
+- **HTTP / AMQP row** (panel 6 vs 7): `rabbitmq_queue_messages` from the broker's own perspective alongside the producer-emitted `orders_queue_depth_estimate` gauge — same queue, two views.
+- **Cache row** (panels 9 + 11): `redis_keyspace_hits_total` / `redis_keyspace_misses_total` rate (server perspective) next to a Tempo table of `SET` spans (client perspective). The hit rate increments 1:1 with each successful idempotent SET your producer emitted.
+- **Database row — the centerpiece** (panels 12 vs 13): `db_client_connection_count{service_name="order-consumer"}` (HikariCP pool gauge from Phase 8) right next to `pg_stat_database_numbackends{datname="orders"}` (postgres_exporter scrape). Both measure the same physical pool, from opposite ends of the wire. They should track each other within ±1 connection during steady-state load. Panel 14 (`pg_stat_database_tup_inserted_total` rate) and panel 15 (Tempo `INSERT processed_orders` spans) are the same client-vs-server contrast for write throughput.
+- **Broker row** (panels 16-18): `rabbitmq_queue_messages` per queue, `rabbitmq_queue_consumers` per queue, and the publish/deliver rate from `rabbitmq_global_messages_*_total`. These are the metrics a paged operator looks at first when the queue depth alarm fires.
+- **Cross-links at the dashboard top** navigate to `/d/ose-otel-demo` and `/d/ose-otel-noc`. Both must still render unchanged — Phase 7 invariants are preserved by Step 9.
+
+### Why it matters
+
+Production observability is **never** a single source. Application code reports what it asked the dependency to do; the dependency reports what actually happened on its side. When the two diverge — the pool says 5 connections, the database says 12 — that gap is a real signal: a session leaked, a connection was held outside the pool, a worker forked and never closed its handle. A workshop that teaches only one lens leaves attendees one bug away from a production incident they cannot diagnose. Step 9 is the chapter where that lesson becomes mechanical — drag the same metric through two different paths into Grafana and read both panels.
+
+> **Production callout: do NOT reuse the application's database user for postgres_exporter in production.** This workshop wires `postgres-exporter` with `DATA_SOURCE_NAME=postgresql://orders:orders@postgres:5432/orders` to keep the compose file minimal. In a real deployment, create a dedicated read-only role and grant `pg_monitor`. The boundary lesson — exporter as a separate principal with the minimum privilege required — is what survives translation to production.
+
 ## Concepts & FAQ
 
 The following four sections collect the narrative deep-dives the per-step *Why it matters* paragraphs cross-reference. They preserve a second reading mode: skim the per-step walkthrough top-to-bottom, then dive into the conceptual narrative — or read this section first and use the per-step blocks as worked examples.
@@ -464,6 +506,30 @@ Spring Data JPA hides the SQL behind a proxy — `@Repository` interfaces genera
 ### Why is Valkey treated as "redis" in OTel semconv?
 
 Valkey is a Redis-compatible fork (created in 2024 after Redis 7.2's license change) and speaks the identical RESP protocol. OpenTelemetry semconv 1.40.0 defines the `db.system.name` attribute with a fixed set of recognized values — "valkey" is not yet in that set. The incubating semconv (`opentelemetry-semconv-incubating:1.40.0-alpha`) includes `DbIncubatingAttributes.DbSystemNameIncubatingValues.REDIS = "redis"`. Since Valkey is wire-compatible with Redis and the Jedis client connects transparently, "redis" is the correct OTel value for Valkey today. When/if the OTel spec adds "valkey" to the stable semconv (tracked in the semantic-conventions repository), the constant to use will change — but the code structure stays identical.
+
+### What is the two-lens telemetry model and why does it matter?
+
+The two-lens model says: every dependency in your system is observable from two sides, and both lenses are necessary in production.
+
+- **Lens 1 — app-emitted telemetry**: spans, metrics, and logs your code emits via the OTel SDK. This is the **client-side** view — what *your code* asked the dependency to do, how long the call took from the application's perspective, what error message your client library raised. Every Phase 2–8 instrumentation site in this workshop is a lens-1 surface: the producer's `SET` span, the consumer's `INSERT processed_orders` span, the HikariCP `db_client_connection_count` gauge.
+- **Lens 2 — infrastructure exporter telemetry**: Prometheus metrics scraped from a sidecar exporter that connects directly to the dependency. This is the **server-side** view — what *the dependency itself* sees. The RabbitMQ Prometheus plugin's `rabbitmq_queue_messages` is the broker reporting its own queue depth. `redis_keyspace_hits_total` is Valkey reporting how many GET/SET commands actually hit a key. `pg_stat_database_numbackends` is Postgres reporting how many connections it has accepted.
+
+Neither lens alone is sufficient. Lens 1 misses anything that doesn't go through your client library — DBA-issued queries, replication lag, memory eviction caused by another tenant. Lens 2 misses everything about the application's intent — which span asked for the SET, which trace this connection belongs to, which user initiated the request. **The worked example**: the producer emits a `SET` CLIENT span every time it tries to claim an idempotency key. `redis_keyspace_hits_total` increments once for every successful `SET`. The two should rise in lockstep — when they don't, the diff tells you exactly where the loss happened (network drop? client retry? key collision? exporter scrape skew?). That is what production observability looks like.
+
+### Why does the dashboard show two different connection-count series for Postgres?
+
+Panel 12 of the Step 9 dashboard plots `db_client_connection_count{service_name="order-consumer"}`. Panel 13 plots `pg_stat_database_numbackends{datname="orders"}`. They look like the same metric. They are not.
+
+- `db_client_connection_count` is emitted by the consumer's `HikariCpConnectionGauge` ObservableGauge. It reports what the **HikariCP connection pool** thinks is true — how many connections the pool has open, how many are in use, how many are idle waiting for a borrower. The OTel SDK samples this gauge every 10 seconds via callback.
+- `pg_stat_database_numbackends` is scraped by `postgres_exporter` from `pg_stat_database`, the Postgres system catalog view. It reports what **the database itself** sees — how many backend processes are currently connected to the `orders` database, regardless of who opened them.
+
+Skew between the two is normal. Causes: different scrape phases (HikariCP samples on the OTel collection cycle; postgres_exporter on the Prometheus scrape interval — they are not synchronized), connection-pool ramp-up and shrink, transient network state during connection setup or teardown. Equality within ±1 is healthy. Sustained mismatch (e.g., HikariCP says 5, Postgres says 12) is the production debug signal: someone is opening Postgres sessions outside the HikariCP pool. Maybe a cron script. Maybe a DBA. Maybe a bug. The dashboard makes the gap visible; the diagnosis is yours.
+
+### Why does the Step 9 prometheus.yaml override preserve the bundled otlp: block?
+
+The `otel-lgtm` 0.26.0 image ships a `/otel-lgtm/prometheus.yaml` whose only top-level keys are `global:`, `otlp:`, and `storage:`. There are **no** `scrape_configs:`. Inside the container, app-emitted OTLP metrics (the `service_name=order-producer` / `order-consumer` series the workshop dashboard uses) flow into Prometheus via that `otlp:` ingest block — Prometheus accepts OTLP/HTTP directly, no separate Collector receiver in the data path.
+
+Step 9 needs to add three Prometheus *scrape* targets (the new exporters). Bind-mounting our own `prometheus.yaml` over the bundled one is the documented mechanism (see [`grafana/docker-otel-lgtm`](https://github.com/grafana/docker-otel-lgtm)). The trap: if you write a `prometheus.yaml` with only your three new scrape jobs and forget the `otlp:` block, the override silently disables OTLP ingest. The workshop dashboard's panels — every series with `service_name=...` — go empty. App metrics are gone. The fix is to copy the bundled `global:` / `otlp:` / `storage:` blocks verbatim and **append** `scrape_configs:`. The Step 9 `grafana/prometheus.yaml` does exactly that and carries an inline comment explaining why.
 
 ---
 
