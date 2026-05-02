@@ -34,6 +34,7 @@ import io.opentelemetry.sdk.trace.samplers.Sampler;
 import io.opentelemetry.semconv.ServiceAttributes;
 import io.opentelemetry.semconv.incubating.DeploymentIncubatingAttributes;
 
+import jakarta.annotation.PreDestroy;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -219,10 +220,23 @@ public class OtelSdkConfiguration {
         // never called, logs beyond the 1000-event buffer are permanently
         // dropped.
         //
-        // Idempotency: install() is safe to call multiple times — the
-        // appender's volatile OpenTelemetry field is simply reassigned.
-        // Calling it with OpenTelemetry.noop() effectively "uninstalls"
-        // exporting (used in Phase 6 tests).
+        // Idempotency / GLOBAL STATE (workshop-level warning): install() walks
+        // the global Logback LoggerContext and reassigns the appender's
+        // `volatile OpenTelemetry` field. Calling install() multiple times is
+        // safe — the field is simply reassigned — and calling it with
+        // OpenTelemetry.noop() effectively "uninstalls" exporting (used in the
+        // shutdown @PreDestroy hook below, and in Phase 6 tests).
+        //
+        // The flip side of "idempotent" is "double-install clobbers": if any
+        // other code in the SAME JVM (Phase 6 Testcontainers tests, a future
+        // dev-loop reload that rebuilds the SDK without restarting the JVM,
+        // a shared test harness) builds a second OpenTelemetrySdk and calls
+        // install() on it, the appender's reference jumps to the new SDK and
+        // any spans/logs still in flight on the OLD SDK become orphans that
+        // never flush. This is the textbook "double-install" pitfall on the
+        // static install pattern. Phase 6 mitigates by calling install(noop)
+        // between test methods; production code with a single SDK lifetime is
+        // unaffected.
         //
         // FQCN landmine (RESEARCH Risk #1): the import at the top of this file
         // is io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender
@@ -233,6 +247,34 @@ public class OtelSdkConfiguration {
         OpenTelemetryAppender.install(sdk);
 
         return sdk;
+    }
+
+    /**
+     * Shutdown hook: clear the OpenTelemetryAppender's reference to the SDK
+     * before Spring closes it (D-08 carryforward — bookend to the inline
+     * install() on line 233).
+     *
+     * <p>Why: {@code OpenTelemetryAppender.install(sdk)} writes to global
+     * Logback state — the appender holds a strong reference to the SDK. The
+     * SDK bean's {@code destroyMethod="close"} closes the SDK during Spring
+     * shutdown, but it does NOT clear the appender's reference. Any log
+     * event that races the shutdown (Spring shutdown is asynchronous; AMQP
+     * listeners, thread pools, and `@PreDestroy` hooks can still emit logs
+     * while the SDK is closing) would then hit a closed exporter and either
+     * silently drop or surface an "exporter is closed" error.
+     *
+     * <p>{@code install(OpenTelemetry.noop())} swaps the appender's reference
+     * for a no-op SDK that accepts log events and discards them — the
+     * idempotent uninstall path documented on the {@code openTelemetry()}
+     * @Bean above. {@code @PreDestroy} runs BEFORE the SDK bean's
+     * {@code close()} (Spring destroys beans in reverse-creation order, but
+     * the @PreDestroy on this @Configuration class runs as part of THIS
+     * bean's destruction — which is fine because we depend on no SDK
+     * reference here, just the static install() call).
+     */
+    @PreDestroy
+    void uninstallLogbackAppender() {
+        OpenTelemetryAppender.install(OpenTelemetry.noop());
     }
 
     /**
