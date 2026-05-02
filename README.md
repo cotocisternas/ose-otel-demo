@@ -71,8 +71,8 @@ In Phase 1 there is **no telemetry** — the OTLP endpoint is open and the Grafa
 - `step-02-traces` — Manual SDK bootstrap; producer and consumer emit DISCONNECTED traces (intentional setup for the Phase 3 propagation lesson).
 - `step-03-context-propagation` — THE headline lesson: AMQP context propagation joins the two traces; `consumer.parentSpanId == producer.spanId` after this checkpoint.
 - `step-04-metrics` — `SdkMeterProvider` lands as a sibling pipeline next to the tracer pipeline; `orders.created` (Counter), `http.server.request.duration` (Histogram, seconds), `orders.queue.depth.estimate` (ObservableGauge) flow to Mimir on a 10-second interval.
-- `step-05-logs` — Logs correlation + Loki-to-Tempo click-through. **Current.**
-- `step-06-tests` — (Phase 6) Testcontainers verification.
+- `step-05-logs` — Logs correlation + Loki-to-Tempo click-through.
+- `step-06-tests` — Cross-service Testcontainers IT proves the full instrumentation chain in CI. **Current.**
 
 This section establishes the convention; Phase 7 turns each bullet into a full walkthrough.
 
@@ -257,6 +257,35 @@ Tracked under threat-model row T-05-04-01 (producer payload disclosure)
 in `.planning/phases/05-logs-correlation/05-04-SUMMARY.md`; the
 consumer-side concern is the symmetric case on the failure path.
 
+## Step 6: Verification Tests
+
+`step-06-tests` adds a CI-grade proof of the three-signal instrumentation chain. A new top-level [`integration-tests`](./integration-tests) Maven module hosts a single cross-service [`OrderFlowIT.java`](./integration-tests/src/test/java/com/example/e2e/OrderFlowIT.java) that starts a real `RabbitMQContainer` on a random port, launches both `ProducerApplication` and `ConsumerApplication` as two `SpringApplicationBuilder` contexts in one JVM, exercises the full `POST /orders` → publish → consume flow through real broker traffic, and asserts on traces + logs + metrics captured in-memory. Run it with `mise run test`; the build exits non-zero on any assertion failure (TEST-06).
+
+The four `@Test` methods cover the workshop's four signal areas:
+
+- **`RabbitMQContainer` on a random port** — the `@BeforeAll` method emits an explicit `LOG.info("RabbitMQ test container available at {}:{}", ...)` line that prints something like `RabbitMQ test container available at localhost:54321` in the test log (NOT the default `:5672`). With your host `docker compose` RabbitMQ stopped, the tests still pass — proof that Testcontainers is genuinely used (TEST-01).
+
+- **`SimpleSpanProcessor` + `InMemorySpanExporter` swap** — production wires `BatchSpanProcessor` + `OtlpGrpcSpanExporter`, but tests use [`TestOtelHolder`](./integration-tests/src/test/java/com/example/e2e/TestOtelHolder.java) which builds the SDK with the synchronous `SimpleSpanProcessor` and the in-memory exporter from `opentelemetry-sdk-testing`. Every `span.end()` exports immediately — no `Thread.sleep` needed in tests. PITFALLS.md #4 / #11 made manifest in code.
+
+- **`<classifier>exec</classifier>` on the service POMs** — the producer and consumer service POMs publish TWO artifacts: the plain classes jar (default — exposes `ProducerApplication.class` directly on the classpath) and a separate `-exec` repackaged executable fat jar (runnable with `java -jar`). The integration-tests module depends on the plain jars so `new SpringApplicationBuilder(ProducerApplication.class, ...)` works. See [`producer-service/pom.xml`](./producer-service/pom.xml) for the canonical Spring Boot 3.4.13 syntax — a useful pattern for any multi-module Spring Boot codebase.
+
+- **The four `@Test` methods**:
+  1. **traces** — producer + consumer spans share `traceId`; consumer's `parentSpanId == producer.spanId`; SpanKind set covers SERVER + INTERNAL + PRODUCER + CONSUMER + INTERNAL; messaging semconv attributes (`messaging.system=rabbitmq`, `messaging.operation_type=publish/process`).
+  2. **logs** — producer-side `LOG.info` records carry the producer trace's `trace_id` (proves Phase 5's `OpenTelemetryAppender.install(...)` wiring still works through the test SDK).
+  3. **metrics** — `orders.created` counter increments to 1 with `order.priority="express"`; `http.server.request.duration` histogram records the POST with `http.request.method=POST` + `http.response.status_code=202`.
+  4. **failure path** — the 10th order's CONSUMER span has `Status.ERROR` + a recorded exception event; a `LOG.error` record carries the same trace_id (triple-signal correlation — the workshop's strongest single statement of "all three signals work together").
+
+- **Production-vs-test SDK divergence as a deliberate pedagogical contrast** — Phase 2's per-service duplication of `OtelSdkConfiguration.java` is a PRODUCTION rule (D-01 / DOC-05). Test infrastructure is exempt: [`TestOtelConfiguration.java`](./integration-tests/src/test/java/com/example/e2e/TestOtelConfiguration.java) is a single `@TestConfiguration` shared by both Spring contexts because the in-memory exporter must see ALL spans across both services in one queue. The contrast itself is the lesson — duplicate when readers benefit from reading the same setup twice; share when the test fixture's purpose requires one shared instance.
+
+Run the suite (with your host `docker compose` RabbitMQ stopped, to prove Testcontainers is genuinely used):
+
+```bash
+docker compose stop rabbitmq        # if currently running
+mise run test                       # → mvn -T 1C verify
+```
+
+You should see four green tests in the Failsafe summary plus a `RabbitMQ test container available at localhost:<random-port>` line in the output. The test exits non-zero on any assertion failure — suitable for any CI runner with Docker available.
+
 ## Reading the code
 
 The two `OtelSdkConfiguration.java` files are the workshop's textbook for the manual SDK setup. Open them in your IDE and read top-to-bottom — every `@Bean` carries an inline comment explaining what each builder call does and why (DOC-03):
@@ -291,5 +320,4 @@ Phase 3 also corrects an OTel messaging semconv divergence from Phase 2: the pro
 The following are deliberate Phase 1 omissions — the repo isn't incomplete, it's **uninstrumented on purpose** so each later phase has something concrete to add:
 
 - No `OtelSdkConfiguration.java` (Phase 2)
-- No integration tests (Phase 6)
 - No pre-built Grafana dashboard or load script (Phase 7)
