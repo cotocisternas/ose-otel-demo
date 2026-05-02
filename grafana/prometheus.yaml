@@ -8,6 +8,10 @@
 # (app-emitted OTel metrics vs exporter-scraped Prometheus metrics).
 ---
 global:
+  # Workshop demo cadence — bundled otel-lgtm omits this knob, so Prometheus
+  # falls back to its 1m default; 10s gives every dashboard rate window
+  # (1m → 6 samples, 5m → 30) plenty of headroom past PromQL's rule-of-4.
+  scrape_interval: 10s
   scrape_native_histograms: true
 otlp:
   keep_identifying_resource_attributes: true
