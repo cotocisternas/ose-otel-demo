@@ -9,6 +9,8 @@ import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -37,6 +39,8 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class ProcessingService {
+    private static final Logger LOG = LoggerFactory.getLogger(ProcessingService.class);
+
     private final Tracer tracer;
 
     // Phase 3: deterministic 10%-failure trigger (APP-04 + D-11). Spring
@@ -65,11 +69,31 @@ public class ProcessingService {
             // Successful processing path — Phase 1 placeholder retained
             // (simulated domain work, in-memory).
         } catch (RuntimeException e) {
-            // D-03 catch shape from Phase 2 — preserved unchanged.
+            // D-03 catch shape from Phase 2 — preserved unchanged below.
             // ProcessingFailedException extends RuntimeException, so it
             // is caught here (TRACE-09). The advice's catch (Throwable)
             // also records this on the CONSUMER span when the rethrow
             // bubbles up.
+            //
+            // Phase 5 D-16: LOG.error is the Loki-side counterpart to
+            // span.recordException — both signals carry the same trace_id
+            // and span_id (Span.current() is valid here per RESEARCH
+            // Finding #7; the active span is this method's INTERNAL span,
+            // wrapped by Phase 3's CONSUMER span). The Loki query
+            // {service_name="order-consumer"} |~ "<traceId>" returns this
+            // log line, and clicking the trace_id field opens the trace
+            // in Tempo with the recordException event already attached on
+            // the CONSUMER span. This is the FIRST LOG.error in the
+            // codebase — Phase 5 establishes the triple-signal-on-failure
+            // idiom (Loki ERROR log + Tempo recordException event + ERROR
+            // status on both INTERNAL and CONSUMER spans).
+            //
+            // SLF4J's throwable-as-last-arg idiom: the trailing `e` is
+            // treated as the exception (its stack trace is rendered by
+            // Logback automatically) — NOT bound to a {} placeholder.
+            // The single {} placeholder matches `orderId`.
+            Object orderId = order.get("orderId");
+            LOG.error("order processing failed: orderId={}", orderId, e);
             span.recordException(e);
             span.setStatus(StatusCode.ERROR);
             throw e;
