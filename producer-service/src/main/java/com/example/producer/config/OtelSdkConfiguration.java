@@ -32,9 +32,6 @@ import io.opentelemetry.sdk.trace.samplers.Sampler;
 import io.opentelemetry.semconv.ServiceAttributes;
 import io.opentelemetry.semconv.incubating.DeploymentIncubatingAttributes;
 
-import jakarta.annotation.PostConstruct;
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -87,19 +84,6 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 public class OtelSdkConfiguration {
-
-    /**
-     * SDK handle injected by Spring after the {@link #openTelemetry()} @Bean
-     * factory returns. Used by {@link #installLogbackAppender()} to wire the
-     * {@link OpenTelemetryAppender} (LOG-03 / D-08).
-     *
-     * <p>The {@code @Autowired} on a field shape (rather than assigning
-     * {@code this.openTelemetry = sdk} inside the @Bean factory body) is the
-     * RESEARCH §C recommendation — makes the dependency visible in the field
-     * declaration and reads naturally to a workshop attendee.
-     */
-    @Autowired
-    private OpenTelemetry openTelemetry;
 
     /**
      * Default OTLP endpoint when OTEL_EXPORTER_OTLP_ENDPOINT is unset.
@@ -186,62 +170,60 @@ public class OtelSdkConfiguration {
         // SdkTracerProvider.shutdown() AND SdkMeterProvider.shutdown() AND
         // SdkLoggerProvider.shutdown() — no new lifecycle annotation needed for
         // the logger pipeline (D-06 / Phase 4 D-07 / Phase 2 D-15 carryforward).
-        return OpenTelemetrySdk.builder()
+        OpenTelemetrySdk sdk = OpenTelemetrySdk.builder()
             .setTracerProvider(tracerProvider)
             .setMeterProvider(meterProvider)
             .setLoggerProvider(loggerProvider)
             .setPropagators(propagators)
             .build();
-    }
 
-    /**
-     * Wires the OTLP log-export appender to the SDK AFTER the @Bean factory
-     * has returned (LOG-03 + PITFALL #5 mitigation / D-08 + D-09).
-     *
-     * <p><b>The order-of-operations problem:</b> Logback initializes BEFORE the
-     * Spring ApplicationContext is built. Spring Boot's LoggingApplicationListener
-     * loads logback-spring.xml from classpath at startup, which constructs an
-     * {@link OpenTelemetryAppender} instance with its OpenTelemetry reference
-     * defaulting to {@link io.opentelemetry.api.OpenTelemetry#noop()}. Every log
-     * event emitted between Logback init and {@code install()} is buffered in
-     * the appender's replay queue (default 1000 events — knob:
-     * {@code <numLogsCapturedBeforeOtelInstall>} in logback-spring.xml).
-     *
-     * <p><b>Why this method runs AFTER the @Bean factory:</b> Spring's lifecycle
-     * guarantees @PostConstruct runs after all @Bean factory methods return AND
-     * after dependency injection completes. By the time {@code installLogbackAppender()}
-     * fires, {@code this.openTelemetry} is the fully-built SDK with its
-     * {@link SdkLoggerProvider} ready to receive log records.
-     *
-     * <p><b>What install() does:</b> Walks the global {@link ch.qos.logback.classic.LoggerContext},
-     * finds every {@link OpenTelemetryAppender} (including ones nested inside
-     * wrapper appenders like the MDC injector), and swaps the noop OpenTelemetry
-     * reference for the real SDK. The replay queue is then drained — logs from
-     * BEFORE this method ran are forwarded to the OTLP exporter, retroactively
-     * stamped with attributes from the (now valid) OpenTelemetry instance.
-     *
-     * <p><b>Documented quirk:</b> This is the entire reason PITFALL #5 exists.
-     * See <a href="https://github.com/open-telemetry/opentelemetry-java-instrumentation/issues/10307">
-     * open-telemetry/opentelemetry-java-instrumentation#10307</a>. The replay
-     * buffer (added in earlier 1.x) softens the loss but does NOT eliminate it:
-     * if install() is never called, logs beyond the 1000-event buffer are
-     * permanently dropped.
-     *
-     * <p><b>Idempotency:</b> install() is safe to call multiple times — the
-     * appender's volatile OpenTelemetry field is simply reassigned. Calling it
-     * with {@link io.opentelemetry.api.OpenTelemetry#noop()} effectively
-     * "uninstalls" exporting (used in Phase 6 tests).
-     *
-     * <p><b>FQCN landmine (RESEARCH Risk #1):</b> the import at the top of this
-     * file is {@code io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender}
-     * — the OTLP-export class that has the static {@code install()} method.
-     * The sibling artifact {@code opentelemetry-logback-mdc-1.0} ships a class
-     * with the SAME name in {@code .mdc.v1_0} package — that one does NOT have
-     * {@code install()} and is NOT what we want here.
-     */
-    @PostConstruct
-    void installLogbackAppender() {
-        OpenTelemetryAppender.install(this.openTelemetry);
+        // ----- LOG-03 / PITFALL #5: install the OpenTelemetryAppender HERE -----
+        //
+        // The order-of-operations problem: Logback initializes BEFORE the Spring
+        // ApplicationContext is built. Spring Boot's LoggingApplicationListener
+        // loads logback-spring.xml from classpath at startup, which constructs an
+        // OpenTelemetryAppender instance with its OpenTelemetry reference
+        // defaulting to OpenTelemetry.noop(). Every log event emitted between
+        // Logback init and install() is buffered in the appender's replay queue
+        // (default 1000 events — knob: <numLogsCapturedBeforeOtelInstall> in
+        // logback-spring.xml).
+        //
+        // We call install(sdk) HERE — inside the @Bean factory, just before
+        // returning — rather than from a @PostConstruct method on this same
+        // @Configuration class. The @PostConstruct shape would create a Spring
+        // self-cycle: the @Configuration bean would need to autowire the
+        // OpenTelemetry it itself produces. Calling install(sdk) right where the
+        // SDK is constructed sidesteps the cycle entirely AND tightens the
+        // window in which logs can land in the noop replay queue.
+        //
+        // What install() does: walks the global ch.qos.logback.classic.LoggerContext,
+        // finds every OpenTelemetryAppender (including ones nested inside
+        // wrapper appenders like the MDC injector), and swaps the noop
+        // OpenTelemetry reference for the real SDK. The replay queue is then
+        // drained — logs from BEFORE this line are forwarded to the OTLP
+        // exporter, retroactively stamped with attributes from the (now valid)
+        // OpenTelemetry instance.
+        //
+        // Documented quirk: this is the entire reason PITFALL #5 exists. See
+        // open-telemetry/opentelemetry-java-instrumentation#10307. The replay
+        // buffer softens the loss but does NOT eliminate it: if install() is
+        // never called, logs beyond the 1000-event buffer are permanently
+        // dropped.
+        //
+        // Idempotency: install() is safe to call multiple times — the
+        // appender's volatile OpenTelemetry field is simply reassigned.
+        // Calling it with OpenTelemetry.noop() effectively "uninstalls"
+        // exporting (used in Phase 6 tests).
+        //
+        // FQCN landmine (RESEARCH Risk #1): the import at the top of this file
+        // is io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender
+        // — the OTLP-export class that has the static install() method. The
+        // sibling artifact opentelemetry-logback-mdc-1.0 ships a class with the
+        // SAME name in .mdc.v1_0 package — that one does NOT have install() and
+        // is NOT what we want here.
+        OpenTelemetryAppender.install(sdk);
+
+        return sdk;
     }
 
     /**
