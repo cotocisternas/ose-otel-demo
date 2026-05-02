@@ -30,6 +30,13 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      # Workshop UX (Phase 7 D-01 spirit — "zero clicks, zero Grafana navigation"):
+      # anonymous access is enabled with Admin role so attendees and the screenshot
+      # capture pipeline (DOC-04) can land directly on dashboards without a login form.
+      # The admin/admin credentials above remain available for the Grafana settings UI.
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
     volumes:
       - lgtm-data:/data  # persists Grafana state across infra:down/up cycles (Pitfall D)
       - ./grafana/dashboards:/otel-lgtm/grafana/conf/provisioning/dashboards:ro  # WORK-02 / Phase 7 D-01 — auto-provision dashboards

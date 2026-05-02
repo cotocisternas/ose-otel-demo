@@ -22,6 +22,7 @@
 
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
@@ -31,8 +32,9 @@ const REPO_ROOT = resolve(__dirname, '..', '..');
 const OUTPUT_DIR = resolve(REPO_ROOT, 'docs', 'screenshots');
 
 const GRAFANA_URL = process.env.GRAFANA_URL || 'http://localhost:3000';
-const GRAFANA_USER = process.env.GRAFANA_USER || 'admin';
-const GRAFANA_PASS = process.env.GRAFANA_PASS || 'admin';
+// Grafana auth is disabled in docker-compose (`GF_AUTH_ANONYMOUS_ENABLED=true`,
+// `GF_AUTH_DISABLE_LOGIN_FORM=true`); admin/admin credentials still exist for the
+// settings UI but the capture pipeline does not need them.
 const DASHBOARD_UID = 'ose-otel-demo';
 const WARMUP_MS = Number(process.env.WARMUP_MS || 30_000);
 
@@ -102,30 +104,17 @@ const CAPTURES = [
 ];
 
 // ---------------------------------------------------------------------------
-// Auth helper — login once, reuse storage state across all captures (D-05).
-// ---------------------------------------------------------------------------
-async function loginAndStoreState(browser) {
-  const context = await browser.newContext();
-  const page = await context.newPage();
-  await page.goto(`${GRAFANA_URL}/login`);
-  // Grafana login form selectors — verified against otel-lgtm v0.26.0 bundled Grafana.
-  // If selectors break across Grafana versions, the script reports a clear error and exits.
-  await page.fill('input[name="user"]', GRAFANA_USER);
-  await page.fill('input[name="password"]', GRAFANA_PASS);
-  await page.click('button[type="submit"]');
-  await page.waitForURL(/\/$|\/dashboards/, { timeout: 15_000 });
-  const storage = await context.storageState();
-  await context.close();
-  return storage;
-}
-
-// ---------------------------------------------------------------------------
 // Per-tag capture: cycles git tag, brings up infra + dev + load, screenshots,
 // then tears down. The actual cycling logic lives in this Wave-1 scaffold but
 // is exercised by Wave 2 (plan 07-04).
+//
+// Auth: none. Grafana is configured with `GF_AUTH_ANONYMOUS_ENABLED=true`
+// (Admin role) and `GF_AUTH_DISABLE_LOGIN_FORM=true` in docker-compose.yml,
+// so navigations land directly on dashboards/Explore without a login form
+// (Phase 7 D-01 alignment — zero clicks, zero Grafana navigation).
 // ---------------------------------------------------------------------------
-async function captureForTag(browser, storageState, capture) {
-  const context = await browser.newContext({ storageState });
+async function captureForTag(browser, capture) {
+  const context = await browser.newContext();
   const page = await context.newPage();
   const { from, to } = fixedTimeRange();
   const outPath = resolve(OUTPUT_DIR, capture.output);
@@ -178,14 +167,36 @@ async function main() {
   await mkdir(OUTPUT_DIR, { recursive: true });
   console.log(`output dir: ${OUTPUT_DIR}`);
 
-  const browser = await chromium.launch({ headless: true });
+  // Plan 07-04 / Wave 2: when invoked once per tag from the mise driver, restrict the
+  // CAPTURES iteration to entries matching the current checkout's tag. Without the
+  // filter, every per-tag invocation would attempt all seven captures against the
+  // wrong checkout and write the same files seven times.
+  const TAG_FILTER = process.env.CAPTURE_TAG_FILTER;
+  const filtered = TAG_FILTER ? CAPTURES.filter(c => c.tag === TAG_FILTER) : CAPTURES;
+  if (TAG_FILTER) {
+    console.log(`CAPTURE_TAG_FILTER=${TAG_FILTER} — running ${filtered.length} of ${CAPTURES.length} captures`);
+  }
+
+  // Prefer system chromium when present (Arch, Fedora, Ubuntu+google-chrome).
+  // Fall back to Playwright's bundled chromium when no system binary is found
+  // (e.g., CI containers). PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH lets the operator
+  // override the auto-detection. Rule-3 deviation (07-04): the original
+  // `playwright install --with-deps chromium` call fails on Arch Linux because
+  // Playwright's install-deps only knows apt-get/dnf/yum, not pacman.
+  const executablePath =
+    process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ||
+    (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' :
+     existsSync('/usr/bin/chromium-browser') ? '/usr/bin/chromium-browser' :
+     existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome' :
+     undefined);
+  const browser = await chromium.launch({ headless: true, executablePath });
   try {
-    const storage = await loginAndStoreState(browser);
-    for (const c of CAPTURES) {
+    for (const c of filtered) {
       // The driving loop assumes the *current* checkout matches `c.tag` and infra+dev+load
       // are already running with `WARMUP_MS` of warm-up traffic. Wave 2 / plan 07-04
       // wraps this script with the per-tag git-worktree cycle.
-      await captureForTag(browser, storage, c);
+      // Anonymous Grafana access (see captureForTag header) means no auth context needed.
+      await captureForTag(browser, c);
     }
   } finally {
     await browser.close();
