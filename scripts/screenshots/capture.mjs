@@ -114,7 +114,26 @@ async function loginAndStoreState(browser) {
   await page.fill('input[name="user"]', GRAFANA_USER);
   await page.fill('input[name="password"]', GRAFANA_PASS);
   await page.click('button[type="submit"]');
-  await page.waitForURL(/\/$|\/dashboards/, { timeout: 15_000 });
+
+  // Wait for ANY navigation away from /login. Grafana 13 may land on:
+  //   - /?orgId=1               (normal)
+  //   - /profile/password        (default admin/admin password-change prompt)
+  //   - /                        (no querystring)
+  await page.waitForURL(url => !new URL(url).pathname.startsWith('/login'), { timeout: 20_000 });
+
+  // If Grafana shows the "change password" prompt, click Skip.
+  // Selector: button with text "Skip" inside the change-password form.
+  // (Grafana 13 uses data-testid="data-testid Skip change password button" — fall back to text match.)
+  try {
+    const skipBtn = page.locator('button:has-text("Skip")').first();
+    if (await skipBtn.isVisible({ timeout: 2_000 })) {
+      await skipBtn.click();
+      await page.waitForURL(url => !new URL(url).pathname.startsWith('/profile/password'), { timeout: 10_000 });
+    }
+  } catch {
+    // No skip prompt — proceed.
+  }
+
   const storage = await context.storageState();
   await context.close();
   return storage;
