@@ -4,7 +4,7 @@
 
 services:
   rabbitmq:
-    image: rabbitmq:4.3-management
+    image: rabbitmq:4.3-management-alpine
     container_name: ose-otel-rabbitmq
     environment:
       # Step 9 (quick-260502-j00): enable the rabbitmq_prometheus plugin at

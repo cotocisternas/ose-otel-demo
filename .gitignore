@@ -19,3 +19,7 @@ Thumbs.db
 
 # Tooling caches
 .gradle/
+
+# Local MCP secrets (Grafana service account token, etc.)
+.mcp.env
+
