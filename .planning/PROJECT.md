@@ -14,25 +14,25 @@ A workshop attendee can clone the repo, run `docker compose up` + `mise run dev`
 
 <!-- Shipped and confirmed valuable. -->
 
-(None yet — ship to validate)
+- ✓ Spring Boot 3.4.13 producer service exposing `POST /orders` that publishes an `OrderCreated` message to RabbitMQ via Spring AMQP — v1.0
+- ✓ Spring Boot 3.4.13 consumer service that processes `OrderCreated` messages with `@RabbitListener` and simulates downstream domain work — v1.0
+- ✓ Manual OpenTelemetry SDK setup (no Java agent) — `OpenTelemetrySdk` configured at startup with OTLP gRPC exporters for traces, metrics, and logs — v1.0
+- ✓ Trace instrumentation: explicit `Tracer` usage on HTTP entry points, around publish/receive, and inside business logic — v1.0
+- ✓ W3C trace context propagation across the AMQP boundary — `TracingMessagePostProcessor` injects context into message headers on publish; `TracingMessageListenerAdvice` extracts on consume — producer and consumer spans share one trace — v1.0
+- ✓ Metric instrumentation: Counter (`orders.created`), Histogram (HTTP server-request duration in seconds), ObservableGauge (`orders.queue.depth.estimate`) — v1.0
+- ✓ Log instrumentation: OTel `OpenTelemetryAppender` bridge exports application logs as OTLP; MDC injector stamps every log with the active `trace_id`/`span_id` — v1.0
+- ✓ Single-container Grafana `otel-lgtm` (`grafana/otel-lgtm:0.26.0`) as the observability backend, with Tempo, Mimir, and Loki datasources pre-wired — v1.0
+- ✓ `docker-compose.yml` orchestrating only infrastructure (RabbitMQ + `otel-lgtm` + Valkey + Postgres + exporters); apps run on the host via `mise run` — v1.0
+- ✓ `mise.toml` pinning Amazon Corretto 17.0.13.11.1 and Maven 3.9.11, plus the workshop task graph (`dev`, `test`, `infra:up`, `infra:down`, `verify:bom`, etc.) — v1.0
+- ✓ Testcontainers integration tests with `RabbitMQContainer` + `InMemorySpanExporter` that exercise the producer-to-consumer path and assert exported spans — v1.0
+- ✓ Staged git checkpoints — annotated tags on `main` (`step-01-baseline` through `step-06-tests` + bonus `step-08-db-cache`); D-09 honors no `step-07-*` tag — v1.0
+- ✓ Step-by-step `README.md` mapping each tag to a specific OTel concept, with paired screenshots (broken/fixed DOC-04 anchor) and copy-pasteable curl + mise commands — v1.0
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] Spring Boot 3.4.13 producer service exposing `POST /orders` that publishes an `OrderCreated` message to RabbitMQ via Spring AMQP
-- [ ] Spring Boot 3.4.13 consumer service that processes `OrderCreated` messages with `@RabbitListener` and simulates downstream domain work
-- [ ] Manual OpenTelemetry SDK setup (no Java agent) — `OpenTelemetrySdk` configured at startup with OTLP gRPC exporters for traces, metrics, and logs
-- [ ] Trace instrumentation: explicit `Tracer` usage on HTTP entry points, around publish/receive, and inside business logic
-- [ ] W3C trace context propagation across the AMQP boundary — `TextMapSetter` to inject context into message headers on publish, `TextMapGetter` to extract on consume — making producer and consumer spans share a trace
-- [ ] Metric instrumentation: `Meter` with counters (orders processed, messages published/consumed) and histograms (HTTP request latency, message processing duration)
-- [ ] Log instrumentation: OTel SLF4J/Logback appender bridge that exports application logs as OTLP and stamps every log with the active trace/span IDs
-- [ ] Single-container Grafana `otel-lgtm` (https://github.com/grafana/docker-otel-lgtm) as the observability backend, exposing Grafana on a known port with Tempo, Mimir, and Loki datasources pre-wired
-- [ ] `docker-compose.yml` orchestrating only infrastructure (RabbitMQ + `otel-lgtm`); apps run on the host via `mise run`
-- [ ] `mise.toml` pinning Amazon Corretto 17 and Maven, plus `mise` tasks (`dev`, `test`, `infra:up`, `infra:down`) for one-command operation
-- [ ] Testcontainers integration tests that spin up RabbitMQ, exercise the producer-to-consumer path, and assert that the expected spans were exported (in-memory exporter or OTLP capture)
-- [ ] Staged git checkpoints — one branch (or tagged commit) per workshop step (e.g., `step-01-baseline`, `step-02-traces`, `step-03-context-propagation`, `step-04-metrics`, `step-05-logs`, `step-06-tests`) — so attendees can `git checkout` to follow along
-- [ ] Step-by-step `README.md` mapping each commit/branch to a specific OTel concept, with screenshots of Grafana panels and copy-pasteable curl commands
+(None — v1.0 milestone closed; next milestone scope TBD via `/gsd-new-milestone` after first cohort delivery feedback.)
 
 ### Out of Scope
 
@@ -116,4 +116,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-01 after Phase 4 SHIPPED (tag `step-04-metrics`)*
+*Last updated: 2026-05-02 after v1.0 Workshop milestone shipped (tag `v1.0`)*

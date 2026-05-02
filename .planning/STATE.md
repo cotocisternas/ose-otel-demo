@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 7 shipped (no tag — D-09)
-last_updated: "2026-05-02T18:00:00.000Z"
-last_activity: 2026-05-02 -- Phase 07 polish-and-differentiators source-complete (4/4 SC green; step-04-metrics.png deferred per operator approval); D-09 honored: NO step-07-* tag applied
+status: complete
+stopped_at: v1.0 Workshop milestone CLOSED (tag `v1.0` applied; ROADMAP/REQUIREMENTS archived to milestones/v1.0-*)
+last_updated: "2026-05-02T21:30:00.000Z"
+last_activity: 2026-05-02 -- v1.0 Workshop milestone shipped: 7 phases, 41 plans, 61 tasks, 277 commits across 4 days; archives written to .planning/milestones/v1.0-*
 progress:
   total_phases: 7
   completed_phases: 7
   total_plans: 41
-  completed_plans: 41
+  completed_plans: 42
   percent: 100
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 Phase: 07 — SHIPPED (no tag — D-09); milestone v1.0 complete (subject to /gsd-complete-milestone)
 Plan: 7 of 7
 Status: Phase 07 source-complete; all 4 ROADMAP success criteria verified green at live stack; D-09 honored: NO step-07-* tag applied
-Last activity: 2026-05-02 -- Completed quick task 260502-8gk: Add Valkey + PostgreSQL + Phase 8 manual OTel instrumentation (tag `step-08-db-cache` applied; all 5 plan tasks shipped + review fixes; verifier passed 9/9 must_haves)
+Last activity: 2026-05-02
 
 Progress: [██████████] 100%
 
@@ -135,14 +135,19 @@ None yet.
 
 ## Deferred Items
 
-Items acknowledged and carried forward from previous milestone close:
+Items acknowledged and carried forward at milestone close on 2026-05-02:
 
-| Category | Item | Status | Deferred At |
-|----------|------|--------|-------------|
-| *(none)* | | | |
+| Category | Item | Status | Deferred At | Note |
+|----------|------|--------|-------------|------|
+| quick_task | 260502-8gk-add-new-random-features-to-have-more-poi | missing-record | 2026-05-02 | Shipped under tag `step-08-db-cache` — record schema mismatch only |
+| quick_task | 260502-j00-add-infrastructure-exporters-rabbitmq-pr | missing-record | 2026-05-02 | Shipped as Phase 9 infra exporters in `docker-compose.yml` + `grafana/prometheus.yaml` |
+| uat_gap | Phase 02 02-HUMAN-UAT.md | partial (5 scenarios) | 2026-05-02 | Operator-validated outside GSD audit loop |
+| uat_gap | Phase 04 04-HUMAN-UAT.md | partial (3 scenarios) | 2026-05-02 | Operator-validated outside GSD audit loop |
+| verification_gap | Phase 02 02-VERIFICATION.md | human_needed | 2026-05-02 | Tests 1-3 active; tests 4-5 superseded-by-Phase-3 (broken-state proofs only valid at tag `step-02-traces`) |
+| verification_gap | Phase 04 04-VERIFICATION.md | human_needed | 2026-05-02 | Live SCs verified by operator; record not flipped in GSD audit |
 
 ## Session Continuity
 
-Last session: 2026-05-02T18:00:00.000Z
-Stopped at: Phase 7 SHIPPED (no tag — D-09); milestone v1.0 source-complete (subject to /gsd-complete-milestone)
-Resume file: None — Phase 7 exit-gate complete; next entry point is /gsd-complete-milestone for v1.0 milestone artifacts (separate from phase exit gates per D-09)
+Last session: 2026-05-02T21:30:00.000Z
+Stopped at: v1.0 Workshop milestone CLOSED — tag `v1.0` applied; ROADMAP/REQUIREMENTS archived to `milestones/v1.0-*`; PROJECT.md evolved (Active → Validated)
+Resume file: None — milestone complete; next entry point is `/gsd-new-milestone` to scope v1.x
