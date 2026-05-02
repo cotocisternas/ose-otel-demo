@@ -154,11 +154,25 @@ WORKTREE_DIR="$REPO_ROOT/.screenshots-worktree"
 OUTPUT_DIR="$REPO_ROOT/docs/screenshots"
 mkdir -p "$OUTPUT_DIR"
 
+# Rule-3 deviation (07-04): pkill patterns must not match the running task script
+# itself. mise invokes this task as `bash -c "<task body>"`, so the running bash
+# argv contains the entire script text. A loose pattern (e.g. the bare goal name)
+# matches the bash argv and signals the running shell — the task dies with
+# "no exit status". To scope the match to real Maven invocations only, build the
+# pattern by string concatenation so the dangerous substring never appears as a
+# contiguous run of characters anywhere in this task body. Real dev:producer /
+# dev:consumer commands are `mvn -pl ... <goal> -Dspring-boot.run.jvmArguments=...`,
+# so anchoring on the goal name immediately followed by ` -D` is unique to them.
+#   - mvn goal -> assemble pattern via concatenation; the contiguous matchable
+#                 substring exists only at runtime in MVN_KILL_PATTERN's value
+#   - oha/hey  -> use `pkill -x` (matches process NAME only, not full argv)
+MVN_KILL_PATTERN='spring-boot:run'' -D'
+
 cleanup() {
   # Kill any background dev/load processes and tear down worktree.
-  pkill -f 'spring-boot:run' 2>/dev/null || true
-  pkill -f 'oha ' 2>/dev/null || true
-  pkill -f 'hey ' 2>/dev/null || true
+  pkill -f "$MVN_KILL_PATTERN" 2>/dev/null || true
+  pkill -x oha 2>/dev/null || true
+  pkill -x hey 2>/dev/null || true
   if git worktree list 2>/dev/null | grep -q "$WORKTREE_DIR"; then
     git worktree remove --force "$WORKTREE_DIR" 2>/dev/null || true
   fi
@@ -216,9 +230,11 @@ for tag in "${TAGS[@]}"; do
   CAPTURE_TAG_FILTER="$tag" node "$REPO_ROOT/scripts/screenshots/capture.mjs" || echo "capture for $tag had failures — see logs"
 
   # Tear down dev + load before moving to next tag.
+  # Rule-3 deviation (07-04): scoped pattern via $MVN_KILL_PATTERN — see top-of-task
+  # comment for why we cannot write the matchable substring as a literal here.
   [ -n "${LOAD_PID:-}" ] && kill "$LOAD_PID" 2>/dev/null || true
   kill "$DEV_PID" 2>/dev/null || true
-  pkill -f 'spring-boot:run' 2>/dev/null || true
+  pkill -f "$MVN_KILL_PATTERN" 2>/dev/null || true
   sleep 5
 
   git worktree remove --force "$WORKTREE_DIR" 2>/dev/null || true
