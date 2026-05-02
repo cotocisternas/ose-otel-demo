@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 5 context gathered
-last_updated: "2026-05-02T01:43:07.616Z"
-last_activity: 2026-05-02 -- Phase 05 planning complete
+last_updated: "2026-05-02T01:47:38.128Z"
+last_activity: 2026-05-02 -- Phase 05 execution started
 progress:
   total_phases: 7
   completed_phases: 4
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** A workshop attendee can clone the repo, run `docker compose up` + `mise run dev`, hit `POST /orders`, and see a single distributed trace flow from the HTTP handler through the RabbitMQ publish, into the consumer's processing logic, with correlated metrics and logs — and understand exactly which lines of SDK code made each piece work.
-**Current focus:** Phase 04 — metrics
+**Current focus:** Phase 05 — logs-correlation
 
 ## Current Position
 
-Phase: 5
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-05-02 -- Phase 05 planning complete
+Phase: 05 (logs-correlation) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 05
+Last activity: 2026-05-02 -- Phase 05 execution started
 
 Progress: [████████████] 100% of Phases 1-3 plans complete (Phases 4-7 outstanding — no plans yet)
 
