@@ -19,6 +19,38 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  # Phase 8: Valkey (Redis-compatible cache) — producer idempotency
+  valkey:
+    image: valkey/valkey:8.1-alpine
+    container_name: ose-otel-valkey
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  # Phase 8: PostgreSQL — consumer persistence
+  postgres:
+    image: postgres:17-alpine
+    container_name: ose-otel-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: orders
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD: orders
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orders -d orders"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
   lgtm:
     # Image's built-in HEALTHCHECK checks all 5 backends — do NOT override.
     image: grafana/otel-lgtm:0.26.0
