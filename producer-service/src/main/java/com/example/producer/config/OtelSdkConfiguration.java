@@ -12,9 +12,16 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.propagation.ContextPropagators;
 import io.opentelemetry.context.propagation.TextMapPropagator;
+import io.opentelemetry.exporter.otlp.logs.OtlpGrpcLogRecordExporter;
 import io.opentelemetry.exporter.otlp.metrics.OtlpGrpcMetricExporter;
 import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
+// CRITICAL (RESEARCH Risk #1): two classes share the name OpenTelemetryAppender —
+// import the appender.v1_0 one (has install()), NOT the mdc.v1_0 one (wrapper).
+import io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.logs.SdkLoggerProvider;
+import io.opentelemetry.sdk.logs.export.BatchLogRecordProcessor;
+import io.opentelemetry.sdk.logs.export.LogRecordExporter;
 import io.opentelemetry.sdk.metrics.SdkMeterProvider;
 import io.opentelemetry.sdk.metrics.export.PeriodicMetricReader;
 import io.opentelemetry.sdk.resources.Resource;
@@ -25,6 +32,9 @@ import io.opentelemetry.sdk.trace.samplers.Sampler;
 import io.opentelemetry.semconv.ServiceAttributes;
 import io.opentelemetry.semconv.incubating.DeploymentIncubatingAttributes;
 
+import jakarta.annotation.PostConstruct;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -47,8 +57,8 @@ import org.springframework.context.annotation.Configuration;
  * artifact would read OTEL_* env vars magically and build the SDK behind
  * the scenes. We deliberately do NOT pull it in (see producer-service/pom.xml).
  * The env-var contract is visible in code below — System.getenv()
- * with an explicit fallback. Phase 5 will reuse the same pattern
- * when wiring the logger provider.
+ * with an explicit fallback. The same env-var-with-fallback pattern is used by Phase 5's
+ * {@link #buildLoggerProvider(Resource)} for the log exporter.
  *
  * <p><b>Why semconv-incubating?</b> The messaging conventions
  * (MessagingIncubatingAttributes — used by Plan 02-04 for the PRODUCER span)
@@ -60,14 +70,36 @@ import org.springframework.context.annotation.Configuration;
  * <p><b>Why three @Beans (openTelemetry / tracer / meter)?</b> The
  * {@link #openTelemetry()} @Bean is the orchestrator that builds the SDK
  * by delegating to {@link #buildTracerProvider(Resource)} (Phase 2's
- * trace pipeline) and {@link #buildMeterProvider(Resource)} (Phase 4's
- * metric pipeline) — see D-01 in 04-CONTEXT.md. The {@code Tracer} and
- * {@code Meter} @Beans are thin "instrumentation scope" handles that
- * call sites constructor-inject. Phase 5 will add a sibling
- * {@code buildLoggerProvider} helper and a {@code Logger} @Bean.
+ * trace pipeline), {@link #buildMeterProvider(Resource)} (Phase 4's
+ * metric pipeline), AND {@link #buildLoggerProvider(Resource)} (Phase 5's
+ * log pipeline) — see D-01 in 04-CONTEXT.md and 05-CONTEXT.md. The
+ * {@code Tracer} and {@code Meter} @Beans are thin "instrumentation
+ * scope" handles that call sites constructor-inject.
+ *
+ * <p><b>No Logger @Bean (D-07).</b> Unlike traces and metrics, the
+ * workshop deliberately does NOT expose an OTel SDK {@code Logger} @Bean.
+ * Application code uses SLF4J via {@code LoggerFactory.getLogger(...)};
+ * the {@link OpenTelemetryAppender} configured in
+ * {@code logback-spring.xml} bridges Logback events to the SDK's
+ * {@link SdkLoggerProvider}. This is the OTel-recommended pattern for
+ * application code — direct OTel Logger API usage is intended for log
+ * bridges (like the appender itself), not for application-side logging.
  */
 @Configuration
 public class OtelSdkConfiguration {
+
+    /**
+     * SDK handle injected by Spring after the {@link #openTelemetry()} @Bean
+     * factory returns. Used by {@link #installLogbackAppender()} to wire the
+     * {@link OpenTelemetryAppender} (LOG-03 / D-08).
+     *
+     * <p>The {@code @Autowired} on a field shape (rather than assigning
+     * {@code this.openTelemetry = sdk} inside the @Bean factory body) is the
+     * RESEARCH §C recommendation — makes the dependency visible in the field
+     * declaration and reads naturally to a workshop attendee.
+     */
+    @Autowired
+    private OpenTelemetry openTelemetry;
 
     /**
      * Default OTLP endpoint when OTEL_EXPORTER_OTLP_ENDPOINT is unset.
@@ -121,17 +153,18 @@ public class OtelSdkConfiguration {
                 .put(DeploymentIncubatingAttributes.DEPLOYMENT_ENVIRONMENT_NAME, "workshop")
                 .build()));
 
-        // ----- Sibling pipelines: traces (Phase 2) + metrics (Phase 4 / D-01) -----
+        // ----- Sibling pipelines: traces (Phase 2) + metrics (Phase 4 / D-01) + logs (Phase 5 / D-01) -----
         //
         // Phase 2 inlined the entire tracer pipeline inside this @Bean. Phase 4
         // extracts that into buildTracerProvider(resource) — no behavior change,
         // every Phase 2 line lives unchanged inside the helper — and adds a
         // sibling buildMeterProvider(resource) so the diff between step-03 and
         // step-04 reads as "we added a sibling pipeline next to the trace
-        // pipeline." Phase 5 will land buildLoggerProvider(resource) the same
+        // pipeline." Phase 5 lands buildLoggerProvider(resource) the same
         // way, and the @Bean stays a 3-step recipe.
         SdkTracerProvider tracerProvider = buildTracerProvider(resource);
         SdkMeterProvider  meterProvider  = buildMeterProvider(resource);
+        SdkLoggerProvider loggerProvider = buildLoggerProvider(resource);
 
         // ----- Propagators: composite W3C trace-context + W3C baggage -----
         //
@@ -147,16 +180,68 @@ public class OtelSdkConfiguration {
 
         // ----- The SDK itself -----
         //
-        // .setMeterProvider(meterProvider) is THE single new builder line that
-        // Phase 4 contributes to the orchestrator (D-01). The destroyMethod="close"
-        // on this @Bean cascades through OpenTelemetrySdk.close() to BOTH
-        // SdkTracerProvider.shutdown() AND SdkMeterProvider.shutdown() — no new
-        // lifecycle annotation needed for the meter pipeline (D-07).
+        // .setLoggerProvider(loggerProvider) is THE single new builder line that
+        // Phase 5 contributes to the orchestrator (D-01). The destroyMethod="close"
+        // on this @Bean cascades through OpenTelemetrySdk.close() to ALL THREE
+        // SdkTracerProvider.shutdown() AND SdkMeterProvider.shutdown() AND
+        // SdkLoggerProvider.shutdown() — no new lifecycle annotation needed for
+        // the logger pipeline (D-06 / Phase 4 D-07 / Phase 2 D-15 carryforward).
         return OpenTelemetrySdk.builder()
             .setTracerProvider(tracerProvider)
             .setMeterProvider(meterProvider)
+            .setLoggerProvider(loggerProvider)
             .setPropagators(propagators)
             .build();
+    }
+
+    /**
+     * Wires the OTLP log-export appender to the SDK AFTER the @Bean factory
+     * has returned (LOG-03 + PITFALL #5 mitigation / D-08 + D-09).
+     *
+     * <p><b>The order-of-operations problem:</b> Logback initializes BEFORE the
+     * Spring ApplicationContext is built. Spring Boot's LoggingApplicationListener
+     * loads logback-spring.xml from classpath at startup, which constructs an
+     * {@link OpenTelemetryAppender} instance with its OpenTelemetry reference
+     * defaulting to {@link io.opentelemetry.api.OpenTelemetry#noop()}. Every log
+     * event emitted between Logback init and {@code install()} is buffered in
+     * the appender's replay queue (default 1000 events — knob:
+     * {@code <numLogsCapturedBeforeOtelInstall>} in logback-spring.xml).
+     *
+     * <p><b>Why this method runs AFTER the @Bean factory:</b> Spring's lifecycle
+     * guarantees @PostConstruct runs after all @Bean factory methods return AND
+     * after dependency injection completes. By the time {@code installLogbackAppender()}
+     * fires, {@code this.openTelemetry} is the fully-built SDK with its
+     * {@link SdkLoggerProvider} ready to receive log records.
+     *
+     * <p><b>What install() does:</b> Walks the global {@link ch.qos.logback.classic.LoggerContext},
+     * finds every {@link OpenTelemetryAppender} (including ones nested inside
+     * wrapper appenders like the MDC injector), and swaps the noop OpenTelemetry
+     * reference for the real SDK. The replay queue is then drained — logs from
+     * BEFORE this method ran are forwarded to the OTLP exporter, retroactively
+     * stamped with attributes from the (now valid) OpenTelemetry instance.
+     *
+     * <p><b>Documented quirk:</b> This is the entire reason PITFALL #5 exists.
+     * See <a href="https://github.com/open-telemetry/opentelemetry-java-instrumentation/issues/10307">
+     * open-telemetry/opentelemetry-java-instrumentation#10307</a>. The replay
+     * buffer (added in earlier 1.x) softens the loss but does NOT eliminate it:
+     * if install() is never called, logs beyond the 1000-event buffer are
+     * permanently dropped.
+     *
+     * <p><b>Idempotency:</b> install() is safe to call multiple times — the
+     * appender's volatile OpenTelemetry field is simply reassigned. Calling it
+     * with {@link io.opentelemetry.api.OpenTelemetry#noop()} effectively
+     * "uninstalls" exporting (used in Phase 6 tests).
+     *
+     * <p><b>FQCN landmine (RESEARCH Risk #1):</b> the import at the top of this
+     * file is {@code io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender}
+     * — the OTLP-export class that has the static {@code install()} method.
+     * The sibling artifact {@code opentelemetry-logback-mdc-1.0} ships a class
+     * with the SAME name in {@code .mdc.v1_0} package — that one does NOT have
+     * {@code install()} and is NOT what we want here.
+     */
+    @PostConstruct
+    void installLogbackAppender() {
+        OpenTelemetryAppender.install(this.openTelemetry);
     }
 
     /**
@@ -289,6 +374,69 @@ public class OtelSdkConfiguration {
         return SdkMeterProvider.builder()
             .setResource(resource)
             .registerMetricReader(metricReader)
+            .build();
+    }
+
+    /**
+     * Logger pipeline added in Phase 5 — sibling to {@link #buildTracerProvider(Resource)}
+     * (Phase 2) and {@link #buildMeterProvider(Resource)} (Phase 4).
+     *
+     * <p>Three SDK touch points (read top-to-bottom):
+     * <ol>
+     *   <li>{@link OtlpGrpcLogRecordExporter} — same artifact and same env-var
+     *       fallback as the trace + metric exporters (D-04). The
+     *       opentelemetry-exporter-otlp jar already on the classpath since Phase 2
+     *       ships span + metric + log exporters in three sub-packages of one
+     *       artifact; no new pom dependency on the SDK side.</li>
+     *   <li>{@link BatchLogRecordProcessor} with {@code .builder(logExporter).build()}
+     *       — production-shape batching pipeline (LOG-01 / D-03). Default schedule
+     *       delay for log records is 1 second (faster than BatchSpanProcessor's
+     *       5-second default — RESEARCH Finding #4); the demo accepts the SDK
+     *       defaults.</li>
+     *   <li>{@link SdkLoggerProvider} with {@code .setResource(resource)} — same
+     *       Resource as the tracer + meter pipelines (D-05) so logs in Loki, traces
+     *       in Tempo, and metrics in Mimir share an identical service identity for
+     *       cross-signal correlation.</li>
+     * </ol>
+     *
+     * <p><b>No application code calls the OTel Logger API directly.</b> Application
+     * code uses SLF4J's LoggerFactory; the OpenTelemetryAppender (configured in
+     * logback-spring.xml) bridges Logback events to the SDK's LogRecordProcessor
+     * pipeline. This is the OTel-recommended pattern for application code (D-07).
+     */
+    private SdkLoggerProvider buildLoggerProvider(Resource resource) {
+        // ----- OTLP gRPC log-record exporter: ships log records to grafana/otel-lgtm :4317 -----
+        //
+        // Reuses the SAME endpoint pattern as the span + metric exporters — System.getenv
+        // with the DEFAULT_OTLP_ENDPOINT fallback (D-04 / Phase 4 D-04 / Phase 2 D-12
+        // carryforward). Single artifact (opentelemetry-exporter-otlp) ships
+        // OtlpGrpcSpanExporter, OtlpGrpcMetricExporter, AND OtlpGrpcLogRecordExporter
+        // — three sub-packages, one jar. Verify with
+        // `mvn dependency:tree -Dincludes=io.opentelemetry:opentelemetry-exporter-otlp`.
+        String endpoint = Optional.ofNullable(System.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"))
+            .orElse(DEFAULT_OTLP_ENDPOINT);
+        LogRecordExporter logExporter = OtlpGrpcLogRecordExporter.builder()
+            .setEndpoint(endpoint)
+            .build();
+
+        // ----- BatchLogRecordProcessor: production-shape batching pipeline (LOG-01 / D-03) -----
+        //
+        // .builder(logExporter).build() picks up the canonical defaults:
+        //   schedule delay  = 1000 ms   (NOTE: different from BatchSpanProcessor's 5000 ms
+        //                                — RESEARCH Finding #4. Logs are higher-volume and
+        //                                lower-latency-tolerant than traces.)
+        //   max queue size  = 2048
+        //   max export batch = 512
+        //   exporter timeout = 30000 ms
+        // We deliberately use defaults — they're production-grade. Phase 6 will
+        // swap to SimpleLogRecordProcessor in @TestConfiguration so test
+        // assertions are deterministic.
+        BatchLogRecordProcessor logProcessor = BatchLogRecordProcessor.builder(logExporter).build();
+
+        // ----- LoggerProvider: assembles resource + processor -----
+        return SdkLoggerProvider.builder()
+            .setResource(resource)
+            .addLogRecordProcessor(logProcessor)
             .build();
     }
 
