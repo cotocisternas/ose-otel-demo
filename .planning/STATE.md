@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 05 SHIPPED — bean-cycle blocker resolved (commit f5c331a, install moved to @Bean factory body), smoke verified end-to-end (3 distinct trace_ids matched producer↔consumer), step-05-logs annotated tag applied
-last_updated: "2026-05-02T02:45:20.481Z"
-last_activity: 2026-05-02 -- Phase 05 marked complete
+status: Ready for Phase 06
+stopped_at: Phase 6 context gathered
+last_updated: "2026-05-02T03:48:25.706Z"
+last_activity: 2026-05-02 -- Phase 05 SHIPPED with step-05-logs tag
 progress:
   total_phases: 7
   completed_phases: 5
@@ -116,6 +116,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-02T02:26:39.058Z
-Stopped at: Phase 05-06 README done; smoke surfaced Spring bean-cycle blocker in 05-02/05-03; tag deferred to orchestrator post-revision
-Resume file: .planning/phases/05-logs-correlation/05-06-SUMMARY.md
+Last session: 2026-05-02T03:48:25.696Z
+Stopped at: Phase 6 context gathered
+Resume file: .planning/phases/06-verification-tests/06-CONTEXT.md
