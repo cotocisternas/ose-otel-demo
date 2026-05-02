@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.example</groupId>
+    <artifactId>ose-otel-demo-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>integration-tests</artifactId>
+  <packaging>jar</packaging>
+
+  <name>OSE OTel Demo (integration tests)</name>
+  <description>Cross-service IT proving the full instrumentation chain (Phase 6).</description>
+
+  <dependencies>
+    <!--
+      Phase 6 / D-04: depend on the PLAIN classes jars (no classifier).
+      The producer/consumer service POMs publish the executable repackage
+      with classifier=exec; the default artifact is the plain classes jar
+      that exposes ProducerApplication.class / ConsumerApplication.class
+      directly on the classpath. SpringApplicationBuilder(ProducerApplication.class)
+      requires this.
+    -->
+    <dependency>
+      <groupId>com.example</groupId>
+      <artifactId>producer-service</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.example</groupId>
+      <artifactId>consumer-service</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <!-- otel-bootstrap is transitive via producer/consumer; no explicit dep. -->
+
+    <!-- Spring Boot test infra. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!--
+      Defensive carry per CONTEXT.md canonical_refs — kept on the deps list
+      even though D-10's two-context flow doesn't use @ServiceConnection.
+      Keeps the option open if planner reverses D-10.
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- Testcontainers (BOM-managed by Spring Boot 3.4.13). -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>rabbitmq</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- OTel in-memory exporters (BOM-managed by opentelemetry-bom:1.61.0). -->
+    <dependency>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-sdk-testing</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- Awaitility (BOM-managed by Spring Boot 3.4.13). -->
+    <dependency>
+      <groupId>org.awaitility</groupId>
+      <artifactId>awaitility</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!--
+        Phase 6 / D-03: EXPLICIT Failsafe binding. The project's parent does
+        NOT inherit from spring-boot-starter-parent (deliberate Phase 1 BOM-
+        ordering choice — see parent pom.xml lines 7-17), so Spring's auto-
+        Failsafe-binding does not reach this module. Bind goals manually.
+        Version 3.5.5 = latest stable as of 2026-04.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>3.5.5</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>
