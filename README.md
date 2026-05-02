@@ -343,6 +343,75 @@ The test exits non-zero on any assertion failure — suitable for any CI runner 
 
 Production-vs-test SDK divergence is a deliberate pedagogical contrast. Phase 2's per-service duplication of `OtelSdkConfiguration.java` is a PRODUCTION rule — `TestOtelConfiguration` is a single `@TestConfiguration` shared by both Spring contexts because the in-memory exporter must see ALL spans across both services in one queue. The contrast itself is the lesson: duplicate when readers benefit from reading the same setup twice; share when the test fixture's purpose requires one shared instance. The triple-signal correlation `@Test` (failure path) is the workshop's strongest single statement that all three signals work together — one trace_id, one error, one log, one metric data point, one in-memory queue per signal sink, one assertion suite. For the broader per-service-vs-shared design pattern, see *Why is the propagation pair shared?* and *Why is OtelSdkConfiguration.java duplicated?* in the [Concepts & FAQ](#concepts--faq) appendix.
 
+## Step 8: Database & Cache
+
+### What you'll learn
+
+How to manually instrument two fundamentally different database client patterns using the OTel Java SDK: a Redis-protocol cache (Valkey) for producer-side idempotency and a PostgreSQL table for consumer-side persistence. Each produces a `SpanKind.CLIENT` span with OTel database semconv attributes (`db.system.name`, `db.operation.name`, `db.collection.name`, `db.query.text`). Adds a 7th span kind to the trace topology: the same W3C traceparent that linked HTTP → AMQP now links into both database calls within the same distributed trace.
+
+### Checkpoint
+
+`git checkout step-08-db-cache` — adds `valkey/valkey:8.1-alpine` + `postgres:17-alpine` to `docker-compose.yml`; a manually-instrumented `InstrumentedJedisPool` in the producer; a `JdbcTemplate`-based `OrderRepository` in the consumer; a `HikariCpConnectionGauge` ObservableGauge; and a fifth integration test asserting both CLIENT spans appear in the same trace as the AMQP spans.
+
+### Run
+
+```sh
+git checkout step-08-db-cache
+mise run infra:up           # now starts rabbitmq + lgtm + valkey + postgres
+mise run dev
+# First request — new order, idempotency cache miss:
+curl -s -X POST http://localhost:8080/orders \
+     -H 'Content-Type: application/json' \
+     -H 'X-Idempotency-Key: order-abc-123' \
+     -d '{"sku":"WIDGET-1","quantity":3,"priority":"express"}'
+# → 202 Accepted {"orderId":"<uuid>"}
+
+# Repeat with same key — idempotency hit:
+curl -s -X POST http://localhost:8080/orders \
+     -H 'Content-Type: application/json' \
+     -H 'X-Idempotency-Key: order-abc-123' \
+     -d '{"sku":"WIDGET-1","quantity":3,"priority":"express"}'
+# → 409 Conflict {"status":"duplicate","idempotencyKey":"order-abc-123"}
+
+# Run the integration tests (requires Docker):
+mise run test
+```
+
+### What to look for
+
+- **7-span trace in Tempo**: a single trace now contains SERVER (HTTP inbound) + INTERNAL (OrderService.place) + CLIENT (Valkey SET) + PRODUCER (AMQP publish) + CONSUMER (AMQP receive) + INTERNAL (ProcessingService.process) + CLIENT (JDBC INSERT). All share one `traceId` — the W3C traceparent injected in Phase 3 propagates through both DB calls.
+- **Valkey CLIENT span**: name `SET`, attributes `db.system.name=redis`, `db.operation.name=SET`, `server.address=localhost`, `server.port=6379`. Note the span name is the Redis command verb only — not the key. High-cardinality key strings in span names bloat Tempo's trace index (PITFALLS below).
+- **JDBC CLIENT span**: name `INSERT processed_orders`, attributes `db.system.name=postgresql`, `db.operation.name=INSERT`, `db.collection.name=processed_orders`, `db.query.text` (the parameterized SQL template — safe because no user data is inlined in the query string).
+- **409 on duplicate key**: sending the same `X-Idempotency-Key` header twice within the TTL window returns 409 Conflict. The Valkey CLIENT span still appears in the trace (the SET was attempted and returned "key exists") — `idempotency.cache.hit` counter increments in Mimir.
+- **`db.client.connection.count` gauge in Mimir**: three time series — `{state="used"}`, `{state="idle"}`, `{state="pending"}`. The gauge fires on every 10-second collection cycle. The metric may show 0 for `used` and 0 for `idle` between requests (the pool stays open but idle after each INSERT); `idle` jumps to 1 during or after an INSERT and returns to 0 once the connection is returned to the pool.
+- **`idempotency.cache.miss` vs `idempotency.cache.hit` counters**: after three different orders the miss counter is 3; after a duplicate the hit counter is 1. Both surface in Mimir as `idempotency_cache_miss_total` / `idempotency_cache_hit_total`.
+- **Five green integration tests** (including the new TEST-08-01 `dbClientSpansPresentInTrace_spanAssertions`): the new test starts Valkey + Postgres Testcontainers containers (both on random ports) and asserts that both CLIENT spans share the same `traceId` as the SERVER + AMQP spans.
+
+### Why it matters
+
+Two new SDK patterns appear in this step that Phase 2–6 did not cover:
+
+**CLIENT spans (vs INTERNAL / PRODUCER / CONSUMER)**: The `InstrumentedJedisPool` and `OrderRepository` both open `SpanKind.CLIENT` spans. CLIENT means "this service is calling an external system synchronously and waiting for a response" — the same semantics as HTTP client calls. The OTel spec requires CLIENT spans to stamp `server.address` and `server.port` (for the remote endpoint) and database-domain attributes (`db.system.name`, `db.operation.name`). Every line of that attribute stamping is visible in the workshop code — no proxy, no AOP.
+
+**Stable vs incubating semconv for `db.system.name`**: PostgreSQL uses `DbAttributes.DbSystemNameValues.POSTGRESQL` from the stable artifact (`opentelemetry-semconv:1.40.0`). Valkey uses `DbIncubatingAttributes.DbSystemNameIncubatingValues.REDIS` from the incubating artifact (`opentelemetry-semconv-incubating:1.40.0-alpha`) because OTel semconv 1.40.0 has no "valkey" value — Valkey speaks the Redis RESP protocol, so "redis" is the correct value. Both service POMs already carried the incubating artifact from Phase 2 (for messaging attributes). This step is the first time attendees see the stable/incubating split matter for a production-level choice.
+
+**ObservableGauge for pool state vs Counter for events**: `HikariCpConnectionGauge` uses `meter.gaugeBuilder(...).ofLongs().buildWithCallback(...)` — the async-callback flavor of OTel metrics. The SDK invokes the callback on each collection cycle (every 10 seconds) and records the current pool state. This contrasts with the synchronous `Counter.add(1)` pattern from Phase 4: counters fire at the moment an event occurs; gauges are sampled at collection time. Both patterns are necessary; which to use depends on whether the value is an event count or a current state.
+
+### Pitfalls
+
+- **Span name cardinality for Redis commands**: do NOT include the key in the span name (e.g., `"SET idempotency:order-abc-123"`). Tempo indexes span names — high-cardinality names (one per unique key) bloat the index and make trace search slow. Use the command verb only (`"SET"`); put the key in a span attribute if inspection is needed.
+- **`jedis.setnx(key, value)` is NOT atomic with TTL**: legacy `setnx` returns true/false and requires a separate `jedis.expire(key, ttl)` call — those two calls are not atomic (a crash between them leaves the key with no TTL). Use `jedis.set(key, value, SetParams.setParams().nx().ex(ttl))` — a single atomic SET NX EX command.
+- **`HikariPoolMXBean` is null until first connection**: the pool initializes lazily on the first `getConnection()`. If the gauge callback fires before any JDBC call, `hikariDs.getHikariPoolMXBean()` returns null. The guard `if (mxBean == null) return;` skips that collection cycle silently.
+- **`spring.sql.init.mode=always` required for non-embedded DBs**: Spring Boot only auto-runs `schema.sql` for embedded databases (H2, HSQL, Derby) by default. For PostgreSQL you MUST set `spring.sql.init.mode=always`; otherwise the `processed_orders` table is never created and the first INSERT silently fails with a "relation does not exist" error.
+- **Do NOT define a custom `DataSource` @Bean**: Spring Boot backs off `DataSourceAutoConfiguration` when a `DataSource` @Bean is present, which suppresses `spring.sql.init.*` processing. Instrument at the `JdbcTemplate` call-site (as `OrderRepository` does); leave HikariCP auto-config untouched.
+- **`db.system.name = "redis"` is INCUBATING, not stable**: the stable `DbAttributes.DbSystemNameValues` in semconv 1.40.0 contains only mariadb, mysql, postgresql, microsoft.sql_server. For Valkey (Redis protocol), import `DbIncubatingAttributes.DbSystemNameIncubatingValues.REDIS` from the `-incubating` artifact.
+
+### Exercise
+
+1. Open `producer-service/src/main/java/com/example/producer/cache/InstrumentedJedisPool.java` and add a `get(String key)` method that opens a CLIENT span with `db.operation.name = "GET"`. Add it to `IdempotencyService` to return the stored value on a cache hit — the controller can then include the original `orderId` in the 409 response body. Verify the new GET span appears in Tempo alongside the SET span.
+
+2. Add a `db.client.operation.duration` histogram to `OrderRepository` — record `System.nanoTime()` before and after `jdbcTemplate.update(...)` and call `histogram.record(durationMs, ...)`. Verify the histogram appears in Mimir. Compare this with Phase 4's `http.server.request.duration` histogram — what attributes does each use?
+
 ## Concepts & FAQ
 
 The following four sections collect the narrative deep-dives the per-step *Why it matters* paragraphs cross-reference. They preserve a second reading mode: skim the per-step walkthrough top-to-bottom, then dive into the conceptual narrative — or read this section first and use the per-step blocks as worked examples.
@@ -388,6 +457,14 @@ The workshop ships at main HEAD with all six steps' instrumentation, the auto-pr
 - **Pyroscope / continuous profiling** — fourth-signal extension if a future cohort wants it.
 - **Vendor-specific exporter swap demo** (Honeycomb, Datadog, etc.) — one-line OTLP endpoint change attendees can do themselves.
 
+### Why no Spring Data JPA?
+
+Spring Data JPA hides the SQL behind a proxy — `@Repository` interfaces generate the query at runtime, and AOP intercepts method calls for transaction management. There is no single line of code you can point to and say "this is where the database call happens" — the actual JDBC call is buried in Hibernate internals. `JdbcTemplate.update(sql, ...)` is that single line. The Phase 8 `OrderRepository.insertProcessedOrder(...)` is structured so workshop attendees can read every line: the span opens, the JDBC call happens, the span ends. The boilerplate IS the lesson — the same principle Phase 2 established for the SDK setup.
+
+### Why is Valkey treated as "redis" in OTel semconv?
+
+Valkey is a Redis-compatible fork (created in 2024 after Redis 7.2's license change) and speaks the identical RESP protocol. OpenTelemetry semconv 1.40.0 defines the `db.system.name` attribute with a fixed set of recognized values — "valkey" is not yet in that set. The incubating semconv (`opentelemetry-semconv-incubating:1.40.0-alpha`) includes `DbIncubatingAttributes.DbSystemNameIncubatingValues.REDIS = "redis"`. Since Valkey is wire-compatible with Redis and the Jedis client connects transparently, "redis" is the correct OTel value for Valkey today. When/if the OTel spec adds "valkey" to the stable semconv (tracked in the semantic-conventions repository), the constant to use will change — but the code structure stays identical.
+
 ---
 
-Workshop is at main HEAD past `step-06-tests`; dashboard, load script, and full walkthrough are here. To revisit any step, `git checkout step-NN-*`.
+Workshop is at main HEAD past `step-08-db-cache`; dashboard, load script, and full walkthrough are here. To revisit any step, `git checkout step-NN-*`.
