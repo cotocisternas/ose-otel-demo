@@ -1,0 +1,29 @@
+# Grafana dashboard provisioning manifest.
+# Phase 7 / WORK-02 / D-01 — auto-provisions the OSE OTel Demo dashboard at
+# infra:up time so workshop attendees see live three-signal telemetry the
+# moment Grafana is healthy (zero clicks).
+#
+# Schema: https://grafana.com/docs/grafana/latest/administration/provisioning/#dashboards
+#
+# Mount point: this file lives next to ose-otel-demo.json under
+# ./grafana/dashboards/ on the host. The lgtm service in docker-compose.yml
+# bind-mounts that directory read-only over
+# /otel-lgtm/grafana/conf/provisioning/dashboards inside the container, where
+# the bundled Grafana auto-loads any provisioning manifest it finds.
+#
+# The `options.path` field below points at the SAME in-container directory so
+# Grafana scans it for JSON dashboards.
+apiVersion: 1
+
+providers:
+  - name: 'ose-otel-demo'
+    orgId: 1
+    folder: ''
+    folderUid: ''
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: false
+    options:
+      path: /otel-lgtm/grafana/conf/provisioning/dashboards
+      foldersFromFilesStructure: false
