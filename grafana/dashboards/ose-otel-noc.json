@@ -207,7 +207,7 @@
       "type": "stat",
       "id": 105,
       "title": "Active services",
-      "description": "Distinct service.name values reporting in the last collection window. Workshop expects 2 (order-producer, order-consumer).",
+      "description": "Count of distinct order-* service.name values reporting OTel resource info — the demo's two app services (order-producer, order-consumer). Filter is intentional: this stat is a fast-glance heartbeat for the messaging path, not a global service inventory. Drops to 1 if either app crashes; goes red at 0.",
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "gridPos": {"h": 5, "w": 4, "x": 20, "y": 0},
       "fieldConfig": {
