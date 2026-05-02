@@ -163,6 +163,26 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <executions>
+          <!--
+            Phase 6 / D-04: keep the plain classes jar as the default artifact so
+            integration-tests can resolve <dependency>consumer-service</dependency>
+            and find ConsumerApplication.class on the classpath. The <classifier>exec</classifier>
+            causes the repackaged executable fat jar to be installed as
+            consumer-service-${version}-exec.jar — runnable with java -jar but
+            OUT of the way of the test-classpath module dependency.
+            <attach> defaults to true; both artifacts deploy.
+          -->
+          <execution>
+            <id>repackage</id>
+            <goals>
+              <goal>repackage</goal>
+            </goals>
+            <configuration>
+              <classifier>exec</classifier>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
 
       <!-- THIS IS THE JIB PLUGIN -->
