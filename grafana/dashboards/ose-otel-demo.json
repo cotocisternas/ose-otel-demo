@@ -35,30 +35,36 @@
       },
       "id": 1,
       "title": "Recent Traces (order-producer)",
-      "type": "traces",
+      "type": "table",
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": []
+      },
       "targets": [
         {
           "datasource": {
             "type": "tempo",
             "uid": "tempo"
           },
-          "filters": [
-            {
-              "id": "service-name",
-              "operator": "=",
-              "scope": "resource",
-              "tag": "service.name",
-              "value": "order-producer",
-              "valueType": "string"
-            }
-          ],
+          "query": "{resource.service.name=\"order-producer\"}",
+          "queryType": "traceql",
           "limit": 20,
-          "queryType": "traceqlSearch",
-          "refId": "A",
-          "tableType": "traces"
+          "tableType": "traces",
+          "refId": "A"
         }
-      ],
-      "options": {}
+      ]
     },
     {
       "datasource": {
@@ -205,7 +211,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "{service_name=~\"order-.*\"} |~ \"trace_id=$traceid\"",
+          "expr": "{service_name=~\"order-.*\"} | trace_id=~`$traceid`",
           "queryType": "range",
           "refId": "A"
         }
@@ -319,7 +325,7 @@
                 "type": "prometheus",
                 "uid": "prometheus"
               },
-              "expr": "sum(rate(tempo_spanmetrics_calls_total{status_code=\"STATUS_CODE_ERROR\"}[1m]))",
+              "expr": "sum(rate(traces_spanmetrics_calls_total{status_code=\"STATUS_CODE_ERROR\"}[1m]))",
               "legendFormat": "error span rate",
               "refId": "A"
             }
@@ -392,7 +398,7 @@
           }
         ],
         "skipUrlSync": false,
-        "description": "Regex applied to the Loki trace_id filter on the top-row Logs panel. Default '.+' matches any trace_id-bearing line. Paste a specific trace_id (32 hex) from the Tempo trace panel to focus the log feed on that one request."
+        "description": "Regex applied to the Loki trace_id structured-metadata filter on the top-row Logs panel. Default '.+' matches any trace_id-bearing line. Paste a specific trace_id (32 hex) from the Recent Traces panel to focus the log feed on that one request."
       }
     ]
   },

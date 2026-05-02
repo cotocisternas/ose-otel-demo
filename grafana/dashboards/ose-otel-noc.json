@@ -1,0 +1,610 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "NOC view of the OSE OTel demo: at-a-glance health on top, producer (HTTP) row, consumer (AMQP) row, topology + RED matrix, and a collapsed drill-down zone for paged operators. Hides docker-compose CLI traces everywhere.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Workshop dashboard",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/ose-otel-demo"
+    }
+  ],
+  "liveNow": false,
+  "panels": [
+    {
+      "type": "stat",
+      "id": 100,
+      "title": "Orders / sec",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 5, "w": 4, "x": 0, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "red", "value": null},
+            {"color": "green", "value": 0.001}
+          ]},
+          "unit": "ops",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "graphMode": "area",
+        "colorMode": "value",
+        "orientation": "auto",
+        "textMode": "auto",
+        "justifyMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "expr": "sum(rate(orders_created_total[1m]))",
+        "refId": "A"
+      }]
+    },
+    {
+      "type": "stat",
+      "id": 101,
+      "title": "Error rate (5m)",
+      "description": "Share of spans on order-producer/order-consumer with status=ERROR over total. compose CLI excluded.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 5, "w": 4, "x": 4, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "green", "value": null},
+            {"color": "yellow", "value": 5},
+            {"color": "red", "value": 15}
+          ]},
+          "unit": "percent",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "graphMode": "area",
+        "colorMode": "value",
+        "orientation": "auto",
+        "textMode": "auto",
+        "justifyMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "expr": "100 * (sum(rate(traces_spanmetrics_calls_total{service=~\"order-.*\",status_code=\"STATUS_CODE_ERROR\"}[5m])) or vector(0)) / clamp_min(sum(rate(traces_spanmetrics_calls_total{service=~\"order-.*\"}[5m])), 1)",
+        "refId": "A"
+      }]
+    },
+    {
+      "type": "stat",
+      "id": 102,
+      "title": "Producer p95 latency",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 5, "w": 4, "x": 8, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "green", "value": null},
+            {"color": "yellow", "value": 50},
+            {"color": "red", "value": 200}
+          ]},
+          "unit": "ms",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "graphMode": "area",
+        "colorMode": "value",
+        "orientation": "auto",
+        "textMode": "auto",
+        "justifyMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "expr": "1000 * histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))",
+        "refId": "A"
+      }]
+    },
+    {
+      "type": "stat",
+      "id": 103,
+      "title": "Consumer queue depth",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 5, "w": 4, "x": 12, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "green", "value": null},
+            {"color": "yellow", "value": 100},
+            {"color": "red", "value": 500}
+          ]},
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "graphMode": "area",
+        "colorMode": "value",
+        "orientation": "auto",
+        "textMode": "auto",
+        "justifyMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "expr": "max(orders_queue_depth_estimate)",
+        "refId": "A"
+      }]
+    },
+    {
+      "type": "stat",
+      "id": 104,
+      "title": "Failed messages / sec",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 5, "w": 4, "x": 16, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "green", "value": null},
+            {"color": "red", "value": 0.001}
+          ]},
+          "unit": "ops",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "graphMode": "area",
+        "colorMode": "value",
+        "orientation": "auto",
+        "textMode": "auto",
+        "justifyMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "expr": "sum(rate(traces_spanmetrics_calls_total{span_kind=\"SPAN_KIND_CONSUMER\",service=\"order-consumer\",status_code=\"STATUS_CODE_ERROR\"}[1m]))",
+        "refId": "A"
+      }]
+    },
+    {
+      "type": "stat",
+      "id": 105,
+      "title": "Active services",
+      "description": "Distinct service.name values reporting in the last collection window. Workshop expects 2 (order-producer, order-consumer).",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 5, "w": 4, "x": 20, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "red", "value": null},
+            {"color": "yellow", "value": 1},
+            {"color": "green", "value": 2}
+          ]},
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "graphMode": "none",
+        "colorMode": "value",
+        "orientation": "auto",
+        "textMode": "value",
+        "justifyMode": "auto"
+      },
+      "targets": [{
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "expr": "count(group by (service_name) (target_info{service_namespace=\"ose-otel-demo\",service_name=~\"order-.*\"}))",
+        "refId": "A"
+      }]
+    },
+    {
+      "type": "row",
+      "id": 200,
+      "title": "Producer (HTTP ingress)",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 5},
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "id": 201,
+      "title": "Request rate by HTTP status",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 6},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 25,
+            "stacking": {"mode": "normal", "group": "A"},
+            "showPoints": "never"
+          },
+          "unit": "ops"
+        },
+        "overrides": [
+          {"matcher": {"id": "byRegexp", "options": "5.+"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]},
+          {"matcher": {"id": "byRegexp", "options": "4.+"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "orange"}}]},
+          {"matcher": {"id": "byRegexp", "options": "2.+"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "green"}}]}
+        ]
+      },
+      "options": {
+        "legend": {"displayMode": "table", "placement": "right", "showLegend": true, "calcs": ["lastNotNull", "mean"]},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "targets": [{
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "expr": "sum by (http_response_status_code) (rate(http_server_request_duration_seconds_count[1m]))",
+        "legendFormat": "{{http_response_status_code}}",
+        "refId": "A"
+      }]
+    },
+    {
+      "type": "timeseries",
+      "id": 202,
+      "title": "Producer HTTP latency (p50 / p95 / p99)",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 6},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never"
+          },
+          "unit": "s",
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "transparent", "value": null},
+            {"color": "red", "value": 0.2}
+          ]},
+          "custom.thresholdsStyle": {"mode": "line"}
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {"displayMode": "table", "placement": "right", "showLegend": true, "calcs": ["lastNotNull", "max"]},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "histogram_quantile(0.50, sum by (le) (rate(http_server_request_duration_seconds_bucket[1m])))", "legendFormat": "p50", "refId": "A"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket[1m])))", "legendFormat": "p95", "refId": "B"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket[1m])))", "legendFormat": "p99", "refId": "C"}
+      ]
+    },
+    {
+      "type": "row",
+      "id": 300,
+      "title": "Consumer (AMQP processing)",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 15},
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "id": 301,
+      "title": "Messages processed / sec (OK vs ERROR)",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 9, "w": 8, "x": 0, "y": 16},
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 35,
+            "stacking": {"mode": "normal", "group": "A"},
+            "showPoints": "never"
+          },
+          "unit": "ops"
+        },
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "OK"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "green"}}]},
+          {"matcher": {"id": "byName", "options": "ERROR"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]}
+        ]
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(rate(traces_spanmetrics_calls_total{service=\"order-consumer\",span_kind=\"SPAN_KIND_CONSUMER\",status_code=\"STATUS_CODE_UNSET\"}[1m]))", "legendFormat": "OK", "refId": "A"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(rate(traces_spanmetrics_calls_total{service=\"order-consumer\",span_kind=\"SPAN_KIND_CONSUMER\",status_code=\"STATUS_CODE_ERROR\"}[1m]))", "legendFormat": "ERROR", "refId": "B"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "id": 302,
+      "title": "Consumer processing latency (p50 / p95 / p99)",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 9, "w": 8, "x": 8, "y": 16},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never"
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "histogram_quantile(0.50, sum by (le) (rate(traces_spanmetrics_latency_bucket{service=\"order-consumer\",span_kind=\"SPAN_KIND_CONSUMER\"}[1m])))", "legendFormat": "p50", "refId": "A"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "histogram_quantile(0.95, sum by (le) (rate(traces_spanmetrics_latency_bucket{service=\"order-consumer\",span_kind=\"SPAN_KIND_CONSUMER\"}[1m])))", "legendFormat": "p95", "refId": "B"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "histogram_quantile(0.99, sum by (le) (rate(traces_spanmetrics_latency_bucket{service=\"order-consumer\",span_kind=\"SPAN_KIND_CONSUMER\"}[1m])))", "legendFormat": "p99", "refId": "C"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "id": 303,
+      "title": "Queue depth (gauge)",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 9, "w": 8, "x": 16, "y": 16},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 30,
+            "showPoints": "never",
+            "thresholdsStyle": {"mode": "area"}
+          },
+          "unit": "short",
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "green", "value": null},
+            {"color": "yellow", "value": 100},
+            {"color": "red", "value": 500}
+          ]}
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": false},
+        "tooltip": {"mode": "single"}
+      },
+      "targets": [{
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "expr": "max(orders_queue_depth_estimate)",
+        "legendFormat": "queue depth",
+        "refId": "A"
+      }]
+    },
+    {
+      "type": "row",
+      "id": 400,
+      "title": "Topology & RED matrix",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 25},
+      "panels": []
+    },
+    {
+      "type": "nodeGraph",
+      "id": 401,
+      "title": "Service graph (last 30m, compose hidden)",
+      "datasource": {"type": "tempo", "uid": "tempo"},
+      "gridPos": {"h": 11, "w": 12, "x": 0, "y": 26},
+      "options": {},
+      "targets": [{
+        "datasource": {"type": "tempo", "uid": "tempo"},
+        "queryType": "serviceMap",
+        "serviceMapQuery": "{resource.service.name!=\"compose\"}",
+        "refId": "A"
+      }]
+    },
+    {
+      "type": "table",
+      "id": 402,
+      "title": "RED matrix per service",
+      "description": "Rate / Error% / p95 latency by service. Computed from Tempo metrics-generator span metrics.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 11, "w": 12, "x": 12, "y": 26},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]},
+          "custom": {"align": "auto", "cellOptions": {"type": "auto"}}
+        },
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "Error %"}, "properties": [
+            {"id": "unit", "value": "percent"},
+            {"id": "decimals", "value": 2},
+            {"id": "custom.cellOptions", "value": {"type": "color-background", "mode": "gradient"}},
+            {"id": "thresholds", "value": {"mode": "absolute", "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 5},
+              {"color": "red", "value": 15}
+            ]}}
+          ]},
+          {"matcher": {"id": "byName", "options": "p95 (ms)"}, "properties": [
+            {"id": "unit", "value": "ms"},
+            {"id": "decimals", "value": 1},
+            {"id": "custom.cellOptions", "value": {"type": "color-background", "mode": "gradient"}},
+            {"id": "thresholds", "value": {"mode": "absolute", "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 50},
+              {"color": "red", "value": 200}
+            ]}}
+          ]},
+          {"matcher": {"id": "byName", "options": "Rate (/s)"}, "properties": [
+            {"id": "unit", "value": "ops"},
+            {"id": "decimals", "value": 2}
+          ]}
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {"reducer": ["sum"], "show": false}
+      },
+      "transformations": [
+        {"id": "joinByField", "options": {"byField": "service", "mode": "outer"}},
+        {"id": "organize", "options": {
+          "excludeByName": {"Time 1": true, "Time 2": true, "Time 3": true},
+          "renameByName": {
+            "service": "Service",
+            "Value #A": "Rate (/s)",
+            "Value #B": "Error %",
+            "Value #C": "p95 (ms)"
+          }
+        }}
+      ],
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (service) (rate(traces_spanmetrics_calls_total{service!=\"compose\"}[5m]))", "format": "table", "instant": true, "refId": "A"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "100 * (sum by (service) (rate(traces_spanmetrics_calls_total{service!=\"compose\",status_code=\"STATUS_CODE_ERROR\"}[5m])) or sum by (service) (0 * traces_spanmetrics_calls_total{service!=\"compose\"})) / clamp_min(sum by (service) (rate(traces_spanmetrics_calls_total{service!=\"compose\"}[5m])), 1e-9)", "format": "table", "instant": true, "refId": "B"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "1000 * histogram_quantile(0.95, sum by (le, service) (rate(traces_spanmetrics_latency_bucket{service!=\"compose\"}[5m])))", "format": "table", "instant": true, "refId": "C"}
+      ]
+    },
+    {
+      "type": "row",
+      "id": 500,
+      "title": "Drill-down (when paged)",
+      "collapsed": true,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 37},
+      "panels": [
+        {
+          "type": "table",
+          "id": 501,
+          "title": "Recent error traces",
+          "datasource": {"type": "tempo", "uid": "tempo"},
+          "gridPos": {"h": 9, "w": 12, "x": 0, "y": 38},
+          "options": {"showHeader": true, "cellHeight": "sm"},
+          "fieldConfig": {
+            "defaults": {"custom": {"align": "auto", "cellOptions": {"type": "auto"}}},
+            "overrides": []
+          },
+          "targets": [{
+            "datasource": {"type": "tempo", "uid": "tempo"},
+            "query": "{resource.service.name!=\"compose\" && status=error}",
+            "queryType": "traceql",
+            "tableType": "traces",
+            "limit": 20,
+            "refId": "A"
+          }]
+        },
+        {
+          "type": "logs",
+          "id": 502,
+          "title": "Recent ERROR logs (with stacktrace)",
+          "datasource": {"type": "loki", "uid": "loki"},
+          "gridPos": {"h": 9, "w": 12, "x": 12, "y": 38},
+          "options": {
+            "showTime": true,
+            "showLabels": false,
+            "showCommonLabels": false,
+            "wrapLogMessage": true,
+            "prettifyLogMessage": false,
+            "enableLogDetails": true,
+            "dedupStrategy": "none",
+            "sortOrder": "Descending"
+          },
+          "targets": [{
+            "datasource": {"type": "loki", "uid": "loki"},
+            "expr": "{service_name=~\"order-.*\"} | severity_text=\"ERROR\"",
+            "queryType": "range",
+            "refId": "A"
+          }]
+        },
+        {
+          "type": "logs",
+          "id": 503,
+          "title": "Logs for trace_id = $traceid (paste a trace id from the table above)",
+          "datasource": {"type": "loki", "uid": "loki"},
+          "gridPos": {"h": 10, "w": 24, "x": 0, "y": 47},
+          "options": {
+            "showTime": true,
+            "showLabels": false,
+            "showCommonLabels": false,
+            "wrapLogMessage": true,
+            "prettifyLogMessage": false,
+            "enableLogDetails": true,
+            "dedupStrategy": "none",
+            "sortOrder": "Ascending"
+          },
+          "targets": [{
+            "datasource": {"type": "loki", "uid": "loki"},
+            "expr": "{service_name=~\"order-.*\"} | trace_id=~`$traceid`",
+            "queryType": "range",
+            "refId": "A"
+          }]
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": [
+    "ose-otel-demo",
+    "noc",
+    "otel"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "traceid",
+        "label": "Trace ID",
+        "type": "textbox",
+        "query": ".+",
+        "current": {"text": ".+", "value": ".+", "selected": false},
+        "options": [{"text": ".+", "value": ".+", "selected": true}],
+        "skipUrlSync": false,
+        "description": "Used in the bottom drill-down logs panel. Paste a 32-hex traceID from the 'Recent error traces' table to focus the log feed on that single request."
+      }
+    ]
+  },
+  "time": {"from": "now-30m", "to": "now"},
+  "timepicker": {"refresh_intervals": ["5s", "10s", "30s", "1m", "5m"]},
+  "timezone": "browser",
+  "title": "OSE OTel Demo — NOC View",
+  "uid": "ose-otel-noc",
+  "weekStart": ""
+}
