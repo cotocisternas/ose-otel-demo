@@ -59,8 +59,8 @@ Requirements for initial release. Each maps to a roadmap phase. All requirements
 
 ### Tests (TEST)
 
-- [ ] **TEST-01**: Each service's `@SpringBootTest` uses `@ServiceConnection` with Testcontainers `RabbitMQContainer` so tests provision a fresh RabbitMQ on a random port (NOT the host docker-compose RabbitMQ); test logs prove this by showing the random port
-- [ ] **TEST-02**: A `@TestConfiguration` substitutes `InMemorySpanExporter` + `SimpleSpanProcessor` (NOT `BatchSpanProcessor`) for the OTLP exporter so test assertions are deterministic
+- [x] **TEST-01**: Each service's `@SpringBootTest` uses `@ServiceConnection` with Testcontainers `RabbitMQContainer` so tests provision a fresh RabbitMQ on a random port (NOT the host docker-compose RabbitMQ); test logs prove this by showing the random port
+- [x] **TEST-02**: A `@TestConfiguration` substitutes `InMemorySpanExporter` + `SimpleSpanProcessor` (NOT `BatchSpanProcessor`) for the OTLP exporter so test assertions are deterministic
 - [ ] **TEST-03**: A cross-service integration test triggers the full `POST /orders` → publish → consume flow and asserts that producer and consumer spans share the same `traceId`
 - [ ] **TEST-04**: The same test asserts the consumer span's `parentSpanId` equals the producer span's `spanId` (proving the inject/extract pair works)
 - [ ] **TEST-05**: The same test asserts both spans carry correct `SpanKind` (`PRODUCER` / `CONSUMER`) and the messaging semantic-convention attributes
@@ -158,8 +158,8 @@ Every v1 requirement maps to exactly one phase. Updated by `gsd-roadmapper` 2026
 | LOG-03 | Phase 5 | Complete |
 | LOG-04 | Phase 5 | Complete |
 | LOG-05 | Phase 5 | Complete |
-| TEST-01 | Phase 6 | Pending |
-| TEST-02 | Phase 6 | Pending |
+| TEST-01 | Phase 6 | Complete |
+| TEST-02 | Phase 6 | Complete |
 | TEST-03 | Phase 6 | Pending |
 | TEST-04 | Phase 6 | Pending |
 | TEST-05 | Phase 6 | Pending |
