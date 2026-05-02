@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 Phase: 07 — SHIPPED (no tag — D-09); milestone v1.0 complete (subject to /gsd-complete-milestone)
 Plan: 7 of 7
 Status: Phase 07 source-complete; all 4 ROADMAP success criteria verified green at live stack; D-09 honored: NO step-07-* tag applied
-Last activity: 2026-05-02 -- Phase 07 polish-and-differentiators source-complete (4/4 SC green; step-04-metrics.png deferred per operator approval); D-09 honored: NO step-07-* tag applied
+Last activity: 2026-05-02 -- Completed quick task 260502-8gk: Add Valkey + PostgreSQL + Phase 8 manual OTel instrumentation (tag `step-08-db-cache` applied; all 5 plan tasks shipped + review fixes; verifier passed 9/9 must_haves)
 
 Progress: [██████████] 100%
 
@@ -123,6 +123,12 @@ None yet.
 - **Phase 5 research flag**: Confirm Maven coordinate for MDC injector (`opentelemetry-logback-mdc-1.0` artifact vs `<captureMdcAttributes>` on appender).
 - **Phase 6 research flag**: Validate `@ServiceConnection` + `RabbitMQContainer` on Spring Boot 3.4.13.
 - [Phase 5] Spring circular-reference cycle on otelSdkConfiguration bean (producer + consumer) blocks Phase 5 exit-gate smoke verification. Plans 05-02/05-03 added @Autowired field on the @Configuration class that produces the bean. mvn compile clean; cycle runtime-only. Recommended fix: assign this.openTelemetry = sdk inside @Bean factory body, drop @Autowired field. Surfaced by Plan 05-06 smoke; orchestrator should route a revision plan against 05-02/05-03 before tag application.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Status | Directory |
+|---|-------------|------|--------|--------|-----------|
+| 260502-8gk | Add Valkey + PostgreSQL + Phase 8 manual OTel instrumentation (tag `step-08-db-cache`) | 2026-05-02 | 7ac45e0 | Verified | [260502-8gk-add-new-random-features-to-have-more-poi](./quick/260502-8gk-add-new-random-features-to-have-more-poi/) |
 
 ## Deferred Items
 
