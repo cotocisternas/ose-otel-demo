@@ -77,7 +77,7 @@ Requirements for initial release. Each maps to a roadmap phase. All requirements
 ### Workshop artifacts (WORK)
 
 - [ ] **WORK-01**: Annotated git tags `step-01-baseline`, `step-02-traces`, `step-03-context-propagation`, `step-04-metrics`, `step-05-logs`, `step-06-tests` exist on `main` and immutably mark each workshop checkpoint
-- [ ] **WORK-02**: A pre-built Grafana dashboard JSON is committed at a known path and either auto-provisioned by the lgtm container or imported in one click from the README so attendees see all three signals on one panel
+- [x] **WORK-02**: A pre-built Grafana dashboard JSON is committed at a known path and either auto-provisioned by the lgtm container or imported in one click from the README so attendees see all three signals on one panel *(Phase 07-01 shipped 2026-05-02 — auto-provisioned via bind mount to /otel-lgtm/grafana/conf/provisioning/dashboards; live-verified)*
 - [ ] **WORK-03**: A `scripts/load.sh` script issues a steady stream of `POST /orders` requests so live demos have continuously-flowing traces, metrics, and logs without manual clicking
 
 ## v2 Requirements
@@ -170,7 +170,7 @@ Every v1 requirement maps to exactly one phase. Updated by `gsd-roadmapper` 2026
 | DOC-04 | Phase 7 | Pending |
 | DOC-05 | Phase 2 | Complete |
 | WORK-01 | Phase 1 | Pending |
-| WORK-02 | Phase 7 | Pending |
+| WORK-02 | Phase 7 | Complete (07-01, 2026-05-02) |
 | WORK-03 | Phase 7 | Pending |
 
 **Coverage:**

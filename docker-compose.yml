@@ -32,6 +32,7 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
       - lgtm-data:/data  # persists Grafana state across infra:down/up cycles (Pitfall D)
+      - ./grafana/dashboards:/otel-lgtm/grafana/conf/provisioning/dashboards:ro  # WORK-02 / Phase 7 D-01 — auto-provision dashboards
     # NOTE: We deliberately do NOT add a `healthcheck:` block here.
     # The image's Dockerfile already declares:
     #   HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
