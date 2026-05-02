@@ -115,12 +115,14 @@ public class OtelSdkConfiguration {
     OpenTelemetry openTelemetry() {
         // ----- Resource: identifies this service in Tempo, Mimir, Loki -----
         //
-        // Built ONCE in the orchestrator and passed to BOTH pipeline helpers
-        // (D-05) so traces and metrics share an identical Resource — service.name,
-        // service.namespace, service.instance.id, and deployment.environment.name
-        // are byte-for-byte the same in Tempo and Mimir. That shared identity is
-        // what makes cross-signal correlation work in Grafana (click a metric
-        // sample, jump to the matching trace by service.name + instance.id).
+        // Built ONCE in the orchestrator and passed to ALL THREE pipeline helpers
+        // (D-05) so traces, metrics, AND logs share an identical Resource —
+        // service.name, service.namespace, service.instance.id, and
+        // deployment.environment.name are byte-for-byte the same in Tempo,
+        // Mimir, AND Loki. That shared identity is what makes cross-signal
+        // correlation work in Grafana (click a metric sample, jump to the
+        // matching trace by service.name + instance.id; click a log line,
+        // jump to the same trace from Loki).
         //
         // Resource.getDefault() carries the OTel-defined defaults including
         // SERVICE_NAME=unknown_service:java. We .merge() our overrides on
