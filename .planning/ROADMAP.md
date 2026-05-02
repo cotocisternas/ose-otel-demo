@@ -155,9 +155,36 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Workshop attendee runs the Loki query `{service_name="order-producer"} |~ "<traceId>"` in Grafana, gets matching log lines, clicks the `trace_id` field on a line, and Grafana opens the matching trace in Tempo's Explore tab (proves LOG-05 end-to-end click-through).
   3. Workshop attendee can read `OtelSdkConfiguration.java` and see the `@PostConstruct`-annotated method calling `OpenTelemetryAppender.install(openTelemetry)` AFTER the SDK bean is fully built — the order of operations is explicit in the code, not magic (proves LOG-03 + addresses CRITICAL pitfall #5).
   4. The annotated git tag `step-05-logs` exists on `main`.
-**Plans**: TBD
+**Plans** (6 plans, 4 waves):
+- **Wave 1** *(parallelizable, no dependencies)*
+  - [ ] `05-01-pom-dependencies` — LOG-02 — Add `opentelemetry-logback-appender-1.0` + `opentelemetry-logback-mdc-1.0` to BOTH service POMs (BOM-managed by `opentelemetry-instrumentation-bom-alpha:2.27.0-alpha`, byte-identical mirror per D-02); `mvn validate` clean
+- **Wave 2** *(blocked on Wave 1; parallelizable across services)*
+  - [ ] `05-02-producer-sdk-and-logback` — LOG-01, LOG-02, LOG-03, LOG-04 — Producer's `OtelSdkConfiguration.java` extension (buildLoggerProvider helper + setLoggerProvider chain + @PostConstruct installLogbackAppender + JavaDoc fix for D-07) PLUS new `producer-service/src/main/resources/logback-spring.xml` with the corrected wrapper-appender shape per RESEARCH §1 (CONSOLE + MDC_CONSOLE wrapper + OTEL appender, NO TurboFilter)
+  - [ ] `05-03-consumer-sdk-and-logback` — LOG-01, LOG-02, LOG-03, LOG-04 — Consumer mirror (same 6 EDITs to consumer's `OtelSdkConfiguration.java`, byte-identical `logback-spring.xml`)
+- **Wave 3** *(blocked on Wave 2; parallelizable across services)*
+  - [ ] `05-04-producer-business-logs` — LOG-04 — `OrderController.create(...)` LOG.info entry + `OrderPublisher.publish(...)` LOG.info pre-publish (D-15)
+  - [ ] `05-05-consumer-error-log` — LOG-04 — `ProcessingService` LOG.error in catch block paired with existing span.recordException for triple-signal correlation on failure (D-16 option (a))
+- **Wave 4** *(blocked on Waves 1+2+3; contains human checkpoint)*
+  - [ ] `05-06-readme-and-tag` — LOG-05, WORK-01 — README "Step 5: Logs Correlation" section (D-20) + smoke verification of all 4 ROADMAP success criteria + human-verify gate; orchestrator applies annotated git tag `step-05-logs` post-gate (D-21)
+
+**Cross-cutting constraints** *(must_haves shared across plans)*:
+- D-01 (sibling-helper structure — diff against step-04 reads as "we added a third sibling pipeline"; carryforward of Phase 4 D-01)
+- D-02 (per-service duplication preserved — Phase 2 D-01 / DOC-05 carryforward)
+- D-04 (no autoconfigure dependency — Phase 2 D-12 / Phase 4 D-04 carryforward; same env-var-with-fallback pattern as the trace + metric exporters)
+- D-05 (Resource built once and shared between tracer + meter + logger pipelines for cross-signal correlation)
+- D-06 (lifecycle: existing @Bean(destroyMethod="close") cascade handles SdkLoggerProvider.shutdown() — no new lifecycle annotation)
+- D-07 (no Logger @Bean — application code logs via SLF4J; the OpenTelemetryAppender bridges those events to OTLP)
+- D-08 / D-09 (PITFALL #5 mitigation — `@PostConstruct` install with full inline comment block; load-bearing teaching surface)
+- D-10 (logback-spring.xml is byte-identical between services; no Spring Boot defaults include)
+- D-11 (locked console pattern: `[trace_id=%mdc{trace_id:-} span_id=%mdc{span_id:-}]`)
+- D-13 (CORRECTED per RESEARCH §1: MDC injector is an APPENDER WRAPPER, NOT a TurboFilter — uses `mdc.v1_0.OpenTelemetryAppender` wrapping CONSOLE)
+- D-19 (DOC-03 / comment-density bar ≥ 80 lines per OtelSdkConfiguration.java — Phase 5's helper + @PostConstruct + PITFALL #5 block naturally exceed this)
+
 **Notes**:
-- This phase will need `/gsd-research-phase` before planning — confirm exact Maven coordinate / version for the MDC injector (`opentelemetry-logback-mdc-1.0` vs `<captureMdcAttributes>` on the appender) per SUMMARY.md.
+- Phase 5 needed `/gsd-research-phase` before planning — research RESOLVED 2026-05-01: confirmed `opentelemetry-logback-mdc-1.0:2.27.0-alpha` Maven coordinate AND CORRECTED CONTEXT.md D-13 (the MDC injector is an appender wrapper, not a TurboFilter). All 21 D-decisions verified or corrected; all FQCNs verified against Maven Central POMs.
+- Wave 2 (05-02 / 05-03) can run in parallel: each plan touches a different service's files with zero file-overlap; Wave 1 (pom.xml updates) MUST land first so the new artifacts are on classpath when Wave 2's Java code imports them.
+- Wave 3 (05-04 / 05-05) can run in parallel: 05-04 touches producer-only files (OrderController, OrderPublisher); 05-05 touches consumer-only files (ProcessingService).
+- Wave 4 (05-06) is sequential — README + smoke + tag application gate.
 
 ### Phase 6: Verification Tests
 **Goal**: Workshop attendee adds Testcontainers-backed `@SpringBootTest`s using `RabbitMQContainer` + `@ServiceConnection` plus an `InMemorySpanExporter`-driven `@TestConfiguration` that proves the full instrumentation chain in CI: traceId shared across producer/consumer, parent/child relationship correct, span kinds correct, messaging semconv attributes present. Caps the workshop with "now you can prove your instrumentation works in CI without a live OTLP backend."
@@ -198,7 +225,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Manual SDK Bootstrap & First Traces | 6/6 | Shipped | 2026-05-01 |
 | 3. AMQP Context Propagation | 0/5 | In progress (planned) | - |
 | 4. Metrics | 0/5 | In progress (planned) | - |
-| 5. Logs Correlation | 0/TBD | Not started | - |
+| 5. Logs Correlation | 0/6 | In progress (planned) | - |
 | 6. Verification Tests | 0/TBD | Not started | - |
 | 7. Polish & Differentiators | 0/TBD | Not started | - |
 
@@ -208,7 +235,7 @@ Per SUMMARY.md "Research Flags" section, the following phases need `/gsd-researc
 
 - **Phase 1**: Verify exact ordering of BOM imports (OTel **before** Spring Boot in Maven `<dependencyManagement>`); verify `mise` plugin ID for Corretto 17 (could be `corretto-17` or a precise patch).
 - **Phase 3**: Verify `MethodInterceptor` advice on `SimpleRabbitListenerContainerFactory` composes correctly with Spring AMQP 3.2.8's listener lifecycle, vs. inline extraction inside the listener method body. Resolve before implementation.
-- **Phase 5**: Confirm exact Maven coordinate / version for the MDC injector (`opentelemetry-logback-mdc-1.0` separate artifact vs. `<captureMdcAttributes>` on the appender itself).
+- ~~**Phase 5**~~: RESOLVED 2026-05-01 — `opentelemetry-logback-mdc-1.0:2.27.0-alpha` is a separate BOM-managed artifact AND CORRECTED CONTEXT.md D-13: the MDC injector is an appender wrapper (extends `UnsynchronizedAppenderBase`), NOT a TurboFilter. See `.planning/phases/05-logs-correlation/05-RESEARCH.md` Finding #1.
 - **Phase 6**: Validate `@ServiceConnection` + `RabbitMQContainer` actually uses the test container (not the host RabbitMQ) on Spring Boot 3.4.13.
 
 Phases that can plan directly (no research-phase needed):
