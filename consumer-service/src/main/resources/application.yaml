@@ -1,6 +1,15 @@
 spring:
   application:
     name: order-consumer
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/orders}
+    username: ${SPRING_DATASOURCE_USERNAME:orders}
+    password: ${SPRING_DATASOURCE_PASSWORD:orders}
+  sql:
+    init:
+      # RESEARCH §7 pitfall: default is "embedded" — only runs schema.sql for H2/HSQL/Derby.
+      # Set to "always" so Postgres gets the schema on startup.
+      mode: always
 management:
   endpoints:
     web:

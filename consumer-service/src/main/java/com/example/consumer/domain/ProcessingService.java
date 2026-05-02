@@ -3,6 +3,9 @@ package com.example.consumer.domain;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.example.consumer.db.OrderRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
@@ -36,12 +39,18 @@ import org.springframework.stereotype.Service;
  * the broker drops the message (no DLX per PROJECT.md). Both INTERNAL
  * and CONSUMER spans show ERROR status in Tempo for the 10th order
  * (ROADMAP SC #3).
+ *
+ * <p>Phase 8 adds {@link OrderRepository} injection: on the success path
+ * (after the 10%-failure check), {@code insertProcessedOrder} persists the
+ * order to PostgreSQL with a JDBC CLIENT span wrapping the INSERT.
  */
 @Service
 public class ProcessingService {
     private static final Logger LOG = LoggerFactory.getLogger(ProcessingService.class);
 
     private final Tracer tracer;
+    private final OrderRepository repository;
+    private final ObjectMapper objectMapper;
 
     // Phase 3: deterministic 10%-failure trigger (APP-04 + D-11). Spring
     // @Service is singleton scope by default — the counter persists across
@@ -49,8 +58,10 @@ public class ProcessingService {
     // for fresh demo sessions).
     private final AtomicInteger counter = new AtomicInteger();
 
-    public ProcessingService(Tracer tracer) {
-        this.tracer = tracer;
+    public ProcessingService(Tracer tracer, OrderRepository repository, ObjectMapper objectMapper) {
+        this.tracer       = tracer;
+        this.repository   = repository;
+        this.objectMapper = objectMapper;
     }
 
     public void process(Map<String, Object> order) {
@@ -66,8 +77,23 @@ public class ProcessingService {
                 throw new ProcessingFailedException(
                     "Deterministic failure on order #" + n + " (every 10th order)");
             }
-            // Successful processing path — Phase 1 placeholder retained
-            // (simulated domain work, in-memory).
+            // Successful processing path.
+
+            // Phase 8: persist the processed order to PostgreSQL (DB-CACHE-03).
+            // Runs ONLY on the success path — the failure path throws before reaching this line.
+            // traceId = Span.current().getSpanContext().getTraceId() — valid because this code
+            // runs inside the INTERNAL span's try(Scope scope = span.makeCurrent()) block.
+            String orderId = String.valueOf(order.get("orderId"));
+            String traceId = Span.current().getSpanContext().getTraceId();
+            try {
+                String payloadJson = objectMapper.writeValueAsString(order);
+                repository.insertProcessedOrder(orderId, traceId, payloadJson);
+            } catch (Exception e) {
+                // Log the persistence failure but do NOT rethrow — a DB insert failure
+                // should not NACK the AMQP message and trigger requeue/DLX.
+                // The span.recordException path remains for trace visibility.
+                LOG.warn("failed to persist orderId={} to processed_orders: {}", orderId, e.getMessage());
+            }
         } catch (RuntimeException e) {
             // D-03 catch shape from Phase 2 — preserved unchanged below.
             // ProcessingFailedException extends RuntimeException, so it

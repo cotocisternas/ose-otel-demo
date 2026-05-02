@@ -150,6 +150,28 @@
       <version>1.40.0-alpha</version>
     </dependency>
 
+    <!--
+      Phase 8: Spring JDBC — brings JdbcTemplate + HikariCP DataSource auto-config.
+      spring-boot-starter-jdbc is BOM-managed by Spring Boot 3.4.13; HikariCP 5.1.0
+      is transitively managed. Do NOT define a custom DataSource @Bean — that would
+      suppress spring.sql.init.* processing (RESEARCH §7 pitfall: custom DataSource
+      @Bean disables schema.sql auto-run).
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+
+    <!--
+      Phase 8: PostgreSQL JDBC driver — BOM-managed by Spring Boot 3.4.13
+      (postgresql.version=42.7.8 in spring-boot-dependencies-3.4.13.pom).
+      No <version> tag needed.
+    -->
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+    </dependency>
+
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
