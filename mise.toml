@@ -10,6 +10,10 @@ min_version = "2025.1.0"
 java  = "corretto-17.0.13.11.1"
 maven = "3.9.11"
 node  = "lts"
+# Phase 7 / WORK-03: load-testing tool used by `mise run load`.
+# `oha` chosen over `hey` for its TUI showing live RPS + p50/p95 latency
+# (a side-by-side "client view vs server view" moment per README Step 1).
+oha   = "1.14.0"
 
 [env]
 # Spring Boot reads these and configures ConnectionFactory automatically.
@@ -126,6 +130,13 @@ curl -sf -X POST http://localhost:${PRODUCER_PORT}/orders \
   -H 'Content-Type: application/json' \
   -d '{"sku":"WIDGET-2","quantity":1,"priority":"standard"}' && echo
 """
+
+# ──────────────────────────────────────────────────────────────────
+# Continuous load (Phase 7 / WORK-03 / D-04.1)
+# ──────────────────────────────────────────────────────────────────
+[tasks.load]
+description = "Continuous POST /orders load (~1 req/sec, ~50/50 express/standard). Run alongside `mise run dev`. Ctrl-C stops both child loaders."
+run = "./scripts/load.sh"
 
 [tasks."verify:bom"]
 description = "Phase 2 invariant: one version per io.opentelemetry* artifact across the reactor"
