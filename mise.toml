@@ -145,13 +145,82 @@ run = "./scripts/load.sh"
 # WARNING: cycles git tags (step-01-baseline ... step-06-tests) in a worktree.
 # ──────────────────────────────────────────────────────────────────
 [tasks."docs:screenshots"]
-description = "Capture per-step screenshots (DOC-04). Cycles step-NN-* tags, drives Grafana via Playwright, writes docs/screenshots/*.png."
+description = "Capture per-step screenshots (DOC-04). Cycles step-NN-* tags via git worktree, drives Grafana via Playwright, writes docs/screenshots/*.png."
 run = """
 set -euo pipefail
-cd scripts/screenshots
+
+REPO_ROOT="$PWD"
+WORKTREE_DIR="$REPO_ROOT/.screenshots-worktree"
+OUTPUT_DIR="$REPO_ROOT/docs/screenshots"
+mkdir -p "$OUTPUT_DIR"
+
+cleanup() {
+  # Kill any background dev/load processes and tear down worktree.
+  pkill -f 'spring-boot:run' 2>/dev/null || true
+  pkill -f 'oha ' 2>/dev/null || true
+  pkill -f 'hey ' 2>/dev/null || true
+  if git worktree list 2>/dev/null | grep -q "$WORKTREE_DIR"; then
+    git worktree remove --force "$WORKTREE_DIR" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
+
+# Install Playwright deps once at the canonical location (main checkout).
+cd "$REPO_ROOT/scripts/screenshots"
 npm install
 npx playwright install --with-deps chromium
-node capture.mjs
+cd "$REPO_ROOT"
+
+# Bring up infra once — the same lgtm/rabbitmq containers serve every tag.
+mise run infra:up
+
+TAGS=(step-01-baseline step-02-traces step-03-context-propagation step-04-metrics step-05-logs step-06-tests)
+
+for tag in "${TAGS[@]}"; do
+  echo "=== capturing for $tag ==="
+  # Fresh worktree for the tag (idempotent — clean any stale one).
+  [ -d "$WORKTREE_DIR" ] && git worktree remove --force "$WORKTREE_DIR" 2>/dev/null || true
+  git worktree add "$WORKTREE_DIR" "$tag"
+
+  # Build + start dev from the worktree (host JVM via mise).
+  pushd "$WORKTREE_DIR" > /dev/null
+
+  # Phase 1 baseline (step-01-baseline) is a working Spring Boot app with zero OTel libs —
+  # the build SHOULD succeed at every tag. A failure here is a real problem; surface it.
+  if ! mvn -T 1C -DskipTests -q clean install; then
+    echo "build failed for $tag — aborting capture (this should not happen for any step-NN-* tag)"
+    exit 1
+  fi
+
+  # Start dev in background; let Spring Boot processes warm up.
+  mise run dev > "$REPO_ROOT/.screenshots-worktree-dev.log" 2>&1 &
+  DEV_PID=$!
+  sleep 25  # Spring Boot startup (~15-20s realistic)
+
+  # Start load in background to populate panels (skip for step-01-baseline — no apps will accept).
+  if [ "$tag" != "step-01-baseline" ]; then
+    "$REPO_ROOT/scripts/load.sh" > "$REPO_ROOT/.screenshots-worktree-load.log" 2>&1 &
+    LOAD_PID=$!
+    sleep 30  # WARMUP_MS — let panels populate
+  fi
+
+  popd > /dev/null
+
+  # Run capture for this tag's outputs.
+  # capture.mjs runs all CAPTURES; we filter via env to capture only this tag's entries.
+  CAPTURE_TAG_FILTER="$tag" node "$REPO_ROOT/scripts/screenshots/capture.mjs" || echo "capture for $tag had failures — see logs"
+
+  # Tear down dev + load before moving to next tag.
+  [ -n "${LOAD_PID:-}" ] && kill "$LOAD_PID" 2>/dev/null || true
+  kill "$DEV_PID" 2>/dev/null || true
+  pkill -f 'spring-boot:run' 2>/dev/null || true
+  sleep 5
+
+  git worktree remove --force "$WORKTREE_DIR" 2>/dev/null || true
+done
+
+echo "=== screenshots complete ==="
+ls -la "$OUTPUT_DIR"
 """
 
 [tasks."verify:bom"]

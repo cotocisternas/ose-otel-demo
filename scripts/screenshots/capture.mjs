@@ -178,10 +178,20 @@ async function main() {
   await mkdir(OUTPUT_DIR, { recursive: true });
   console.log(`output dir: ${OUTPUT_DIR}`);
 
+  // Plan 07-04 / Wave 2: when invoked once per tag from the mise driver, restrict the
+  // CAPTURES iteration to entries matching the current checkout's tag. Without the
+  // filter, every per-tag invocation would attempt all seven captures against the
+  // wrong checkout and write the same files seven times.
+  const TAG_FILTER = process.env.CAPTURE_TAG_FILTER;
+  const filtered = TAG_FILTER ? CAPTURES.filter(c => c.tag === TAG_FILTER) : CAPTURES;
+  if (TAG_FILTER) {
+    console.log(`CAPTURE_TAG_FILTER=${TAG_FILTER} — running ${filtered.length} of ${CAPTURES.length} captures`);
+  }
+
   const browser = await chromium.launch({ headless: true });
   try {
     const storage = await loginAndStoreState(browser);
-    for (const c of CAPTURES) {
+    for (const c of filtered) {
       // The driving loop assumes the *current* checkout matches `c.tag` and infra+dev+load
       // are already running with `WARMUP_MS` of warm-up traffic. Wave 2 / plan 07-04
       // wraps this script with the per-tag git-worktree cycle.
