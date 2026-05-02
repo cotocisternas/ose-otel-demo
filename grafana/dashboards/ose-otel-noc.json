@@ -174,7 +174,7 @@
       "type": "stat",
       "id": 104,
       "title": "Failed messages / sec",
-      "description": "Rate of consumer CONSUMER spans with status=ERROR — message-processing failures only. Driven by the deterministic 1-in-10 failure trigger in ProcessingService.processOrder; expect ~10% of the consumer's processed-message throughput.",
+      "description": "Rate of failed message-spans (status=ERROR) across BOTH producer-publish (PRODUCER-kind) and consumer-process (CONSUMER-kind) — one count per failed AMQP envelope on either side. NOC view: any failure anywhere in the messaging path raises this number. Today only the consumer side fails (deterministic 1-in-10 in ProcessingService.processOrder), so this matches the consumer-row 301 ERROR series — but if publish ever starts failing this stat catches it without changing the panel.",
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "gridPos": {"h": 5, "w": 4, "x": 16, "y": 0},
       "fieldConfig": {
@@ -199,7 +199,7 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "sum(rate(traces_spanmetrics_calls_total{span_kind=\"SPAN_KIND_CONSUMER\",service=\"order-consumer\",status_code=\"STATUS_CODE_ERROR\"}[1m]))",
+        "expr": "sum(rate(traces_spanmetrics_calls_total{service=~\"order-(producer|consumer)\",span_kind=~\"SPAN_KIND_(PRODUCER|CONSUMER)\",status_code=\"STATUS_CODE_ERROR\"}[1m]))",
         "refId": "A"
       }]
     },
