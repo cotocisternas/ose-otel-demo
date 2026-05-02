@@ -164,6 +164,26 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
       </plugin>
+
+      <!-- THIS IS THE JIB PLUGIN -->
+      <plugin>
+        <groupId>com.google.cloud.tools</groupId>
+        <artifactId>jib-maven-plugin</artifactId>
+        <version>3.4.1</version>
+        <configuration>
+          <from>
+            <image>gcr.io/distroless/java17-debian13@sha256:98180bfd121adfe3b35581bdf21e4b4f3bc95b7d744b93c080aec2709a12f53a</image>
+          </from>
+          <to>
+            <image>producer-service:latest</image>
+          </to>
+          <container>
+            <ports>
+              <port>8080</port>
+            </ports>
+          </container>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 </project>
