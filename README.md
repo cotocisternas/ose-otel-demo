@@ -74,7 +74,46 @@ In Phase 1 there is **no telemetry** — the OTLP endpoint is open and the Grafa
 - `step-05-logs` — Logs correlation + Loki-to-Tempo click-through.
 - `step-06-tests` — Cross-service Testcontainers IT proves the full instrumentation chain in CI. **Current.**
 
-This section establishes the convention; Phase 7 turns each bullet into a full walkthrough.
+This section establishes the convention; the per-step walkthroughs below follow a uniform 5-section template — *What you'll learn* / *Checkpoint* / *Run* / *What to look for* / *Why it matters* — so you can read the workshop top-to-bottom or skip into any step. The load-bearing standalone narrative sections ("Reading the code", "Why is OtelSdkConfiguration.java duplicated?", "Why is the propagation pair shared?", "What's NOT here yet") are preserved as a Concepts & FAQ appendix at the bottom; per-step *Why it matters* paragraphs cross-reference them where relevant.
+
+## Step 1: Baseline & Scaffold
+
+### What you'll learn
+
+What a working two-service Spring Boot + RabbitMQ application looks like with **zero OpenTelemetry libraries on the classpath**. The baseline that every later step instruments — neutralised foundation pitfalls (BOM ordering, ports, mise/IDE) so every subsequent OTel lesson is uncontaminated by tooling friction.
+
+### Checkpoint
+
+`git checkout step-01-baseline` — first commit; nothing to compare against.
+
+### Run
+
+```sh
+mise run preflight   # Docker up, ports free, JDK 17, Maven 3.9 active
+mise run infra:up    # starts RabbitMQ + grafana/otel-lgtm
+mise run dev         # starts producer + consumer in parallel
+mise run demo:order  # POSTs a sample order; expect 202
+mise run load        # OPTIONAL — continuous load (~1 req/sec, 50/50 priorities)
+```
+
+`mise run load` is the workshop's continuous-load script (Phase 7 / WORK-03). It launches two parallel `oha` invocations alternating `priority=express` and `priority=standard` at ~0.5 req/sec each (~1 req/sec total). Run it in a second terminal alongside `mise run dev` so live demos have flowing telemetry without hand-clicking. Ctrl-C terminates both child loaders cleanly.
+
+### What to look for
+
+- **Producer console**: `Started ProducerApplication in <Ns>`, then `OrderCreated` accept lines on every `mise run demo:order`.
+- **Consumer console**: `OrderCreated received: orderId=<uuid>` per published order.
+- **Grafana** (`mise run ui:grafana` — opens `http://localhost:3000`, **no login required**; anonymous Admin access is enabled by docker-compose so workshop attendees never see a password prompt): the pre-provisioned **OSE OTel Demo — Three Signals** dashboard appears in the dashboard list automatically — but **all panels are empty**. The dashboard's two-row layout (top = projector-friendly demo strip; bottom = collapsed deeper-dive) IS the workshop's pedagogical message: small demo, bigger production glimpse.
+- **`mvn dependency:tree -Dincludes=io.opentelemetry`**: zero matches. There are no OTel libraries on the classpath yet.
+- **Tempo trace search** (Grafana → Explore → Tempo): zero traces ever, no matter how many orders you POST.
+
+![Phase 1 baseline — empty Tempo trace search](docs/screenshots/step-01-empty-tempo.png)
+
+### Why it matters
+
+Every subsequent step adds **one** OTel surface to this baseline. The empty Tempo view IS the lesson — until Phase 2 wires `OpenTelemetrySdk.builder()`, the OTLP endpoint is open and the Grafana stack is running, but the apps emit nothing. This intentional *uninstrumented* shape lets each later step's diff read as a focused addition rather than a tangled refactor. The continuous-load script also sneaks in a tiny instrumentation lesson: while `mise run load` is running, `oha`'s TUI shows live RPS + p50/p95/p99 latency in the same terminal pumping load — a side-by-side "client view vs server view" preview of what `http.server.request.duration` will eventually show in Mimir from Phase 4 onwards. See the *What's NOT here yet* entry in the Concepts & FAQ appendix for the full list of deliberate Phase 1 omissions.
+
+<!-- placeholder — Step 2 inserted by Task 2 -->
+
 
 ## Step 4: Metrics
 
