@@ -196,19 +196,26 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. The cross-service integration test asserts that producer and consumer spans share the same `traceId`, that consumer's `parentSpanId == producer.spanId`, and that both spans carry correct `SpanKind` (`PRODUCER` / `CONSUMER`) and messaging semconv attributes — and the test is deterministic (uses `SimpleSpanProcessor` + `forceFlush`, never `BatchSpanProcessor`).
   4. `mise run test` exits non-zero on any assertion failure — suitable for CI.
   5. The annotated git tag `step-06-tests` exists on `main`.
-**Plans** (6 plans, 6 waves):
-- **Wave 1** *(no dependencies)*
-  - [x] `06-01-parent-pom-and-classifier-config` — TEST-06 — Add `<module>integration-tests</module>` to parent reactor + `<classifier>exec</classifier>` repackage execution to producer/consumer service POMs (RESEARCH §3.1; D-04). Produces both plain classes jars (top-level ApplicationClass.class) and `-exec` fat jars per service.
-- **Wave 2** *(blocked on Wave 1)*
-  - [ ] `06-02-integration-tests-pom` — TEST-01, TEST-02, TEST-06 — Create `integration-tests/pom.xml` with 8 deps (producer/consumer plain jars + spring-boot-starter-test + spring-boot-testcontainers + testcontainers junit-jupiter + rabbitmq + opentelemetry-sdk-testing + awaitility) + EXPLICIT `maven-failsafe-plugin:3.5.5` binding (parent does NOT inherit from spring-boot-starter-parent — RESEARCH §2.5).
-- **Wave 3** *(blocked on Wave 2)*
-  - [ ] `06-03-test-otel-holder` — TEST-02 — Create `integration-tests/.../TestOtelHolder.java`: static-singleton with synchronized lazy-init (`OpenTelemetrySdk` + 3 InMemory* sinks); `OpenTelemetryAppender.install(sdk)` runs AFTER builder().build() and BEFORE SDK reference is published (Phase 5 commit f5c331a invariant — D-09). NO Batch processor; NO PeriodicMetricReader; `Sampler.alwaysOn()` (D-13/D-16/D-18).
-- **Wave 4** *(blocked on Wave 3)*
-  - [ ] `06-04-test-otel-configuration` — TEST-02 — Create `integration-tests/.../TestOtelConfiguration.java`: `@TestConfiguration` with 6 `@Bean` facades (`openTelemetry`/`tracer`/`meter` matching production names for override-by-name; 3 InMemory facades). Each delegates to `TestOtelHolder.get()` + static fields. NO `Logger` @Bean (Phase 5 D-07 carryforward); NO direct SDK construction; NO appender install (lives in TestOtelHolder per D-07.1).
-- **Wave 5** *(blocked on Waves 3+4)*
-  - [ ] `06-05-order-flow-it` — TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, TEST-06 — Create `integration-tests/.../OrderFlowIT.java`: `@Testcontainers` JUnit 5; `@Container static final RabbitMQContainer("rabbitmq:4.3-management-alpine")`; `@BeforeAll` emits explicit `LOG.info("RabbitMQ test container available at {}:{}")` (TEST-01 SC #2 — RESEARCH §2.2) + sets 4 `spring.rabbitmq.*` System properties + starts 2 `SpringApplicationBuilder` contexts (Producer + Consumer, both `@Import` TestOtelConfiguration). 4 `@Test` methods (D-14): traces, logs, metrics, failure-path triple-signal. Awaitility polling, NO Thread.sleep. Reads telemetry from `TestOtelHolder.SPANS / .LOGS / .METRICS` directly per D-07.1.
-- **Wave 6** *(blocked on Wave 5; contains human checkpoint)*
-  - [ ] `06-06-readme-and-tag` — TEST-06 + WORK-01 — Add README "## Step 6: Verification Tests" section (D-20) keyed to tag `step-06-tests` + smoke verification of all 5 ROADMAP success criteria + human-verify gate; orchestrator applies annotated git tag `step-06-tests` post-gate (D-21 — same pattern as Phases 2/3/4/5)
+**Plans** (7 plans, 4 waves):
+- **Wave 1** *(parallelizable, no dependencies)*
+  - [ ] `07-01-grafana-dashboard-provisioning` — WORK-02 — `grafana/dashboards/{ose-otel-demo.json,dashboards.yaml}` + docker-compose volume mount; two-row layout per D-02 (top = projector demo strip, bottom = collapsed deeper-dive)
+  - [ ] `07-02-load-script` — WORK-03 — `scripts/load.sh` (two parallel oha invocations + SIGINT/SIGTERM trap, D-04) + `mise run load` task wiring + oha/hey pinned in mise.toml [tools]
+  - [ ] `07-03-screenshot-tooling-scaffold` — DOC-04 — `scripts/screenshots/{package.json,capture.mjs,.gitignore}` + `mise run docs:screenshots` task scaffold; Playwright pinned for reproducibility
+- **Wave 2** *(blocked on Wave 1; high-blast-radius human-verify gate)*
+  - [ ] `07-04-screenshot-capture` — DOC-04 — Tag-cycling driver via `git worktree`; produces 6-8 PNGs in docs/screenshots/ committed to git (DOC-04 broken/fixed pair = step-02-disconnected + step-03-joined)
+- **Wave 3** *(blocked on Wave 2; parallelizable across the README halves)*
+  - [ ] `07-05-readme-steps-1-2-3` — DOC-01, DOC-04 — Steps 1/2/3 written from scratch in lean 5-section template (D-08); DOC-04 broken/fixed PNG pair side-by-side via HTML \<table\> in Step 2
+  - [ ] `07-06-readme-steps-4-5-6-and-appendix` — DOC-01 — Steps 4/5/6 rewritten to fit the same template; four standalone narrative sections consolidated as `## Concepts & FAQ` appendix; D-09 final paragraph appended; D-07 invariant grep audit
+- **Wave 4** *(blocked on Wave 3; contains human checkpoint; NO TAG per D-09)*
+  - [ ] `07-07-exit-gate` — WORK-02, WORK-03, DOC-01, DOC-04 — Smoke-verify all 4 ROADMAP SCs simultaneously green; STATE/ROADMAP/REQUIREMENTS atomic flip; D-09 honored: NO step-07-* tag applied (main HEAD past step-06-tests IS the polish state)
+
+**Cross-cutting constraints** *(must_haves shared across plans)*:
+- D-01 / D-02 (auto-provisioned two-row dashboard with all 3 signals — WORK-02 SC #1; asserted by 07-01 + 07-07)
+- D-04 (two parallel oha invocations + SIGINT/SIGTERM trap — WORK-03 SC #1; asserted by 07-02 + 07-07)
+- D-06 (DOC-04 broken/fixed PNG pair side-by-side; per-step PNGs for Steps 1/4/5/6; asserted by 07-04 + 07-05 + 07-06)
+- D-07 (D-07 CRITICAL invariants list — every Phase 4/5/6 pedagogical fact preserved verbatim or as Concepts & FAQ cross-reference; asserted by 07-06 grep audit)
+- D-08 (lean 5-section template applied uniformly across all 6 Steps; asserted by 07-05 + 07-06 + 07-07)
+- D-09 (NO step-07-* git tag — explicit invariant; asserted by 07-07 pre-commit + post-commit checks)
 **Notes**:
 - This phase will need `/gsd-research-phase` before planning — validate `@ServiceConnection` + `RabbitMQContainer` actually uses the test container (not the host RabbitMQ) on Spring Boot 3.4.13 per SUMMARY.md.
 
@@ -221,19 +228,26 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Workshop attendee runs `scripts/load.sh` and observes a steady stream of `POST /orders` requests producing continuously-flowing telemetry — Tempo, Mimir, and Loki all show fresh data without manual curl-clicking (WORK-03).
   3. Workshop attendee reads `README.md` start-to-finish without running any code and understands the broken-vs-fixed propagation delta because Phase 2 ("step-02-traces") and Phase 3 ("step-03-context-propagation") screenshots are placed side-by-side with explanatory captions (DOC-04).
   4. Workshop attendee can `git checkout step-NN-NAME` for any step, follow the README section keyed to that tag with copy-pasteable curl commands, and reproduce the demonstrated state — every step has a paired README block (DOC-01).
-**Plans** (6 plans, 6 waves):
-- **Wave 1** *(no dependencies)*
-  - [x] `06-01-parent-pom-and-classifier-config` — TEST-06 — Add `<module>integration-tests</module>` to parent reactor + `<classifier>exec</classifier>` repackage execution to producer/consumer service POMs (RESEARCH §3.1; D-04). Produces both plain classes jars (top-level ApplicationClass.class) and `-exec` fat jars per service.
-- **Wave 2** *(blocked on Wave 1)*
-  - [ ] `06-02-integration-tests-pom` — TEST-01, TEST-02, TEST-06 — Create `integration-tests/pom.xml` with 8 deps (producer/consumer plain jars + spring-boot-starter-test + spring-boot-testcontainers + testcontainers junit-jupiter + rabbitmq + opentelemetry-sdk-testing + awaitility) + EXPLICIT `maven-failsafe-plugin:3.5.5` binding (parent does NOT inherit from spring-boot-starter-parent — RESEARCH §2.5).
-- **Wave 3** *(blocked on Wave 2)*
-  - [ ] `06-03-test-otel-holder` — TEST-02 — Create `integration-tests/.../TestOtelHolder.java`: static-singleton with synchronized lazy-init (`OpenTelemetrySdk` + 3 InMemory* sinks); `OpenTelemetryAppender.install(sdk)` runs AFTER builder().build() and BEFORE SDK reference is published (Phase 5 commit f5c331a invariant — D-09). NO Batch processor; NO PeriodicMetricReader; `Sampler.alwaysOn()` (D-13/D-16/D-18).
-- **Wave 4** *(blocked on Wave 3)*
-  - [ ] `06-04-test-otel-configuration` — TEST-02 — Create `integration-tests/.../TestOtelConfiguration.java`: `@TestConfiguration` with 6 `@Bean` facades (`openTelemetry`/`tracer`/`meter` matching production names for override-by-name; 3 InMemory facades). Each delegates to `TestOtelHolder.get()` + static fields. NO `Logger` @Bean (Phase 5 D-07 carryforward); NO direct SDK construction; NO appender install (lives in TestOtelHolder per D-07.1).
-- **Wave 5** *(blocked on Waves 3+4)*
-  - [ ] `06-05-order-flow-it` — TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, TEST-06 — Create `integration-tests/.../OrderFlowIT.java`: `@Testcontainers` JUnit 5; `@Container static final RabbitMQContainer("rabbitmq:4.3-management-alpine")`; `@BeforeAll` emits explicit `LOG.info("RabbitMQ test container available at {}:{}")` (TEST-01 SC #2 — RESEARCH §2.2) + sets 4 `spring.rabbitmq.*` System properties + starts 2 `SpringApplicationBuilder` contexts (Producer + Consumer, both `@Import` TestOtelConfiguration). 4 `@Test` methods (D-14): traces, logs, metrics, failure-path triple-signal. Awaitility polling, NO Thread.sleep. Reads telemetry from `TestOtelHolder.SPANS / .LOGS / .METRICS` directly per D-07.1.
-- **Wave 6** *(blocked on Wave 5; contains human checkpoint)*
-  - [ ] `06-06-readme-and-tag` — TEST-06 + WORK-01 — Add README "## Step 6: Verification Tests" section (D-20) keyed to tag `step-06-tests` + smoke verification of all 5 ROADMAP success criteria + human-verify gate; orchestrator applies annotated git tag `step-06-tests` post-gate (D-21 — same pattern as Phases 2/3/4/5)
+**Plans** (7 plans, 4 waves):
+- **Wave 1** *(parallelizable, no dependencies)*
+  - [ ] `07-01-grafana-dashboard-provisioning` — WORK-02 — `grafana/dashboards/{ose-otel-demo.json,dashboards.yaml}` + docker-compose volume mount; two-row layout per D-02 (top = projector demo strip, bottom = collapsed deeper-dive)
+  - [ ] `07-02-load-script` — WORK-03 — `scripts/load.sh` (two parallel oha invocations + SIGINT/SIGTERM trap, D-04) + `mise run load` task wiring + oha/hey pinned in mise.toml [tools]
+  - [ ] `07-03-screenshot-tooling-scaffold` — DOC-04 — `scripts/screenshots/{package.json,capture.mjs,.gitignore}` + `mise run docs:screenshots` task scaffold; Playwright pinned for reproducibility
+- **Wave 2** *(blocked on Wave 1; high-blast-radius human-verify gate)*
+  - [ ] `07-04-screenshot-capture` — DOC-04 — Tag-cycling driver via `git worktree`; produces 6-8 PNGs in docs/screenshots/ committed to git (DOC-04 broken/fixed pair = step-02-disconnected + step-03-joined)
+- **Wave 3** *(blocked on Wave 2; parallelizable across the README halves)*
+  - [ ] `07-05-readme-steps-1-2-3` — DOC-01, DOC-04 — Steps 1/2/3 written from scratch in lean 5-section template (D-08); DOC-04 broken/fixed PNG pair side-by-side via HTML \<table\> in Step 2
+  - [ ] `07-06-readme-steps-4-5-6-and-appendix` — DOC-01 — Steps 4/5/6 rewritten to fit the same template; four standalone narrative sections consolidated as `## Concepts & FAQ` appendix; D-09 final paragraph appended; D-07 invariant grep audit
+- **Wave 4** *(blocked on Wave 3; contains human checkpoint; NO TAG per D-09)*
+  - [ ] `07-07-exit-gate` — WORK-02, WORK-03, DOC-01, DOC-04 — Smoke-verify all 4 ROADMAP SCs simultaneously green; STATE/ROADMAP/REQUIREMENTS atomic flip; D-09 honored: NO step-07-* tag applied (main HEAD past step-06-tests IS the polish state)
+
+**Cross-cutting constraints** *(must_haves shared across plans)*:
+- D-01 / D-02 (auto-provisioned two-row dashboard with all 3 signals — WORK-02 SC #1; asserted by 07-01 + 07-07)
+- D-04 (two parallel oha invocations + SIGINT/SIGTERM trap — WORK-03 SC #1; asserted by 07-02 + 07-07)
+- D-06 (DOC-04 broken/fixed PNG pair side-by-side; per-step PNGs for Steps 1/4/5/6; asserted by 07-04 + 07-05 + 07-06)
+- D-07 (D-07 CRITICAL invariants list — every Phase 4/5/6 pedagogical fact preserved verbatim or as Concepts & FAQ cross-reference; asserted by 07-06 grep audit)
+- D-08 (lean 5-section template applied uniformly across all 6 Steps; asserted by 07-05 + 07-06 + 07-07)
+- D-09 (NO step-07-* git tag — explicit invariant; asserted by 07-07 pre-commit + post-commit checks)
 **Notes**:
 - All four requirements are differentiators flagged in SUMMARY.md as standard patterns — does not need `/gsd-research-phase`, can plan directly.
 - Per user decision earlier in initialization, this phase is locked into v1 (rather than deferred post-cohort) so the artifact is delivery-ready on first ship.
@@ -251,7 +265,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Metrics | 0/5 | In progress (planned) | - |
 | 5. Logs Correlation | 6/6 | Complete   | 2026-05-02 |
 | 6. Verification Tests | 6/6 | Shipped (tag step-06-tests) | 2026-05-02 |
-| 7. Polish & Differentiators | 0/TBD | Not started | - |
+| 7. Polish & Differentiators | 0/7 | In progress (planned) | - |
 
 ## Research Flags
 
