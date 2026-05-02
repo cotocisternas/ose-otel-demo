@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 7 context gathered
-last_updated: "2026-05-02T06:57:37.302Z"
-last_activity: 2026-05-02 -- Phase 7 planning complete
+stopped_at: Phase 7 plan 01 (grafana-dashboard-provisioning) complete — dashboard auto-provisions, top row 4 panels, second row collapsed; bundled-dashboard shadow accepted (Rule 4 follow-up logged)
+last_updated: "2026-05-02T07:15:30.000Z"
+last_activity: 2026-05-02 -- Phase 07 plan 01 SHIPPED (grafana-dashboard-provisioning)
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 41
-  completed_plans: 35
-  percent: 85
+  completed_plans: 36
+  percent: 88
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 
 ## Current Position
 
-Phase: 06 — SHIPPED (tag step-06-tests, 2026-05-02); next up Phase 07
-Plan: 6 of 6
-Status: Ready to execute
-Last activity: 2026-05-02 -- Phase 7 planning complete
+Phase: 07 (polish-differentiators) — EXECUTING
+Plan: 2 of 7 (next: 07-02 load-script)
+Status: Executing Phase 07; plan 01 SHIPPED 2026-05-02 (live-verified)
+Last activity: 2026-05-02 -- Phase 07 plan 01 SHIPPED (grafana-dashboard-provisioning)
 
-Progress: [████████▌─] 86%
+Progress: [████████▊─] 88%
 
 ## Performance Metrics
 
@@ -67,6 +67,9 @@ Progress: [████████▌─] 86%
 | Phase 06 P02 | 2min | 1 tasks | 1 files |
 | Phase 06 P04 | 5min | 1 tasks | 1 files |
 | Phase 06 P05 | 4min | 1 tasks | 1 files |
+| Phase 07 P01 (grafana-dashboard-provisioning) | ~16min* | 4 (2 commit-bearing) | 3 files (1 modified, 2 created) |
+
+*Wall-clock spans 03:00–07:15 UTC because of human-verify checkpoint wait between Task 3 author and Task 4 live-verify; active work ~16min.
 
 ## Accumulated Context
 
@@ -98,6 +101,7 @@ Recent decisions affecting current work:
 - [Phase ?]: 06-05: AssertJ alias collision resolved per Option A (FQCN at AssertJ sites; static-import OTel assertThat)
 - [Phase ?]: 06-05: PRODUCER span asserts MessagingOperationTypeIncubatingValues.SEND not literal 'publish'; CONSUMER asserts .PROCESS — semconv-version-aware
 - [Phase 06-06]: README "Step 6: Verification Tests" section landed (commit 5a1b5c1) with verbatim Edit-1/Edit-2/Edit-3 from plan; smoke verified 4/4 IT green with host RabbitMQ stopped (random port 32780, BUILD SUCCESS). All 5 ROADMAP Phase-6 success criteria passed (SC #5 satisfied by orchestrator's tag-apply). Annotated tag step-06-tests applied to status-flip commit per WORK-01 / D-21 / Phase 2-06 precedent; ROADMAP/REQUIREMENTS/STATE flipped atomically with the tag. infra:up restarted post-gate (rabbitmq + otel-lgtm both healthy).
+- [Phase 07-01]: Authoring strategy = option-b (hand-author JSON). Resolved otel-lgtm in-container provisioning path = `/otel-lgtm/grafana/conf/provisioning/dashboards`. Live-verified zero-click auto-provisioning: top row 4 panels (Tempo trace search, service graph, RED metrics, Loki logs); second row `Deeper-dive (post-workshop)` collapsed by default. Dashboard JSON portable (uid `ose-otel-demo`, no top-level version/id/iteration, default datasource UIDs). `traceid` Loki var = textbox default `.+` (vs spec's preferred `query`-derived shape — chosen for empty-data robustness). Rule 4 follow-up logged but accepted: bind mount onto `/otel-lgtm/grafana/conf/provisioning/dashboards` shadows bundled `grafana-dashboards.yaml` (RED-classic / RED-native / JVM-metrics) — bundled dashboards no longer auto-load; load-bearing `ose-otel-demo` dashboard does. Future plan can sibling-mount + sidecar-manifest if bundled dashboards wanted back.
 
 ### Pending Todos
 
@@ -126,6 +130,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-02T06:23:02.540Z
-Stopped at: Phase 7 context gathered
-Resume file: .planning/phases/07-polish-differentiators/07-CONTEXT.md
+Last session: 2026-05-02T07:15:30.000Z
+Stopped at: Phase 7 plan 01 (grafana-dashboard-provisioning) SHIPPED — next plan 07-02 load-script
+Resume file: .planning/phases/07-polish-differentiators/07-02-load-script-PLAN.md
