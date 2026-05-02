@@ -109,11 +109,17 @@ public class OtelSdkConfiguration {
      *
      * destroyMethod="close" is load-bearing: when Spring shuts the context down
      * (Ctrl-C on `mise run dev:consumer`), Spring calls openTelemetry.close(),
-     * which calls shutdown().join(10s), which cascades to the
-     * SdkTracerProvider, which cascades to BatchSpanProcessor.worker.shutdown(),
-     * which forces a final flush of any spans still in the BSP queue. Without
-     * this binding the last 5 seconds of telemetry are silently dropped on
-     * graceful shutdown — a textbook OTel pitfall.
+     * which calls shutdown().join(10s), which cascades to the SdkTracerProvider,
+     * SdkMeterProvider, AND SdkLoggerProvider — each calls shutdown() on its
+     * respective Batch{Span,Metric,LogRecord}Processor (the metric pipeline's
+     * PeriodicMetricReader has its own shutdown path), which forces a final
+     * flush of any items still in flight in each pipeline. Without this binding,
+     * the last 5 seconds of spans (BatchSpanProcessor's 5s default) AND the
+     * last 1 second of log records (BatchLogRecordProcessor's 1s default —
+     * RESEARCH Finding #4) AND the last collection cycle of metrics
+     * (PeriodicMetricReader's 10s interval, METRIC-01) would be silently
+     * dropped on graceful shutdown — a textbook OTel pitfall, multiplied by
+     * three signals.
      *
      * Note: we call .build(), NOT .buildAndRegisterGlobal(). The demo
      * injects OpenTelemetry / Tracer as Spring beans (see the @Bean
