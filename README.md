@@ -343,7 +343,11 @@ The test exits non-zero on any assertion failure — suitable for any CI runner 
 
 Production-vs-test SDK divergence is a deliberate pedagogical contrast. Phase 2's per-service duplication of `OtelSdkConfiguration.java` is a PRODUCTION rule — `TestOtelConfiguration` is a single `@TestConfiguration` shared by both Spring contexts because the in-memory exporter must see ALL spans across both services in one queue. The contrast itself is the lesson: duplicate when readers benefit from reading the same setup twice; share when the test fixture's purpose requires one shared instance. The triple-signal correlation `@Test` (failure path) is the workshop's strongest single statement that all three signals work together — one trace_id, one error, one log, one metric data point, one in-memory queue per signal sink, one assertion suite. For the broader per-service-vs-shared design pattern, see *Why is the propagation pair shared?* and *Why is OtelSdkConfiguration.java duplicated?* in the [Concepts & FAQ](#concepts--faq) appendix.
 
-## Reading the code
+## Concepts & FAQ
+
+The following four sections collect the narrative deep-dives the per-step *Why it matters* paragraphs cross-reference. They preserve a second reading mode: skim the per-step walkthrough top-to-bottom, then dive into the conceptual narrative — or read this section first and use the per-step blocks as worked examples.
+
+### Reading the code
 
 The two `OtelSdkConfiguration.java` files are the workshop's textbook for the manual SDK setup. Open them in your IDE and read top-to-bottom — every `@Bean` carries an inline comment explaining what each builder call does and why (DOC-03):
 
@@ -354,11 +358,11 @@ The producer adds one extra file — [`HttpServerSpanFilter.java`](./producer-se
 
 The five business-code span sites (one `SERVER`, two `INTERNAL`, one `PRODUCER`, one `CONSUMER`) all use the same pure-inline `try`/`Scope`/`try`/`catch`/`finally` template — no helper, no AOP. The boilerplate IS the lesson.
 
-## Why is OtelSdkConfiguration.java duplicated?
+### Why is OtelSdkConfiguration.java duplicated?
 
 The two SDK config files are duplicated per service on purpose (DOC-05). Refactoring them into a shared `@AutoConfiguration` bean in the `otel-bootstrap` module would hide one of the two readings the workshop is built around — the whole point of Phase 2 is that an attendee reads `OpenTelemetrySdk.builder()`, `Resource.getDefault().merge(...)`, `BatchSpanProcessor.builder(...)`, `Sampler.parentBased(Sampler.alwaysOn())`, `OtlpGrpcSpanExporter.builder().setEndpoint(...)`, and `ContextPropagators.create(...)` _twice_, in two slightly different files, and develops a feel for which lines are workshop-pedagogy boilerplate and which lines are service-identity. The two files differ in only five small ways (package, JavaDoc cross-reference, the service.name string, the tracer scope name, plus the producer-only `HttpServerSpanFilter` bean) — the diff is small enough to read in one viewing. The propagation pair Phase 3 introduces, by contrast, IS shared in `otel-bootstrap` because the symmetry of one inject method matched by one extract method IS that lesson. Different design forces drive different choices; the workshop teaches both.
 
-## Why is the propagation pair shared?
+### Why is the propagation pair shared?
 
 The propagation pair lives in `otel-bootstrap/src/main/java/com/example/otel/amqp/` (PROP-04) and is shared across both services on purpose — the deliberate counterpart of Phase 2's per-service-duplicated `OtelSdkConfiguration.java`. Read these two callouts as a pair: per-service code (the SDK setup) is duplicated so attendees read it twice; cross-service code (the messaging boundary) is shared so attendees read ONE inject method matched by ONE extract method, and the symmetry IS the lesson.
 
@@ -372,9 +376,18 @@ The four classes carry zero Spring annotations; each service's `RabbitConfig.jav
 
 Phase 3 also corrects an OTel messaging semconv divergence from Phase 2: the producer's `messaging.destination.name` attribute is now the **exchange** (`orders`), not the queue (`orders.created`). This is visible in Tempo across the `step-02-traces` → `step-03-context-propagation` tags.
 
-## What's NOT here yet
+### What's NOT here yet
 
-The following are deliberate Phase 1 omissions — the repo isn't incomplete, it's **uninstrumented on purpose** so each later phase has something concrete to add:
+The workshop ships at main HEAD with all six steps' instrumentation, the auto-provisioned dashboard, the continuous-load script, and the per-step screenshot set. Deliberate v1 omissions (deferred to v2):
 
-- No `OtelSdkConfiguration.java` (Phase 2)
-- No pre-built Grafana dashboard or load script (Phase 7)
+- **Sampling-variant checkpoint** (`step-07-sampling-variant` / SAMP-01) — `TraceIdRatioBased` and `ParentBased` samplers side-by-side with environment-driven config.
+- **Baggage propagation checkpoint** (`step-08-baggage` / PROP-V2-01) — `W3CBaggagePropagator` carrying business attributes across the AMQP boundary. Phase 2 already wired the propagator; a v2 phase exercises it.
+- **DLX/retry checkpoint** (`step-09-dlx-retry` / FAIL-01) — dead-letter exchange and retry instrumentation with messaging-semconv `messaging.rabbitmq.destination_routing_key`.
+- **`docs/FACILITATOR.md`** (FAC-01) — timing notes, common questions, "if you see X, do Y" — only needed when someone other than the original author delivers the workshop.
+- **CI YAML** for `mise run test` on PRs — the test exits non-zero (TEST-06), sufficient for any CI runner; YAML belongs in v2 if the workshop becomes a maintained shared artifact across cohorts.
+- **Pyroscope / continuous profiling** — fourth-signal extension if a future cohort wants it.
+- **Vendor-specific exporter swap demo** (Honeycomb, Datadog, etc.) — one-line OTLP endpoint change attendees can do themselves.
+
+---
+
+Workshop is at main HEAD past `step-06-tests`; dashboard, load script, and full walkthrough are here. To revisit any step, `git checkout step-NN-*`.
