@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 4: Metrics** — `SdkMeterProvider` + Counter, Histogram, ObservableGauge instrument shapes flowing to Mimir
 - [x] **Phase 5: Logs Correlation** — `OpenTelemetryAppender` + MDC trace_id/span_id; Loki-to-Tempo click-through working (completed 2026-05-02)
 - [x] **Phase 6: Verification Tests** *(shipped 2026-05-02; tag `step-06-tests`)* — Testcontainers `RabbitMQContainer` + `InMemorySpanExporter` proves the full chain in CI
-- [ ] **Phase 7: Polish & Differentiators** — Pre-built dashboard, load script, screenshots, full README walkthrough
+- [x] **Phase 7: Polish & Differentiators** *(shipped 2026-05-02; no tag per D-09 — main HEAD past step-06-tests IS the polish state)* — Pre-built dashboard, load script, screenshots, full README walkthrough
 
 ## Phase Details
 
@@ -207,7 +207,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [x] `07-05-readme-steps-1-2-3` — DOC-01, DOC-04 — Steps 1/2/3 written from scratch in lean 5-section template (D-08); DOC-04 broken/fixed PNG pair side-by-side via HTML \<table\> in Step 2 **(shipped 2026-05-02; README +10KB; anon-access copy used per 07-04 carryforward)**
   - [x] `07-06-readme-steps-4-5-6-and-appendix` — DOC-01 — Steps 4/5/6 rewritten to fit the same template; four standalone narrative sections consolidated as `## Concepts & FAQ` appendix; D-09 final paragraph appended; D-07 invariant grep audit **(shipped 2026-05-02; all 6 Steps in lean template; appendix consolidated; D-07 invariants grep-verified)**
 - **Wave 4** *(blocked on Wave 3; contains human checkpoint; NO TAG per D-09)*
-  - [ ] `07-07-exit-gate` — WORK-02, WORK-03, DOC-01, DOC-04 — Smoke-verify all 4 ROADMAP SCs simultaneously green; STATE/ROADMAP/REQUIREMENTS atomic flip; D-09 honored: NO step-07-* tag applied (main HEAD past step-06-tests IS the polish state)
+  - [x] `07-07-exit-gate` — WORK-02, WORK-03, DOC-01, DOC-04 — Smoke-verify all 4 ROADMAP SCs simultaneously green; STATE/ROADMAP/REQUIREMENTS atomic flip; D-09 honored: NO step-07-* tag applied (main HEAD past step-06-tests IS the polish state) **(shipped 2026-05-02; 4/4 SC green; step-04-metrics.png deferred per operator approval — Rule-4 follow-up logged)**
 
 **Cross-cutting constraints** *(must_haves shared across plans)*:
 - D-01 / D-02 (auto-provisioned two-row dashboard with all 3 signals — WORK-02 SC #1; asserted by 07-01 + 07-07)
@@ -239,7 +239,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - [x] `07-05-readme-steps-1-2-3` — DOC-01, DOC-04 — Steps 1/2/3 written from scratch in lean 5-section template (D-08); DOC-04 broken/fixed PNG pair side-by-side via HTML \<table\> in Step 2 **(shipped 2026-05-02; README +10KB; anon-access copy used per 07-04 carryforward)**
   - [x] `07-06-readme-steps-4-5-6-and-appendix` — DOC-01 — Steps 4/5/6 rewritten to fit the same template; four standalone narrative sections consolidated as `## Concepts & FAQ` appendix; D-09 final paragraph appended; D-07 invariant grep audit **(shipped 2026-05-02; all 6 Steps in lean template; appendix consolidated; D-07 invariants grep-verified)**
 - **Wave 4** *(blocked on Wave 3; contains human checkpoint; NO TAG per D-09)*
-  - [ ] `07-07-exit-gate` — WORK-02, WORK-03, DOC-01, DOC-04 — Smoke-verify all 4 ROADMAP SCs simultaneously green; STATE/ROADMAP/REQUIREMENTS atomic flip; D-09 honored: NO step-07-* tag applied (main HEAD past step-06-tests IS the polish state)
+  - [x] `07-07-exit-gate` — WORK-02, WORK-03, DOC-01, DOC-04 — Smoke-verify all 4 ROADMAP SCs simultaneously green; STATE/ROADMAP/REQUIREMENTS atomic flip; D-09 honored: NO step-07-* tag applied (main HEAD past step-06-tests IS the polish state) **(shipped 2026-05-02; 4/4 SC green; step-04-metrics.png deferred per operator approval — Rule-4 follow-up logged)**
 
 **Cross-cutting constraints** *(must_haves shared across plans)*:
 - D-01 / D-02 (auto-provisioned two-row dashboard with all 3 signals — WORK-02 SC #1; asserted by 07-01 + 07-07)
@@ -265,7 +265,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Metrics | 0/5 | In progress (planned) | - |
 | 5. Logs Correlation | 6/6 | Complete   | 2026-05-02 |
 | 6. Verification Tests | 6/6 | Shipped (tag step-06-tests) | 2026-05-02 |
-| 7. Polish & Differentiators | 1/7 | In progress (07-01 shipped 2026-05-02) | - |
+| 7. Polish & Differentiators | 7/7 | Shipped (no tag — D-09) | 2026-05-02 |
 
 ## Research Flags
 

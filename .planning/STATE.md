@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 7 plan 01 (grafana-dashboard-provisioning) SHIPPED — next plan 07-02 load-script
-last_updated: "2026-05-02T08:50:37.908Z"
-last_activity: 2026-05-02
+stopped_at: Phase 7 shipped (no tag — D-09)
+last_updated: "2026-05-02T18:00:00.000Z"
+last_activity: 2026-05-02 -- Phase 07 polish-and-differentiators source-complete (4/4 SC green; step-04-metrics.png deferred per operator approval); D-09 honored: NO step-07-* tag applied
 progress:
   total_phases: 7
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 41
   completed_plans: 41
   percent: 100
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 
 ## Current Position
 
-Phase: 07 (polish-differentiators) — EXECUTING
-Plan: 7 of 7 (next: 07-07 exit-gate)
-Status: Ready to execute
-Last activity: 2026-05-02
+Phase: 07 — SHIPPED (no tag — D-09); milestone v1.0 complete (subject to /gsd-complete-milestone)
+Plan: 7 of 7
+Status: Phase 07 source-complete; all 4 ROADMAP success criteria verified green at live stack; D-09 honored: NO step-07-* tag applied
+Last activity: 2026-05-02 -- Phase 07 polish-and-differentiators source-complete (4/4 SC green; step-04-metrics.png deferred per operator approval); D-09 honored: NO step-07-* tag applied
 
 Progress: [██████████] 100%
 
@@ -102,6 +102,10 @@ Recent decisions affecting current work:
 - [Phase ?]: 06-05: PRODUCER span asserts MessagingOperationTypeIncubatingValues.SEND not literal 'publish'; CONSUMER asserts .PROCESS — semconv-version-aware
 - [Phase 06-06]: README "Step 6: Verification Tests" section landed (commit 5a1b5c1) with verbatim Edit-1/Edit-2/Edit-3 from plan; smoke verified 4/4 IT green with host RabbitMQ stopped (random port 32780, BUILD SUCCESS). All 5 ROADMAP Phase-6 success criteria passed (SC #5 satisfied by orchestrator's tag-apply). Annotated tag step-06-tests applied to status-flip commit per WORK-01 / D-21 / Phase 2-06 precedent; ROADMAP/REQUIREMENTS/STATE flipped atomically with the tag. infra:up restarted post-gate (rabbitmq + otel-lgtm both healthy).
 - [Phase 07-01]: Authoring strategy = option-b (hand-author JSON). Resolved otel-lgtm in-container provisioning path = `/otel-lgtm/grafana/conf/provisioning/dashboards`. Live-verified zero-click auto-provisioning: top row 4 panels (Tempo trace search, service graph, RED metrics, Loki logs); second row `Deeper-dive (post-workshop)` collapsed by default. Dashboard JSON portable (uid `ose-otel-demo`, no top-level version/id/iteration, default datasource UIDs). `traceid` Loki var = textbox default `.+` (vs spec's preferred `query`-derived shape — chosen for empty-data robustness). Rule 4 follow-up logged but accepted: bind mount onto `/otel-lgtm/grafana/conf/provisioning/dashboards` shadows bundled `grafana-dashboards.yaml` (RED-classic / RED-native / JVM-metrics) — bundled dashboards no longer auto-load; load-bearing `ose-otel-demo` dashboard does. Future plan can sibling-mount + sidecar-manifest if bundled dashboards wanted back.
+- [Phase 07-07]: All 4 ROADMAP Phase 7 SC verified simultaneously green at live stack: SC#1 dashboard auto-provisions and renders all 3 signals; SC#2 scripts/load.sh sustains ~1 req/sec with clean Ctrl-C trap; SC#3 README readable end-to-end with DOC-04 broken/fixed pair side-by-side via HTML <table>; SC#4 every step has paired README block with copy-pasteable mise/curl commands.
+- [Phase 07-07]: D-09 honored — NO step-07-* git tag applied. README final paragraph closes with: "Workshop is at main HEAD past step-06-tests; ..." per D-09 verbatim. STATE/ROADMAP/REQUIREMENTS flipped atomically with the polish-merge commit (Phase 2-06 / 6-06 precedent minus tag-apply step).
+- [Phase 07-07]: Operator-approved deferral — `docs/screenshots/step-04-metrics.png` not produced for v1 (Rule-4 follow-up; rationale documented in 07-04-SUMMARY.md "Scope Cut" section: polish-layer artifacts only on main HEAD, not at older step-NN-* tags, so the automated pipeline can't currently render the Phase 4 dashboard panel from a tag-checkout worktree). Operator explicitly accepted at the exit-gate human-verify checkpoint. Six of seven required PNGs present; the load-bearing DOC-04 broken/fixed anchor pair (step-02-disconnected + step-03-joined) shipped.
+- [Phase 07-07]: REQUIREMENTS.md traceability table normalized — Phase 7 rows changed from `Complete (07-XX, 2026-05-02)` to bare `Complete` to match the `Pending`/`Complete` schema used elsewhere in the table; per-requirement parenthetical metadata preserved verbatim in the bullet bodies above the traceability table (where it's reader-facing, not gate-facing).
 
 ### Pending Todos
 
@@ -130,6 +134,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-02T07:15:30.000Z
-Stopped at: Phase 7 plan 01 (grafana-dashboard-provisioning) SHIPPED — next plan 07-02 load-script
-Resume file: .planning/phases/07-polish-differentiators/07-02-load-script-PLAN.md
+Last session: 2026-05-02T18:00:00.000Z
+Stopped at: Phase 7 SHIPPED (no tag — D-09); milestone v1.0 source-complete (subject to /gsd-complete-milestone)
+Resume file: None — Phase 7 exit-gate complete; next entry point is /gsd-complete-milestone for v1.0 milestone artifacts (separate from phase exit gates per D-09)

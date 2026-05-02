@@ -164,14 +164,14 @@ Every v1 requirement maps to exactly one phase. Updated by `gsd-roadmapper` 2026
 | TEST-04 | Phase 6 | Complete |
 | TEST-05 | Phase 6 | Complete |
 | TEST-06 | Phase 6 | Complete |
-| DOC-01 | Phase 7 | Complete (07-05 + 07-06, 2026-05-02) |
+| DOC-01 | Phase 7 | Complete |
 | DOC-02 | Phase 1 | Pending |
 | DOC-03 | Phase 2 | Complete |
-| DOC-04 | Phase 7 | Complete (07-04, 2026-05-02) |
+| DOC-04 | Phase 7 | Complete |
 | DOC-05 | Phase 2 | Complete |
 | WORK-01 | Phase 1 | Pending |
-| WORK-02 | Phase 7 | Complete (07-01, 2026-05-02) |
-| WORK-03 | Phase 7 | Complete (07-02, 2026-05-02) |
+| WORK-02 | Phase 7 | Complete |
+| WORK-03 | Phase 7 | Complete |
 
 **Coverage:**
 
@@ -193,4 +193,4 @@ Every v1 requirement maps to exactly one phase. Updated by `gsd-roadmapper` 2026
 ---
 
 *Requirements defined: 2026-04-29*
-*Last updated: 2026-04-29 by gsd-roadmapper — traceability filled, judgment calls documented*
+*Last updated: 2026-05-02 — Phase 7 shipped (no tag per D-09); WORK-02 + WORK-03 + DOC-01 + DOC-04 complete*
