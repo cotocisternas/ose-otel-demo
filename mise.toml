@@ -166,9 +166,14 @@ cleanup() {
 trap cleanup EXIT
 
 # Install Playwright deps once at the canonical location (main checkout).
+# Rule-3 deviation (07-04): PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 prevents npm install
+# from trying to download Chromium binaries (which fails on Arch because
+# `playwright install-deps` only knows apt-get/dnf/yum, not pacman). We use the
+# system chromium via PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH (auto-detected in
+# capture.mjs at /usr/bin/chromium, /usr/bin/chromium-browser, or /usr/bin/google-chrome).
+# On systems without one, run: npx playwright install chromium
 cd "$REPO_ROOT/scripts/screenshots"
-npm install
-npx playwright install --with-deps chromium
+PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install
 cd "$REPO_ROOT"
 
 # Bring up infra once — the same lgtm/rabbitmq containers serve every tag.

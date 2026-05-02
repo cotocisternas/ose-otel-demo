@@ -22,6 +22,7 @@
 
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
@@ -188,7 +189,19 @@ async function main() {
     console.log(`CAPTURE_TAG_FILTER=${TAG_FILTER} — running ${filtered.length} of ${CAPTURES.length} captures`);
   }
 
-  const browser = await chromium.launch({ headless: true });
+  // Prefer system chromium when present (Arch, Fedora, Ubuntu+google-chrome).
+  // Fall back to Playwright's bundled chromium when no system binary is found
+  // (e.g., CI containers). PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH lets the operator
+  // override the auto-detection. Rule-3 deviation (07-04): the original
+  // `playwright install --with-deps chromium` call fails on Arch Linux because
+  // Playwright's install-deps only knows apt-get/dnf/yum, not pacman.
+  const executablePath =
+    process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ||
+    (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' :
+     existsSync('/usr/bin/chromium-browser') ? '/usr/bin/chromium-browser' :
+     existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome' :
+     undefined);
+  const browser = await chromium.launch({ headless: true, executablePath });
   try {
     const storage = await loginAndStoreState(browser);
     for (const c of filtered) {
