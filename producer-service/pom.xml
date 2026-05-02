@@ -150,6 +150,19 @@
       <version>1.40.0-alpha</version>
     </dependency>
 
+    <!--
+      Phase 8: Jedis 7.5.0 — Valkey/Redis client used by InstrumentedJedisPool
+      for the producer idempotency check. NOT BOM-managed; pin directly.
+      Use jedis.set(key, value, SetParams.setParams().nx().ex(ttl)) — atomic
+      SET-if-not-exists-with-TTL (the correct Jedis 7.x idiom; legacy setnx
+      requires a separate expire call and is NOT atomic).
+    -->
+    <dependency>
+      <groupId>redis.clients</groupId>
+      <artifactId>jedis</artifactId>
+      <version>7.5.0</version>
+    </dependency>
+
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
