@@ -15,7 +15,7 @@
   <packaging>jar</packaging>
 
   <name>OSE OTel Demo (producer)</name>
-  <description>Producer service: HTTP POST /orders → publish OrderCreated to RabbitMQ. Phase 2: manual OTel SDK + semconv dependencies wired (SDK config in 02-02).</description>
+  <description>Producer service: HTTP POST /orders → publish OrderCreated to RabbitMQ. Manual OTel SDK + semconv + Logback bridge (Phases 2 traces / 4 metrics / 5 logs); SDK config in OtelSdkConfiguration.java.</description>
 
   <dependencies>
     <!--

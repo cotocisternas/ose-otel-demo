@@ -15,7 +15,7 @@
   <packaging>jar</packaging>
 
   <name>OSE OTel Demo (consumer)</name>
-  <description>Consumer service: @RabbitListener processes OrderCreated. Phase 2: manual OTel SDK + semconv dependencies wired (SDK config in 02-03).</description>
+  <description>Consumer service: @RabbitListener processes OrderCreated. Manual OTel SDK + semconv + Logback bridge (Phases 2 traces / 4 metrics / 5 logs); SDK config in OtelSdkConfiguration.java.</description>
 
   <dependencies>
     <!--
