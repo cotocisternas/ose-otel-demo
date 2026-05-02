@@ -96,8 +96,10 @@
         - opentelemetry-logback-appender-1.0 → OTLP EXPORT appender (sends log
           records to the SDK's SdkLoggerProvider). FQCN:
           io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender
-          Has the static `install(OpenTelemetry)` method called from
-          OtelSdkConfiguration's @PostConstruct (LOG-03 / D-08).
+          Has the static `install(OpenTelemetry)` method called inline in
+          OtelSdkConfiguration's @Bean factory (PITFALL #5 — see the comment on
+          the install line; the @PostConstruct shape was rejected because it
+          would create a Spring self-cycle on the @Configuration bean). LOG-03 / D-08.
         - opentelemetry-logback-mdc-1.0      → MDC INJECTOR wrapper appender
           (reads Span.current() and stamps trace_id/span_id into MDC for the
           console pattern). FQCN:
