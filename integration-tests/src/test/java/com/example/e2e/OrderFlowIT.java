@@ -32,6 +32,8 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -118,6 +120,15 @@ class OrderFlowIT {
     static final RabbitMQContainer rabbit =
         new RabbitMQContainer("rabbitmq:4.3-management-alpine");
 
+    @Container
+    static final PostgreSQLContainer<?> postgres =
+        new PostgreSQLContainer<>("postgres:17-alpine");
+
+    @Container
+    static final GenericContainer<?> valkey =
+        new GenericContainer<>("valkey/valkey:8.1-alpine")
+            .withExposedPorts(6379);
+
     private static ConfigurableApplicationContext producerCtx;
     private static ConfigurableApplicationContext consumerCtx;
     private static TestRestTemplate rest;
@@ -145,6 +156,15 @@ class OrderFlowIT {
         System.setProperty("spring.rabbitmq.port", String.valueOf(rabbit.getAmqpPort()));
         System.setProperty("spring.rabbitmq.username", rabbit.getAdminUsername());
         System.setProperty("spring.rabbitmq.password", rabbit.getAdminPassword());
+
+        // Phase 8: Valkey properties for InstrumentedJedisPool (RESEARCH §5 — no @ServiceConnection for Valkey)
+        System.setProperty("valkey.host", valkey.getHost());
+        System.setProperty("valkey.port", String.valueOf(valkey.getMappedPort(6379)));
+
+        // Phase 8: PostgreSQL datasource properties for consumer-service
+        System.setProperty("spring.datasource.url",      postgres.getJdbcUrl());
+        System.setProperty("spring.datasource.username",  postgres.getUsername());
+        System.setProperty("spring.datasource.password",  postgres.getPassword());
 
         // 4. Producer context (D-10) — server.port=0 → random port; allow
         //    bean-definition-overriding so TestOtelConfiguration's @Bean
@@ -201,6 +221,11 @@ class OrderFlowIT {
         System.clearProperty("spring.rabbitmq.port");
         System.clearProperty("spring.rabbitmq.username");
         System.clearProperty("spring.rabbitmq.password");
+        System.clearProperty("valkey.host");
+        System.clearProperty("valkey.port");
+        System.clearProperty("spring.datasource.url");
+        System.clearProperty("spring.datasource.username");
+        System.clearProperty("spring.datasource.password");
         // RabbitMQContainer.stop() handled by @Testcontainers extension.
     }
 
@@ -378,6 +403,74 @@ class OrderFlowIT {
         org.assertj.core.api.Assertions.assertThat(hasCorrelatedErrorLog)
             .as("expected a LOG.error record correlated to the failed trace %s", errorTraceId)
             .isTrue();
+    }
+
+    // ----------------------------------------------------------------------
+    // TEST 5 — Phase 8: DB CLIENT spans present in the trace (DB-CACHE-IT-01)
+    // ----------------------------------------------------------------------
+    @Test
+    void dbClientSpansPresentInTrace_spanAssertions() {
+        ResponseEntity<Void> response = rest.postForEntity(
+            orderUrl,
+            new TestOrderRequest("WIDGET-DB-1", 1, "standard"),
+            Void.class);
+        // 202 Accepted = new order (idempotency cache miss)
+        org.assertj.core.api.Assertions.assertThat(response.getStatusCode())
+            .isEqualTo(HttpStatus.ACCEPTED);
+
+        // Wait for the full 7-span trace:
+        // SERVER + INTERNAL_producer + VALKEY_CLIENT + PRODUCER + CONSUMER + INTERNAL_consumer + JDBC_CLIENT
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(15))
+            .until(() -> TestOtelHolder.SPANS.getFinishedSpanItems().stream()
+                .filter(s -> s.getKind() == SpanKind.CLIENT)
+                .count() >= 2);
+
+        forceFlushAll();
+
+        List<SpanData> spans = TestOtelHolder.SPANS.getFinishedSpanItems();
+
+        // Collect all CLIENT spans — should have exactly 2: Valkey SET + JDBC INSERT
+        List<SpanData> clientSpans = spans.stream()
+            .filter(s -> s.getKind() == SpanKind.CLIENT)
+            .toList();
+        org.assertj.core.api.Assertions.assertThat(clientSpans)
+            .as("expected at least 2 CLIENT spans (Valkey SET + JDBC INSERT)")
+            .hasSizeGreaterThanOrEqualTo(2);
+
+        // Valkey CLIENT span: db.system.name = "redis"
+        SpanData valkeySpan = clientSpans.stream()
+            .filter(s -> "redis".equals(s.getAttributes()
+                .get(io.opentelemetry.api.common.AttributeKey.stringKey("db.system.name"))))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError(
+                "no CLIENT span with db.system.name=redis — found: "
+                + clientSpans.stream().map(s -> s.getName() + "/"
+                    + s.getAttributes().get(io.opentelemetry.api.common.AttributeKey.stringKey("db.system.name"))).toList()));
+
+        assertThat(valkeySpan)
+            .hasAttribute(equalTo(
+                io.opentelemetry.api.common.AttributeKey.stringKey("db.operation.name"), "SET"));
+
+        // JDBC CLIENT span: db.system.name = "postgresql", db.collection.name = "processed_orders"
+        SpanData jdbcSpan = clientSpans.stream()
+            .filter(s -> "postgresql".equals(s.getAttributes()
+                .get(io.opentelemetry.api.common.AttributeKey.stringKey("db.system.name"))))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError(
+                "no CLIENT span with db.system.name=postgresql"));
+
+        assertThat(jdbcSpan)
+            .hasAttribute(equalTo(
+                io.opentelemetry.api.common.AttributeKey.stringKey("db.operation.name"), "INSERT"))
+            .hasAttribute(equalTo(
+                io.opentelemetry.api.common.AttributeKey.stringKey("db.collection.name"), "processed_orders"));
+
+        // All CLIENT spans share the same traceId as the SERVER span (one distributed trace)
+        SpanData serverSpan = findSpanByKind(spans, SpanKind.SERVER);
+        String traceId = serverSpan.getTraceId();
+        clientSpans.forEach(s ->
+            assertThat(s).hasTraceId(traceId));
     }
 
     // ----------------------------------------------------------------------
