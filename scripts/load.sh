@@ -53,7 +53,7 @@
 #   - `-z 24h` for steady streams stands in for "run forever". oha rejects
 #     `-z 0`. The burst oha uses a finite `-z $BURST_DURATION` which exits
 #     on its own; the burst loop sleeps $BURST_INTERVAL between bursts.
-#   - The burst loop is a backgrounded subshell. On Ctrl-C the script's
+#   - The burst loop is a background subshell. On Ctrl-C the script's
 #     foreground process group receives SIGINT and any in-flight burst oha
 #     dies with it. On programmatic SIGTERM, cleanup kills the loop and
 #     pkills its direct children to catch any in-flight oha.
@@ -74,7 +74,7 @@ N_CONNECTIONS="${N_CONNECTIONS:-10}"
 IDEMPOTENT_RPS="${IDEMPOTENT_RPS:-5}"
 
 # Burst stream — disabled by default.
-BURST_RPS="${BURST_RPS:-0}"
+BURST_RPS="${BURST_RPS:-150}"
 BURST_DURATION="${BURST_DURATION:-60s}"
 BURST_INTERVAL="${BURST_INTERVAL:-300}"
 BURST_CONNECTIONS="${BURST_CONNECTIONS:-50}"
