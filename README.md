@@ -46,7 +46,7 @@ If you use **VS Code**: install the [Mise extension](https://marketplace.visuals
 ### One-time setup
 
 ```sh
-git clone <this repo>
+git clone https://github.com/cotocisternas/ose-otel-demo
 cd ose-otel-demo
 mise install        # installs the Corretto JDK + Maven versions pinned in mise.toml
 mise run preflight  # validates everything before you start
@@ -197,11 +197,21 @@ in Tempo's Explore tab. **The triple-signal correlation highlight** lands on the
 deterministic 10th order (Phase 3 APP-04): the consumer's `LOG.error` in
 [`ProcessingService`](./consumer-service/src/main/java/com/example/consumer/domain/ProcessingService.java)
 fires alongside the existing `span.recordException(e)` — the Loki query
-`{service_name="order-consumer"} |= "ERROR"` returns the failure log; click
+`{service_name="order-consumer"} | severity_text="ERROR"` returns the failure log; click
 its trace_id and Tempo shows the trace whose CONSUMER span carries the
 recordException event AND a metric data point in Mimir for the same priority/method.
 All three signals share the trace_id; the resource attributes (D-05) make the
 identity match across Loki / Tempo / Mimir.
+
+> **Why `severity_text="ERROR"` instead of `|= "ERROR"`?** The OTLP
+> `OpenTelemetryAppender` ships the formatted message **without** a level
+> prefix — the Logback level lands on the OTLP record as the `severity_text`
+> field, which Loki's OTLP receiver indexes as a detected field / label. A
+> substring filter against the message body (`|= "ERROR"`) returns zero
+> results for `LOG.error("order processing failed: orderId={}", orderId, e)`
+> because the formatted body is just `order processing failed: orderId=<uuid>`.
+> Filter on the OTLP severity field — that's the OTel-idiomatic shape and
+> what Loki's OTLP receiver was built around.
 
 ## Reading the code
 
