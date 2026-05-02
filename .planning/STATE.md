@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Production Shapes
 status: planning
-last_updated: "2026-05-02T22:03:09.494Z"
+last_updated: "2026-05-02T22:30:00.000Z"
 last_activity: 2026-05-02
 progress:
-  total_phases: 0
+  total_phases: 8
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,56 +17,48 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-29)
+See: .planning/PROJECT.md (updated 2026-05-02)
 
-**Core value:** A workshop attendee can clone the repo, run `docker compose up` + `mise run dev`, hit `POST /orders`, and see a single distributed trace flow from the HTTP handler through the RabbitMQ publish, into the consumer's processing logic, with correlated metrics and logs — and understand exactly which lines of SDK code made each piece work.
-**Current focus:** Phase 07 — polish-and-differentiators (Phase 06 shipped)
+**Core value:** A workshop attendee who already shipped v1.0's manual-SDK demo can run `docker compose up` against a decomposed Tempo/Mimir/Loki/Grafana stack, see Collector-side tail sampling shape what reaches Tempo, click a histogram exemplar to land on the originating trace, watch a JDBC/JPA span tree under a CONSUMER span, follow baggage from an HTTP header through AMQP into a consumer log, and understand exactly which lines of SDK and Collector config made each piece work.
+
+**Current focus:** Phase 10 — Prerequisites & Stack Decomposition (roadmap defined; ready for planning)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Phase 10 — Prerequisites & Stack Decomposition
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-02 — Milestone v2.0 started
+Status: Ready to plan (roadmap revised 2026-05-02 — 8 phases, Phases 10–17)
+Last activity: 2026-05-02 — v2.0 roadmap revised to 8 phases (Phases 10–17) per pedagogy requirement WORK-01 (one tag per teaching concept)
+
+```
+Progress: [░░░░░░░░░░░░░░░░░░░░] 0% (0/8 phases)
+```
 
 ## Performance Metrics
 
-**Velocity:**
+**Velocity (v1.0 baseline for reference):**
 
-- Total plans completed (Phase 2): 6 source-complete (tag pending for plan 06)
-- Average duration: ~7min
-- Total execution time (Phase 2): ~41 min
+- v1.0 average plan duration: ~7min
+- v1.0 total phases: 7 · total plans: 41
 
-**By Phase:**
+**By Phase (v2.0 — not started):**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 02-manual-sdk-bootstrap-first-traces | 6 | ~41min | ~7min |
-| 04 | 5 | - | - |
-
-**Recent Trend:**
-
-- Last 5 plans: 02-02 (9min) → 02-03 (6min) → 02-04 (8min) → 02-05 (5.5min) → 02-06 (8min)
-- Trend: stable — all sub-10-minute plans
+| 10-prerequisites-stack-decomposition | 0 | - | - |
+| 11-tail-sampling-collector | 0 | - | - |
+| 12-exemplars-metrics-trace-click-through | 0 | - | - |
+| 13-log-based-metrics-loki-recording-rules | 0 | - | - |
+| 14-jdbc-jpa-database-spans | 0 | - | - |
+| 15-outbound-http-client-spans | 0 | - | - |
+| 16-head-sampling-w3c-baggage | 0 | - | - |
+| 17-amqp-topic-dlx-variants | 0 | - | - |
 
 *Updated after each plan completion*
 
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
-| Phase 02 P01 (pom-dependencies) | 5min | 2 | 3 |
-| Phase 02 P02 (producer-sdk-config) | 9min | 3 | 2 |
-| Phase 02 P03 (consumer-sdk-config) | 6min | 2 | 1 |
-| Phase 02 P04 (producer-instrumentation) | 8min | 3 | 2 |
-| Phase 02 P05 (consumer-instrumentation) | 5.5min | 3 | 2 |
-| Phase 02 P06 (readme-and-exit-gate) | 8min | 2 (T3 staged) | 1 |
-| Phase 5 P6 | 30min | 2 tasks | 2 files |
-| Phase 06 P01 | 3min | 2 tasks | 3 files |
-| Phase 06 P02 | 2min | 1 tasks | 1 files |
-| Phase 06 P04 | 5min | 1 tasks | 1 files |
-| Phase 06 P05 | 4min | 1 tasks | 1 files |
-| Phase 07 P01 (grafana-dashboard-provisioning) | ~16min* | 4 (2 commit-bearing) | 3 files (1 modified, 2 created) |
-
-*Wall-clock spans 03:00–07:15 UTC because of human-verify checkpoint wait between Task 3 author and Task 4 live-verify; active work ~16min.
+| (none yet) | | | |
 
 ## Accumulated Context
 
@@ -103,6 +95,8 @@ Recent decisions affecting current work:
 - [Phase 07-07]: D-09 honored — NO step-07-* git tag applied. README final paragraph closes with: "Workshop is at main HEAD past step-06-tests; ..." per D-09 verbatim. STATE/ROADMAP/REQUIREMENTS flipped atomically with the polish-merge commit (Phase 2-06 / 6-06 precedent minus tag-apply step).
 - [Phase 07-07]: Operator-approved deferral — `docs/screenshots/step-04-metrics.png` not produced for v1 (Rule-4 follow-up; rationale documented in 07-04-SUMMARY.md "Scope Cut" section: polish-layer artifacts only on main HEAD, not at older step-NN-* tags, so the automated pipeline can't currently render the Phase 4 dashboard panel from a tag-checkout worktree). Operator explicitly accepted at the exit-gate human-verify checkpoint. Six of seven required PNGs present; the load-bearing DOC-04 broken/fixed anchor pair (step-02-disconnected + step-03-joined) shipped.
 - [Phase 07-07]: REQUIREMENTS.md traceability table normalized — Phase 7 rows changed from `Complete (07-XX, 2026-05-02)` to bare `Complete` to match the `Pending`/`Complete` schema used elsewhere in the table; per-requirement parenthetical metadata preserved verbatim in the bullet bodies above the traceability table (where it's reader-facing, not gate-facing).
+- [v2.0 roadmap v1]: 5 phases (10-14) derived from 35 REQ-IDs; coarse granularity applied. PREREQ-01 (circular-ref fix) bundled into Phase 10 so it is cleared before any phase that touches OtelSdkConfiguration. TSAMP (Phase 11) and HSAMP (Phase 13) are in separate phases — F2-3 double-filter-trap constraint honored. AMQP variants split to Phase 14 (last) so the fully-instrumented stack is in place before topology expansion.
+- [v2.0 roadmap v2]: Revised from 5 to 8 phases (10-17) per WORK-01 pedagogical requirement — one annotated git tag per teaching concept so attendees can `git checkout step-NN-<lesson>` to study a single lesson in isolation. HSAMP+BAG paired in Phase 16 (two sub-lessons in one tag) because both live in `OtelSdkConfiguration` and both register on `SdkTracerProvider` build — pairing justified in SUMMARY.md as "two halves of one teaching arc." Phase 16 README treats them as distinct sub-lessons (16a head sampling, 16b baggage). Double-filter-trap callout (F2-3) is mandatory in Phase 16 README.
 
 ### Pending Todos
 
@@ -110,16 +104,10 @@ None yet.
 
 ### Blockers/Concerns
 
-- **Phase 1 research flag**: RESOLVED 2026-04-29 — RESEARCH.md (commit `d3bbf32`) confirms OTel BOM precedes Spring Boot BOM; mise pin is `corretto-17.0.13.11.1` (exact patch, not floating).
-- **Phase 3 research flags** (3 open, expanded by 03-CONTEXT.md):
-  1. (carried from SUMMARY.md) `MethodInterceptor` advice on `SimpleRabbitListenerContainerFactory.setAdviceChain(...)` composes correctly with Spring AMQP 3.2.8's `@RabbitListener` lifecycle — no thread-context loss between advice and listener body (PITFALLS #7).
-  2. (new from 03-CONTEXT D-07) Spring AMQP 3.2.8 supports the `MessagePostProcessor.postProcessMessage(Message, Correlation, exchange, routingKey)` 4-arg overload AND `RabbitTemplate.processBeforePublishMessageProcessors(...)` invokes it when registered via `setBeforePublishPostProcessors(...)`.
-  3. (new from 03-CONTEXT D-10) `MethodInvocation.getArguments()` index for `Message` arg when wrapping a `@RabbitListener` (arg[0] vs arg[1] vs typed scan) — ARCHITECTURE.md Pattern 2 used `[1]` with comment "(channel, message)" but that may be `ChannelAwareMessageListener`-specific.
-  All three resolve in `/gsd-research-phase 3` before `/gsd-plan-phase 3`.
-
-- **Phase 5 research flag**: Confirm Maven coordinate for MDC injector (`opentelemetry-logback-mdc-1.0` artifact vs `<captureMdcAttributes>` on appender).
-- **Phase 6 research flag**: Validate `@ServiceConnection` + `RabbitMQContainer` on Spring Boot 3.4.13.
-- [Phase 5] Spring circular-reference cycle on otelSdkConfiguration bean (producer + consumer) blocks Phase 5 exit-gate smoke verification. Plans 05-02/05-03 added @Autowired field on the @Configuration class that produces the bean. mvn compile clean; cycle runtime-only. Recommended fix: assign this.openTelemetry = sdk inside @Bean factory body, drop @Autowired field. Surfaced by Plan 05-06 smoke; orchestrator should route a revision plan against 05-02/05-03 before tag application.
+- **PREREQ-01 open**: OtelSdkConfiguration circular-reference cycle (X-1) still present in codebase at v1.0 HEAD. Phase 10 plan MUST address this as its first task before any other OtelSdkConfiguration change is made.
+- **Phase 10 research flag**: Grafana datasource UIDs inside `grafana/otel-lgtm:0.26.0` must be inspected via live container before writing Phase 10 plans. Command: `docker run --rm grafana/otel-lgtm:0.26.0 cat /otel-lgtm/grafana/conf/provisioning/datasources/grafana-datasources.yaml`
+- **Phase 16/11 interaction**: Head sampling (Phase 16) must NOT be activated while running Phase 11 tail-sampling demos on the same stack without documentation. Phase 16 README must include the double-filter-trap callout: running Phase 11 (20% probabilistic fallback) + Phase 16 (50% ratio head sampling) simultaneously produces ~10% effective trace rate.
+- **Phase 13 research flag**: Loki ruler remote-write config YAML syntax for 3.7.1 may differ between ARCHITECTURE.md and PITFALLS.md accounts. Verify against live container during Phase 13 planning.
 
 ### Quick Tasks Completed
 
@@ -145,6 +133,6 @@ Items acknowledged and carried forward at milestone close on 2026-05-02:
 
 ## Session Continuity
 
-Last session: 2026-05-02T21:30:00.000Z
-Stopped at: v1.0 Workshop milestone CLOSED — tag `v1.0` applied; ROADMAP/REQUIREMENTS archived to `milestones/v1.0-*`; PROJECT.md evolved (Active → Validated)
-Resume file: None — milestone complete; next entry point is `/gsd-new-milestone` to scope v1.x
+Last session: 2026-05-02T22:30:00.000Z
+Stopped at: v2.0 Production Shapes roadmap revised — 8 phases (10-17), 35 REQ-IDs mapped, ROADMAP.md + STATE.md + REQUIREMENTS.md traceability table updated
+Resume file: None — next entry point is `/gsd-plan-phase 10`

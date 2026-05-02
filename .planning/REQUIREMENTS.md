@@ -163,18 +163,45 @@ Each requirement is user-centric (workshop attendee can observe / verify it), at
 
 | REQ-ID | Category | Phase | Status |
 |--------|----------|-------|--------|
-| PREREQ-01 | Prerequisites | _Pending roadmap_ | Pending |
-| PREREQ-02 | Prerequisites | _Pending roadmap_ | Pending |
-| STACK-01..05 | Decomposed Stack | _Pending roadmap_ | Pending |
-| TSAMP-01..03 | Tail Sampling | _Pending roadmap_ | Pending |
-| EXMP-01..04 | Exemplars | _Pending roadmap_ | Pending |
-| LMET-01..03 | Log-Based Metrics | _Pending roadmap_ | Pending |
-| DBSP-01..05 | Database Spans | _Pending roadmap_ | Pending |
-| HCLI-01..04 | HTTP Client Spans | _Pending roadmap_ | Pending |
-| HSAMP-01..03 | Head Sampling | _Pending roadmap_ | Pending |
-| BAG-01..04 | Baggage | _Pending roadmap_ | Pending |
-| AMQP-01..05 | AMQP Topic + DLX | _Pending roadmap_ | Pending |
+| PREREQ-01 | Prerequisites | Phase 10 | Pending |
+| PREREQ-02 | Prerequisites | Phase 10 | Pending |
+| STACK-01 | Decomposed Stack | Phase 10 | Pending |
+| STACK-02 | Decomposed Stack | Phase 10 | Pending |
+| STACK-03 | Decomposed Stack | Phase 10 | Pending |
+| STACK-04 | Decomposed Stack | Phase 10 | Pending |
+| STACK-05 | Decomposed Stack | Phase 10 | Pending |
+| TSAMP-01 | Tail Sampling | Phase 11 | Pending |
+| TSAMP-02 | Tail Sampling | Phase 11 | Pending |
+| TSAMP-03 | Tail Sampling | Phase 11 | Pending |
+| EXMP-01 | Exemplars | Phase 12 | Pending |
+| EXMP-02 | Exemplars | Phase 12 | Pending |
+| EXMP-03 | Exemplars | Phase 12 | Pending |
+| EXMP-04 | Exemplars | Phase 12 | Pending |
+| LMET-01 | Log-Based Metrics | Phase 13 | Pending |
+| LMET-02 | Log-Based Metrics | Phase 13 | Pending |
+| LMET-03 | Log-Based Metrics | Phase 13 | Pending |
+| DBSP-01 | Database Spans | Phase 14 | Pending |
+| DBSP-02 | Database Spans | Phase 14 | Pending |
+| DBSP-03 | Database Spans | Phase 14 | Pending |
+| DBSP-04 | Database Spans | Phase 14 | Pending |
+| DBSP-05 | Database Spans | Phase 14 | Pending |
+| HCLI-01 | HTTP Client Spans | Phase 15 | Pending |
+| HCLI-02 | HTTP Client Spans | Phase 15 | Pending |
+| HCLI-03 | HTTP Client Spans | Phase 15 | Pending |
+| HCLI-04 | HTTP Client Spans | Phase 15 | Pending |
+| HSAMP-01 | Head Sampling | Phase 16 | Pending |
+| HSAMP-02 | Head Sampling | Phase 16 | Pending |
+| HSAMP-03 | Head Sampling | Phase 16 | Pending |
+| BAG-01 | Baggage | Phase 16 | Pending |
+| BAG-02 | Baggage | Phase 16 | Pending |
+| BAG-03 | Baggage | Phase 16 | Pending |
+| BAG-04 | Baggage | Phase 16 | Pending |
+| AMQP-01 | AMQP Topic + DLX | Phase 17 | Pending |
+| AMQP-02 | AMQP Topic + DLX | Phase 17 | Pending |
+| AMQP-03 | AMQP Topic + DLX | Phase 17 | Pending |
+| AMQP-04 | AMQP Topic + DLX | Phase 17 | Pending |
+| AMQP-05 | AMQP Topic + DLX | Phase 17 | Pending |
 
 ---
 
-*Last updated: 2026-05-02 — v2.0 Production Shapes requirements drafted from research synthesis (research commit `fdc07f7`).*
+*Last updated: 2026-05-02 — v2.0 Production Shapes roadmap revised to 8 phases (10–17); traceability table updated (35/35 REQ-IDs mapped to Phases 10–17).*
