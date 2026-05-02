@@ -51,10 +51,10 @@ Requirements for initial release. Each maps to a roadmap phase. All requirements
 
 ### Logs (LOG)
 
-- [ ] **LOG-01**: Each service registers a `SdkLoggerProvider` with `BatchLogRecordProcessor` + `OtlpGrpcLogRecordExporter` to `:4317`
-- [ ] **LOG-02**: Each service's `logback-spring.xml` includes the `OpenTelemetryAppender` from `opentelemetry-logback-appender-1.0` plus an MDC injector that adds `trace_id` and `span_id` to every log record
-- [ ] **LOG-03**: `OpenTelemetryAppender.install(openTelemetry)` is called from a `@PostConstruct` method on the SDK config class so the appender is wired AFTER the SDK bean is built
-- [ ] **LOG-04**: The console log pattern in both services includes `trace_id=%X{trace_id} span_id=%X{span_id}` so terminal output is correlatable without leaving the workshop laptop
+- [x] **LOG-01**: Each service registers a `SdkLoggerProvider` with `BatchLogRecordProcessor` + `OtlpGrpcLogRecordExporter` to `:4317`
+- [x] **LOG-02**: Each service's `logback-spring.xml` includes the `OpenTelemetryAppender` from `opentelemetry-logback-appender-1.0` plus an MDC injector that adds `trace_id` and `span_id` to every log record
+- [x] **LOG-03**: `OpenTelemetryAppender.install(openTelemetry)` is called AFTER the SDK is built so the appender is wired to a fully-constructed `OpenTelemetry` (implemented inline in the `@Bean openTelemetry()` factory body just before `return sdk;` — the `@PostConstruct` shape originally prescribed creates a Spring self-cycle when the configuration class is also the bean factory)
+- [x] **LOG-04**: The console log pattern in both services includes `trace_id=%X{trace_id} span_id=%X{span_id}` so terminal output is correlatable without leaving the workshop laptop
 - [x] **LOG-05**: A workshop attendee can run a Loki query `{service_name="order-producer"} |~ "<traceId>"` in Grafana and click a log line to jump directly to the matching trace in Tempo
 
 ### Tests (TEST)
@@ -153,10 +153,10 @@ Every v1 requirement maps to exactly one phase. Updated by `gsd-roadmapper` 2026
 | METRIC-02 | Phase 4 | Pending |
 | METRIC-03 | Phase 4 | Pending |
 | METRIC-04 | Phase 4 | Pending |
-| LOG-01 | Phase 5 | Pending |
-| LOG-02 | Phase 5 | Pending |
-| LOG-03 | Phase 5 | Pending |
-| LOG-04 | Phase 5 | Pending |
+| LOG-01 | Phase 5 | Complete |
+| LOG-02 | Phase 5 | Complete |
+| LOG-03 | Phase 5 | Complete |
+| LOG-04 | Phase 5 | Complete |
 | LOG-05 | Phase 5 | Complete |
 | TEST-01 | Phase 6 | Pending |
 | TEST-02 | Phase 6 | Pending |

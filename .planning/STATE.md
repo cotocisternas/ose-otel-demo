@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 05-06 README done; smoke surfaced Spring bean-cycle blocker in 05-02/05-03; tag deferred to orchestrator post-revision
-last_updated: "2026-05-02T02:26:43.121Z"
-last_activity: 2026-05-02
+status: completed
+stopped_at: Phase 05 SHIPPED — bean-cycle blocker resolved (commit f5c331a, install moved to @Bean factory body), smoke verified end-to-end (3 distinct trace_ids matched producer↔consumer), step-05-logs annotated tag applied
+last_updated: "2026-05-02T02:45:20.481Z"
+last_activity: 2026-05-02 -- Phase 05 marked complete
 progress:
   total_phases: 7
   completed_phases: 5
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** A workshop attendee can clone the repo, run `docker compose up` + `mise run dev`, hit `POST /orders`, and see a single distributed trace flow from the HTTP handler through the RabbitMQ publish, into the consumer's processing logic, with correlated metrics and logs — and understand exactly which lines of SDK code made each piece work.
-**Current focus:** Phase 05 — logs-correlation
+**Current focus:** Phase 06 — verification-tests (next)
 
 ## Current Position
 
-Phase: 05 (logs-correlation) — EXECUTING
-Plan: 2 of 6
-Status: Ready to execute
-Last activity: 2026-05-02
+Phase: 05 — COMPLETE (SHIPPED, tag step-05-logs)
+Plan: 6 of 6
+Status: Ready for Phase 06
+Last activity: 2026-05-02 -- Phase 05 SHIPPED with step-05-logs tag
 
 Progress: [██████████] 100%
 
