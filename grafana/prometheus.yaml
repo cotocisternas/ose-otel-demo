@@ -1,0 +1,66 @@
+# grafana/prometheus.yaml — Step 9 (quick-260502-j00) override of the bundled
+# /otel-lgtm/prometheus.yaml. The `global:`, `otlp:`, and `storage:` blocks
+# below are copied verbatim from grafana/otel-lgtm:0.26.0's bundled file —
+# changing them breaks app-emitted OTLP metric ingest into Mimir. The
+# `scrape_configs:` section is the Step 9 addition: three infrastructure
+# exporters scraped over the compose default network. The `source: infra-exporter`
+# static label is the disambiguator for the two-lens telemetry story
+# (app-emitted OTel metrics vs exporter-scraped Prometheus metrics).
+---
+global:
+  scrape_native_histograms: true
+otlp:
+  keep_identifying_resource_attributes: true
+  promote_resource_attributes:
+    - service.instance.id
+    - service.name
+    - service.namespace
+    - service.version
+    - cloud.availability_zone
+    - cloud.region
+    - container.name
+    - deployment.environment # backward compatibility
+    - deployment.environment.name
+    - k8s.cluster.name
+    - k8s.container.name
+    - k8s.cronjob.name
+    - k8s.daemonset.name
+    - k8s.deployment.name
+    - k8s.job.name
+    - k8s.namespace.name
+    - k8s.node.name
+    - k8s.pod.name
+    - k8s.replicaset.name
+    - k8s.statefulset.name
+    - host.name
+    - postgresql.database.name
+    - postgresql.schema.name
+    - postgresql.table.name
+    - postgresql.index.name
+    - database # used by otelcol/receiver/mongodb
+    - kafka.cluster.alias
+storage:
+  tsdb:
+    out_of_order_time_window: 10m
+
+scrape_configs:
+  # Step 9 (quick-260502-j00): infrastructure exporters scraped over the
+  # compose default network. Static label `source: infra-exporter` is the
+  # disambiguator for the two-lens story (app-emitted vs exporter-scraped).
+  - job_name: rabbitmq
+    static_configs:
+      - targets: ['rabbitmq:15692']
+        labels:
+          source: infra-exporter
+
+  - job_name: redis_exporter
+    static_configs:
+      - targets: ['redis-exporter:9121']
+        labels:
+          source: infra-exporter
+
+  - job_name: postgres_exporter
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          source: infra-exporter
