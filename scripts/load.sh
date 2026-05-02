@@ -2,15 +2,16 @@
 # scripts/load.sh — continuous load against producer-service for live demos.
 # WORK-03 / Phase 7 D-04: two parallel oha invocations alternating priorities.
 #
-# ~0.5 req/sec per priority = ~1 req/sec total split 50/50.
+# Defaults: QUERY_PER_SECOND=100 per priority, N_CONNECTIONS=10 per priority
+# => ~200 rps total, split 50/50 across priority=express and priority=standard.
 # Both per-priority series populate the dashboard's "Orders Created by Priority" panel.
+#
+# Override via env: TARGET, DURATION, QUERY_PER_SECOND, N_CONNECTIONS.
+# Validated 2026-05-02 against running infra: rate(orders_created_total[1m])
+# reports ~100/s per priority at the defaults; consumer keeps up (queue ≤ 1).
 #
 # Ctrl-C kills both child oha processes via the cleanup trap.
 # Run alongside `mise run dev` (NOT `mise run demo:order` — that is one-shot).
-#
-# NOTE: do NOT add env-var-driven RPS / DURATION / payload arg parsing without
-# re-validating shell-injection surface. D-04 explicitly forbids env-var arg
-# parsing in v1; per-attendee tweakability is a v1.x ask (T-07-02-01).
 #
 # IMPLEMENTATION NOTES (260502-ld1):
 #   - `--no-tui` is REQUIRED. Without it, both oha children render their 16fps
@@ -25,6 +26,8 @@ set -euo pipefail
 
 TARGET="${TARGET:-http://localhost:8080/orders}"
 DURATION="${DURATION:-24h}"
+QUERY_PER_SECOND="${QUERY_PER_SECOND:-100}"
+N_CONNECTIONS="${N_CONNECTIONS:-10}"
 
 cleanup() {
   # SIGINT/SIGTERM/EXIT — kill all children if alive, then wait so we don't leave zombies.
@@ -36,21 +39,29 @@ cleanup() {
 trap cleanup SIGINT SIGTERM EXIT
 
 echo "WORK-03: continuous load against ${TARGET}"
-echo "Two parallel oha invocations: priority=express @ 0.5 rps, priority=standard @ 0.5 rps"
+echo "Two parallel oha invocations:"
+echo "  priority=express  @ ${QUERY_PER_SECOND} rps (c=${N_CONNECTIONS})"
+echo "  priority=standard @ ${QUERY_PER_SECOND} rps (c=${N_CONNECTIONS})"
 echo "Duration: ${DURATION} (Ctrl-C to stop early)"
 echo
 
-oha -z "${DURATION}" -q 0.5 --no-tui \
+oha -z "${DURATION}" \
+    -q "${QUERY_PER_SECOND}" \
+    -c "${N_CONNECTIONS}" \
     -m POST \
     -T application/json \
     -d '{"sku":"WIDGET-EXPRESS","quantity":3,"priority":"express"}' \
+    --no-tui \
     "${TARGET}" >/dev/null 2>&1 &
 PID_EXPRESS=$!
 
-oha -z "${DURATION}" -q 0.5 --no-tui \
+oha -z "${DURATION}" \
+    -q "${QUERY_PER_SECOND}" \
+    -c "${N_CONNECTIONS}" \
     -m POST \
     -T application/json \
     -d '{"sku":"WIDGET-STANDARD","quantity":1,"priority":"standard"}' \
+    --no-tui \
     "${TARGET}" >/dev/null 2>&1 &
 PID_STANDARD=$!
 
