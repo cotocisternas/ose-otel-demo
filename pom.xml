@@ -28,6 +28,7 @@
     <module>otel-bootstrap</module>
     <module>producer-service</module>
     <module>consumer-service</module>
+    <module>integration-tests</module>
   </modules>
 
   <properties>
