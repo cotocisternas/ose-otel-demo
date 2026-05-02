@@ -405,6 +405,73 @@ ea7b1dd docs(05-06): add Step 5: Logs Correlation README section
 
 ---
 
+## Resolution Addendum (2026-05-02)
+
+**Blocker:** Spring self-cycle on `otelSdkConfiguration` bean — the `@Configuration` class
+held a `@Autowired private OpenTelemetry openTelemetry` field while also being the `@Bean`
+factory for the same type. Both producer and consumer failed at context refresh.
+
+**Root cause:** Plans 05-02 and 05-03 followed RESEARCH §C's "field-Autowired pattern"
+verbatim. The research did not anticipate that the configuration class would also be the
+bean factory; the @PostConstruct shape it endorsed assumes the OpenTelemetry producer lives
+elsewhere.
+
+**Fix applied** (commit `f5c331a`, user-approved deviation):
+- Removed `@Autowired private OpenTelemetry openTelemetry` field
+- Removed `@PostConstruct installLogbackAppender()` method (and its imports)
+- Inlined `OpenTelemetryAppender.install(sdk)` in the `@Bean openTelemetry()` factory body,
+  immediately after `OpenTelemetrySdk.builder()...build()` and before `return sdk`
+- Migrated the PITFALL #5 / replay-queue / FQCN-landmine teaching prose into a comment
+  block at the install-call site (D-19 comment density preserved: producer 472, consumer 452)
+- Mirror change applied symmetrically to producer and consumer (D-02)
+
+**Why the new shape is at least as good pedagogically:**
+- The install() call is still a single visible line a workshop attendee can land on
+- The PITFALL #5 ordering invariant is now *easier* to see — install happens at the same
+  source location as the SDK build, not elsewhere in the class
+- The comment block explicitly calls out the self-cycle and why we chose this shape over
+  @PostConstruct — a real workshop teaching moment about Spring lifecycle rules
+
+**Smoke verification (live stack, 2026-05-02 22:38–22:39 UTC, infra:up green):**
+
+| SC | Status | Evidence |
+|----|--------|----------|
+| SC #1 — console pattern stamps non-empty `trace_id`/`span_id` | **VERIFIED** | 3× `POST /orders` produced 3 distinct trace_ids; each trace_id appeared in BOTH the producer's `OrderController` + `OrderPublisher` LOG.info lines AND the consumer's `OrderListener` LOG.info line. MDC pattern `[trace_id=<32 hex> span_id=<16 hex>]` stamped on every in-span log. |
+| SC #2 — Loki click-through to Tempo | **UNDERPINNINGS VERIFIED** | Loki query via Grafana proxy returned both `service_name="order-producer"` and `service_name="order-consumer"` streams. Stream labels include `trace_id`, `span_id`, `severity_text`, `service_name`, `service_namespace`, `service_instance_id`, `deployment_environment_name`, `scope_name`, `telemetry_sdk_*`. The `trace_id` structured-metadata label is what Grafana's Loki datasource uses for the Tempo click-through datalink. **Visual click-through confirmation in Grafana UI is the only piece left for human verification.** |
+| SC #3 — install() code path visible in source | **VERIFIED with shape deviation** | `OpenTelemetryAppender.install(sdk)` is present in both producer's and consumer's `OtelSdkConfiguration.openTelemetry()` `@Bean` body (one line, inside an explicit comment block titled "LOG-03 / PITFALL #5"). The original literal grep `@PostConstruct.*installLogbackAppender` no longer matches — but the teaching invariant (install runs after SDK build, before first log) is preserved and is now more locally visible. |
+| SC #4 — `step-05-logs` annotated tag exists | **GATED** | Awaiting human approval after visual SC #2 confirmation. |
+
+**Smoke commands (reproducible):**
+```bash
+mise run infra:up
+PRODUCER_PORT=8080 CONSUMER_PORT=8081 mvn -B -q -pl producer-service spring-boot:run \
+  -Dspring-boot.run.jvmArguments="-Dserver.port=8080" &
+PRODUCER_PORT=8080 CONSUMER_PORT=8081 mvn -B -q -pl consumer-service spring-boot:run \
+  -Dspring-boot.run.jvmArguments="-Dserver.port=8081" &
+# wait ~5s for both to print "Started ... Application"
+for i in 1 2 3; do
+  curl -s -X POST http://localhost:8080/orders -H "Content-Type: application/json" \
+    -d "{\"item\":\"smoke-$i\",\"qty\":$i}" -o /dev/null -w "POST $i → http=%{http_code}\n"
+  sleep 1
+done
+# Inspect logs for matching trace_id between producer and consumer.
+```
+
+**Sample evidence (one of three smoke traces):**
+```
+producer  22:38:53.834  trace_id=05b429a14454fdc0db04b9205fad473b  OrderController     received POST /orders payload={item=smoke-1, qty=1}
+producer  22:38:53.835  trace_id=05b429a14454fdc0db04b9205fad473b  OrderPublisher      publishing orderId=f8793a09-… to exchange=orders
+consumer  22:38:53.911  trace_id=05b429a14454fdc0db04b9205fad473b  OrderListener       OrderCreated received: orderId=f8793a09-…
+```
+
+**State after fix:**
+- Phase 5 source defect: RESOLVED (commit `f5c331a`)
+- SC #1, SC #3 underpinnings: VERIFIED programmatically
+- SC #2 underpinnings: VERIFIED via Loki API; UI click-through awaiting human eyes
+- SC #4 (tag): orchestrator-owned, awaiting human approval
+
+---
+
 *Phase: 05-logs-correlation*
 *Plan: 06*
 *Completed: 2026-05-02*
