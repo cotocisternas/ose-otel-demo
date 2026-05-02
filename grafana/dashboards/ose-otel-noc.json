@@ -602,10 +602,10 @@
         "name": "traceid",
         "label": "Trace ID",
         "type": "textbox",
-        "query": ".+",
-        "current": {"text": ".+", "value": ".+", "selected": false},
+        "query": "^$",
+        "current": {"text": "", "value": "^$", "selected": false},
         "skipUrlSync": false,
-        "description": "Type a 32-hex traceID (e.g. from the 'Recent error traces' table above) and press Enter to focus the bottom logs panel on that one distributed trace. Default '.+' is a regex matching every non-empty trace_id — i.e. every log line emitted from inside a span — useful as a firehose when no specific trace is selected."
+        "description": "Type a 32-hex traceID (e.g. from the 'Recent error traces' table above) and press Enter to focus the bottom logs panel on that one distributed trace. Default '^$' is a regex matching no spanned log line — the panel renders empty until you paste a real trace_id. The previous default '.+' matched every spanned line and streamed ~22k lines/min to the browser on every refresh, which is what made the panel feel slow under workshop load."
       }
     ]
   },
