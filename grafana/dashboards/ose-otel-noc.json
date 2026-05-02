@@ -70,8 +70,8 @@
     {
       "type": "stat",
       "id": 101,
-      "title": "Error rate (5m)",
-      "description": "Share of spans on order-producer/order-consumer with status=ERROR over total. compose CLI excluded.",
+      "title": "Message error rate (5m)",
+      "description": "Per-message error rate at the consumer: ERROR vs total over CONSUMER-kind spans on order-consumer (one such span per delivered message). Expect ~10% at steady state — the deterministic 1-in-10 failure in ProcessingService. The earlier 'all spans on order-.*' formulation diluted this to ~3% because it counted producer SERVER/INTERNAL/PRODUCER spans in the denominator while only consumer-side spans get ERROR status.",
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "gridPos": {"h": 5, "w": 4, "x": 4, "y": 0},
       "fieldConfig": {
@@ -97,14 +97,15 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "100 * (sum(rate(traces_spanmetrics_calls_total{service=~\"order-.*\",status_code=\"STATUS_CODE_ERROR\"}[5m])) or vector(0)) / clamp_min(sum(rate(traces_spanmetrics_calls_total{service=~\"order-.*\"}[5m])), 1)",
+        "expr": "100 * (sum(rate(traces_spanmetrics_calls_total{service=\"order-consumer\",span_kind=\"SPAN_KIND_CONSUMER\",status_code=\"STATUS_CODE_ERROR\"}[5m])) or vector(0)) / clamp_min(sum(rate(traces_spanmetrics_calls_total{service=\"order-consumer\",span_kind=\"SPAN_KIND_CONSUMER\"}[5m])), 1)",
         "refId": "A"
       }]
     },
     {
       "type": "stat",
       "id": 102,
-      "title": "Producer p95 latency",
+      "title": "Producer p95 latency (SERVER span)",
+      "description": "p95 of producer SERVER-kind span duration via Tempo metrics-generator spanmetrics — the time POST /orders spent inside the app. NOT used: http.server.request.duration histogram emitted by the SDK directly — its default explicit-bucket boundaries (5, 10, 25, …, 10000 in seconds) are too coarse to be useful for sub-second HTTP timing, so quantiles interpolate within the 0–5s bucket and look like ~4.8s regardless of true latency.",
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "gridPos": {"h": 5, "w": 4, "x": 8, "y": 0},
       "fieldConfig": {
@@ -112,11 +113,11 @@
           "color": {"mode": "thresholds"},
           "thresholds": {"mode": "absolute", "steps": [
             {"color": "green", "value": null},
-            {"color": "yellow", "value": 50},
-            {"color": "red", "value": 200}
+            {"color": "yellow", "value": 0.05},
+            {"color": "red", "value": 0.2}
           ]},
-          "unit": "ms",
-          "decimals": 1
+          "unit": "s",
+          "decimals": 3
         },
         "overrides": []
       },
@@ -130,14 +131,15 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "1000 * histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))",
+        "expr": "histogram_quantile(0.95, sum by (le) (rate(traces_spanmetrics_latency_bucket{service=\"order-producer\",span_kind=\"SPAN_KIND_SERVER\"}[5m])))",
         "refId": "A"
       }]
     },
     {
       "type": "stat",
       "id": 103,
-      "title": "Consumer queue depth",
+      "title": "Queue depth (broker)",
+      "description": "rabbitmq_queue_messages on orders.created from the broker's per-object Prometheus endpoint — the authoritative live depth. Differs from the consumer-emitted orders_queue_depth_estimate (a client-side heuristic; lies under load — reported 11 during a 14k-message backlog in testing). Use this panel for capacity decisions; use the estimate panel as a teaching contrast.",
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "gridPos": {"h": 5, "w": 4, "x": 12, "y": 0},
       "fieldConfig": {
@@ -163,7 +165,7 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "max(orders_queue_depth_estimate)",
+        "expr": "sum(rabbitmq_queue_messages{queue=\"orders.created\"})",
         "refId": "A"
       }]
     },
@@ -171,6 +173,7 @@
       "type": "stat",
       "id": 104,
       "title": "Failed messages / sec",
+      "description": "Rate of consumer CONSUMER spans with status=ERROR — message-processing failures only. Driven by the deterministic 1-in-10 failure trigger in ProcessingService.processOrder; expect ~10% of the consumer's processed-message throughput.",
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "gridPos": {"h": 5, "w": 4, "x": 16, "y": 0},
       "fieldConfig": {
@@ -245,6 +248,7 @@
       "type": "timeseries",
       "id": 201,
       "title": "Request rate by HTTP status",
+      "description": "Producer request throughput by response status code, from http_server_request_duration_seconds_count (counter — only the _count companion is used here, not the broken bucket distribution). 202 = order accepted; 4xx = bad payload; 5xx = unhandled producer error.",
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "gridPos": {"h": 9, "w": 12, "x": 0, "y": 6},
       "fieldConfig": {
@@ -280,7 +284,8 @@
     {
       "type": "timeseries",
       "id": 202,
-      "title": "Producer HTTP latency (p50 / p95 / p99)",
+      "title": "Producer SERVER-span latency (p50 / p95 / p99)",
+      "description": "Quantiles of producer SERVER-kind span duration via Tempo metrics-generator (traces_spanmetrics_latency_bucket). Source-of-truth for HTTP latency on the producer. The app's own http.server.request.duration histogram is NOT used here — its default SDK explicit buckets (5, 10, 25, …, 10000 in seconds) are too coarse for sub-second HTTP timing and produce constant ~4.8s p95 readings regardless of true latency.",
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "gridPos": {"h": 9, "w": 12, "x": 12, "y": 6},
       "fieldConfig": {
@@ -307,9 +312,9 @@
         "tooltip": {"mode": "multi", "sort": "desc"}
       },
       "targets": [
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "histogram_quantile(0.50, sum by (le) (rate(http_server_request_duration_seconds_bucket[1m])))", "legendFormat": "p50", "refId": "A"},
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket[1m])))", "legendFormat": "p95", "refId": "B"},
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket[1m])))", "legendFormat": "p99", "refId": "C"}
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "histogram_quantile(0.50, sum by (le) (rate(traces_spanmetrics_latency_bucket{service=\"order-producer\",span_kind=\"SPAN_KIND_SERVER\"}[1m])))", "legendFormat": "p50", "refId": "A"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "histogram_quantile(0.95, sum by (le) (rate(traces_spanmetrics_latency_bucket{service=\"order-producer\",span_kind=\"SPAN_KIND_SERVER\"}[1m])))", "legendFormat": "p95", "refId": "B"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "histogram_quantile(0.99, sum by (le) (rate(traces_spanmetrics_latency_bucket{service=\"order-producer\",span_kind=\"SPAN_KIND_SERVER\"}[1m])))", "legendFormat": "p99", "refId": "C"}
       ]
     },
     {
@@ -385,7 +390,8 @@
     {
       "type": "timeseries",
       "id": 303,
-      "title": "Queue depth (gauge)",
+      "title": "Queue depth (broker)",
+      "description": "Authoritative broker-side queue depth on orders.created (rabbitmq_queue_messages from RabbitMQ Prometheus plugin's per-object endpoint). Use this — not the consumer's client-side estimate — to reason about backlog and consumer headroom.",
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "gridPos": {"h": 9, "w": 8, "x": 16, "y": 16},
       "fieldConfig": {
@@ -414,7 +420,7 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "max(orders_queue_depth_estimate)",
+        "expr": "sum(rabbitmq_queue_messages{queue=\"orders.created\"})",
         "legendFormat": "queue depth",
         "refId": "A"
       }]

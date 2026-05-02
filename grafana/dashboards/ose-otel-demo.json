@@ -106,6 +106,7 @@
       },
       "id": 3,
       "title": "RED Metrics",
+      "description": "Rate / Errors / Duration on a single time axis. Order rate from the app counter; HTTP duration quantiles from Tempo metrics-generator spanmetrics on producer SERVER spans (NOT the app's http.server.request.duration histogram — its default buckets are too coarse to be useful); queue depth from RabbitMQ broker (authoritative).",
       "type": "timeseries",
       "fieldConfig": {
         "defaults": {
@@ -147,7 +148,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(http_server_request_duration_seconds_bucket[1m])))",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(traces_spanmetrics_latency_bucket{service=\"order-producer\",span_kind=\"SPAN_KIND_SERVER\"}[1m])))",
           "legendFormat": "p50 http duration",
           "refId": "B"
         },
@@ -156,7 +157,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket[1m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(traces_spanmetrics_latency_bucket{service=\"order-producer\",span_kind=\"SPAN_KIND_SERVER\"}[1m])))",
           "legendFormat": "p95 http duration",
           "refId": "C"
         },
@@ -165,7 +166,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket[1m])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(traces_spanmetrics_latency_bucket{service=\"order-producer\",span_kind=\"SPAN_KIND_SERVER\"}[1m])))",
           "legendFormat": "p99 http duration",
           "refId": "D"
         },
@@ -174,8 +175,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "orders_queue_depth_estimate",
-          "legendFormat": "queue depth (gauge)",
+          "expr": "sum(rabbitmq_queue_messages{queue=\"orders.created\"})",
+          "legendFormat": "queue depth (broker)",
           "refId": "E"
         }
       ]

@@ -114,7 +114,7 @@
           "type": "timeseries",
           "id": 5,
           "title": "RED — request rate by status",
-          "description": "App-emitted http.server.request.duration histogram. Rate of _count by HTTP status code.",
+          "description": "App-emitted http.server.request.duration histogram, _count companion only — rate of requests by HTTP status code. (The bucket distribution from this same histogram is broken and not used in this dashboard for latency; see panel 19's note.)",
           "datasource": {"type": "prometheus", "uid": "prometheus"},
           "gridPos": {"h": 8, "w": 6, "x": 0, "y": 5},
           "fieldConfig": {
@@ -127,8 +127,8 @@
         {
           "type": "timeseries",
           "id": 19,
-          "title": "RED — latency p95 (server)",
-          "description": "p95 of http_server_request_duration_seconds_bucket — same OTel histogram as panel 5 (lens 1: app). Compare with the spans table in the workshop dashboard for span-level evidence.",
+          "title": "RED — latency p95 (producer SERVER spans)",
+          "description": "p95 of producer SERVER-kind span duration via Tempo metrics-generator (traces_spanmetrics_latency_bucket). The app's own http_server_request_duration_seconds histogram has too-coarse default SDK buckets (5, 10, 25, …, 10000 in seconds) so its quantiles are pinned at ~4.8s regardless of true latency — the spanmetrics-derived histogram has sane buckets and reflects reality (single-digit ms p95 at typical demo load).",
           "datasource": {"type": "prometheus", "uid": "prometheus"},
           "gridPos": {"h": 8, "w": 6, "x": 6, "y": 5},
           "fieldConfig": {
@@ -136,7 +136,7 @@
             "overrides": []
           },
           "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
-          "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "histogram_quantile(0.95, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket[1m])))", "legendFormat": "p95 {{http_route}}", "refId": "A"}]
+          "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "histogram_quantile(0.95, sum by (le) (rate(traces_spanmetrics_latency_bucket{service=\"order-producer\",span_kind=\"SPAN_KIND_SERVER\"}[1m])))", "legendFormat": "p95 producer SERVER", "refId": "A"}]
         },
         {
           "type": "timeseries",
@@ -156,7 +156,7 @@
           "type": "timeseries",
           "id": 7,
           "title": "AMQP queue depth (client estimate)",
-          "description": "App-emitted orders_queue_depth_estimate gauge. Side-by-side with panel 6 — same physical queue measured from two perspectives.",
+          "description": "App-emitted orders_queue_depth_estimate gauge — a client-side heuristic from the consumer. KNOWN to diverge from broker reality under load (e.g. estimate=11 while the broker reported 14k during stress testing). Useful as a teaching contrast against panel 6's broker-authoritative reading; do not use for capacity decisions.",
           "datasource": {"type": "prometheus", "uid": "prometheus"},
           "gridPos": {"h": 8, "w": 6, "x": 18, "y": 5},
           "fieldConfig": {
