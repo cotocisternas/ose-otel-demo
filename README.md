@@ -306,32 +306,42 @@ consumer-side concern is the symmetric case on the failure path.
 
 ## Step 6: Verification Tests
 
-`step-06-tests` adds a CI-grade proof of the three-signal instrumentation chain. A new top-level [`integration-tests`](./integration-tests) Maven module hosts a single cross-service [`OrderFlowIT.java`](./integration-tests/src/test/java/com/example/e2e/OrderFlowIT.java) that starts a real `RabbitMQContainer` on a random port, launches both `ProducerApplication` and `ConsumerApplication` as two `SpringApplicationBuilder` contexts in one JVM, exercises the full `POST /orders` → publish → consume flow through real broker traffic, and asserts on traces + logs + metrics captured in-memory. Run it with `mise run test`; the build exits non-zero on any assertion failure (TEST-06).
+### What you'll learn
 
-The four `@Test` methods cover the workshop's four signal areas:
+A CI-grade proof of the three-signal instrumentation chain — Testcontainers `RabbitMQContainer` + `InMemorySpanExporter` + `SimpleSpanProcessor` in a `@TestConfiguration` that asserts traceId shared, parentSpanId correct, span kinds correct, and messaging semconv attributes present. Caps the workshop with "now you can prove your instrumentation works in CI without a live OTLP backend."
 
-- **`RabbitMQContainer` on a random port** — the `@BeforeAll` method emits an explicit `LOG.info("RabbitMQ test container available at {}:{}", ...)` line that prints something like `RabbitMQ test container available at localhost:54321` in the test log (NOT the default `:5672`). With your host `docker compose` RabbitMQ stopped, the tests still pass — proof that Testcontainers is genuinely used (TEST-01).
+### Checkpoint
 
-- **`SimpleSpanProcessor` + `InMemorySpanExporter` swap** — production wires `BatchSpanProcessor` + `OtlpGrpcSpanExporter`, but tests use [`TestOtelHolder`](./integration-tests/src/test/java/com/example/e2e/TestOtelHolder.java) which builds the SDK with the synchronous `SimpleSpanProcessor` and the in-memory exporter from `opentelemetry-sdk-testing`. Every `span.end()` exports immediately — no `Thread.sleep` needed in tests. PITFALLS.md #4 / #11 made manifest in code.
+`git checkout step-06-tests` — adds a top-level `integration-tests` Maven module with a single cross-service `OrderFlowIT.java`, a `TestOtelHolder` static-singleton, a `TestOtelConfiguration` `@TestConfiguration`, and a `<classifier>exec</classifier>` repackage execution on producer/consumer service POMs so the test module can depend on the plain classes jars while production builds still produce runnable fat jars.
 
-- **`<classifier>exec</classifier>` on the service POMs** — the producer and consumer service POMs publish TWO artifacts: the plain classes jar (default — exposes `ProducerApplication.class` directly on the classpath) and a separate `-exec` repackaged executable fat jar (runnable with `java -jar`). The integration-tests module depends on the plain jars so `new SpringApplicationBuilder(ProducerApplication.class, ...)` works. See [`producer-service/pom.xml`](./producer-service/pom.xml) for the canonical Spring Boot 3.4.13 syntax — a useful pattern for any multi-module Spring Boot codebase.
+### Run
 
-- **The four `@Test` methods**:
+```sh
+git checkout step-06-tests
+docker compose stop rabbitmq    # IMPORTANT — prove Testcontainers is genuinely used
+mise run test                   # → mvn -T 1C verify; expect 4 green tests in Failsafe summary
+```
+
+The test exits non-zero on any assertion failure — suitable for any CI runner with Docker available.
+
+### What to look for
+
+- **Random RabbitMQ port in test logs**: a `@BeforeAll` line `RabbitMQ test container available at localhost:<random-port>` (e.g., `localhost:54321`) — NOT `localhost:5672`. With your host `docker compose` RabbitMQ stopped, the tests still pass — proof Testcontainers is genuinely used (TEST-01 SC #2).
+- **Four green `@Test` methods** in the Failsafe summary covering the workshop's four signal areas:
   1. **traces** — producer + consumer spans share `traceId`; consumer's `parentSpanId == producer.spanId`; SpanKind set covers SERVER + INTERNAL + PRODUCER + CONSUMER + INTERNAL; messaging semconv attributes (`messaging.system=rabbitmq`, `messaging.operation_type=publish/process`).
   2. **logs** — producer-side `LOG.info` records carry the producer trace's `trace_id` (proves Phase 5's `OpenTelemetryAppender.install(...)` wiring still works through the test SDK).
   3. **metrics** — `orders.created` counter increments to 1 with `order.priority="express"`; `http.server.request.duration` histogram records the POST with `http.request.method=POST` + `http.response.status_code=202`.
   4. **failure path** — the 10th order's CONSUMER span has `Status.ERROR` + a recorded exception event; a `LOG.error` record carries the same trace_id (triple-signal correlation — the workshop's strongest single statement of "all three signals work together").
+- **`SimpleSpanProcessor` + `InMemorySpanExporter` swap** — production wires `BatchSpanProcessor` + `OtlpGrpcSpanExporter`; tests use `TestOtelHolder` which builds the SDK with the synchronous `SimpleSpanProcessor` and the in-memory exporter from `opentelemetry-sdk-testing`. Every `span.end()` exports immediately — **NO Thread.sleep** in tests; Awaitility polling for async settling.
+- **`<classifier>exec</classifier>` Maven trickery** — producer/consumer POMs publish TWO artifacts: the plain classes jar (default, exposes `ProducerApplication.class` directly on classpath) and a separate `-exec` repackaged executable fat jar. The integration-tests module depends on the plain jars so `new SpringApplicationBuilder(ProducerApplication.class, ...)` works. See `producer-service/pom.xml` for the canonical Spring Boot 3.4.13 syntax.
+- **`TestOtelHolder` static-singleton** — the test-side replication of commit `f5c331a` ordering: `OpenTelemetryAppender.install(sdk)` runs AFTER `builder().build()` and BEFORE the SDK reference is published. The static-singleton resolves the @TestConfiguration vs @Bean bootstrap-ordering dance (06-CONTEXT.md D-07.1).
+- **Two `SpringApplicationBuilder` contexts in one JVM** — `OrderFlowIT.@BeforeAll` starts both `ProducerApplication` and `ConsumerApplication` as separate Spring contexts in the same JVM, each `@Import`ing `TestOtelConfiguration`. The shared `TestOtelHolder` lets BOTH contexts emit spans into one `InMemorySpanExporter` — the only way to assert cross-service `traceId`/`parentSpanId` relationships in-process.
 
-- **Production-vs-test SDK divergence as a deliberate pedagogical contrast** — Phase 2's per-service duplication of `OtelSdkConfiguration.java` is a PRODUCTION rule (D-01 / DOC-05). Test infrastructure is exempt: [`TestOtelConfiguration.java`](./integration-tests/src/test/java/com/example/e2e/TestOtelConfiguration.java) is a single `@TestConfiguration` shared by both Spring contexts because the in-memory exporter must see ALL spans across both services in one queue. The contrast itself is the lesson — duplicate when readers benefit from reading the same setup twice; share when the test fixture's purpose requires one shared instance.
+![Step 6 — mvn verify with random RabbitMQ port + four green tests](docs/screenshots/step-06-test-output.png)
 
-Run the suite (with your host `docker compose` RabbitMQ stopped, to prove Testcontainers is genuinely used):
+### Why it matters
 
-```bash
-docker compose stop rabbitmq        # if currently running
-mise run test                       # → mvn -T 1C verify
-```
-
-You should see four green tests in the Failsafe summary plus a `RabbitMQ test container available at localhost:<random-port>` line in the output. The test exits non-zero on any assertion failure — suitable for any CI runner with Docker available.
+Production-vs-test SDK divergence is a deliberate pedagogical contrast. Phase 2's per-service duplication of `OtelSdkConfiguration.java` is a PRODUCTION rule — `TestOtelConfiguration` is a single `@TestConfiguration` shared by both Spring contexts because the in-memory exporter must see ALL spans across both services in one queue. The contrast itself is the lesson: duplicate when readers benefit from reading the same setup twice; share when the test fixture's purpose requires one shared instance. The triple-signal correlation `@Test` (failure path) is the workshop's strongest single statement that all three signals work together — one trace_id, one error, one log, one metric data point, one in-memory queue per signal sink, one assertion suite. For the broader per-service-vs-shared design pattern, see *Why is the propagation pair shared?* and *Why is OtelSdkConfiguration.java duplicated?* in the [Concepts & FAQ](#concepts--faq) appendix.
 
 ## Reading the code
 
