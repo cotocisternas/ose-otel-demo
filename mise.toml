@@ -138,6 +138,22 @@ curl -sf -X POST http://localhost:${PRODUCER_PORT}/orders \
 description = "Continuous POST /orders load (~1 req/sec, ~50/50 express/standard). Run alongside `mise run dev`. Ctrl-C stops both child loaders."
 run = "./scripts/load.sh"
 
+# ──────────────────────────────────────────────────────────────────
+# Screenshot capture pipeline (Phase 7 / DOC-04 / D-05).
+# Manual one-shot — run before completing Phase 7 to refresh docs/screenshots/.
+# CI does NOT re-run this (per D-05).
+# WARNING: cycles git tags (step-01-baseline ... step-06-tests) in a worktree.
+# ──────────────────────────────────────────────────────────────────
+[tasks."docs:screenshots"]
+description = "Capture per-step screenshots (DOC-04). Cycles step-NN-* tags, drives Grafana via Playwright, writes docs/screenshots/*.png."
+run = """
+set -euo pipefail
+cd scripts/screenshots
+npm install
+npx playwright install --with-deps chromium
+node capture.mjs
+"""
+
 [tasks."verify:bom"]
 description = "Phase 2 invariant: one version per io.opentelemetry* artifact across the reactor"
 run = """
