@@ -33,8 +33,10 @@ key-files:
     - README.md (Step 6 section + Current marker + 'No integration tests' bullet removal)
 decisions:
   - "Followed the plan's verbatim Edit-1/Edit-2/Edit-3 README instructions character-for-character (single Step 6 H2, five bullets, mise run test code block)."
-  - "Did NOT apply annotated tag step-06-tests — orchestrator-owned per WORK-01 / D-21 / Phase 2-06 / Phase 5-06 precedent."
-  - "Did NOT pre-flip Phase 6 SHIPPED status in STATE/ROADMAP/REQUIREMENTS — atomic with the orchestrator's tag-apply commit."
+  - "Tag step-06-tests applied by orchestrator after human gate per WORK-01 / D-21 / Phase 2-06 / Phase 5-06 precedent — atomic with the status-flip commit."
+  - "Status-flip commit (ROADMAP + STATE) atomic with tag application; REQUIREMENTS.md TEST-01..TEST-06 already Complete from earlier sub-plans (no diff in this commit)."
+status: complete
+tasks_complete: 2/2
 metrics:
   duration: ~6min
   completed: 2026-05-02
@@ -127,7 +129,7 @@ Random port: `32780` (NOT default `5672`) — Testcontainers genuinely used.
 | **SC #2** | Test logs show non-default random RabbitMQ port (TEST-01 SC #2) | **PASS** | `RabbitMQ test container available at localhost:32780` (random port assigned per run; `:5672` is the default Testcontainers consciously avoids) |
 | **SC #3** | Cross-service IT asserts shared traceId, parentSpanId == producer.spanId, SpanKind set, messaging semconv; deterministic via SimpleSpanProcessor + forceFlush (TEST-02..05) | **PASS (review)** | `OrderFlowIT.java:211` (`happyPathProducesSingleTrace_traceAssertions`) — shared trace_id, parent/child linkage, SpanKind SERVER+INTERNAL+PRODUCER+CONSUMER+INTERNAL, semconv `MessagingIncubatingAttributes.MESSAGING_SYSTEM=rabbitmq`, `MESSAGING_OPERATION_TYPE=publish/process`. Determinism: `TestOtelHolder` uses `SimpleSpanProcessor` (no Batch), `forceFlushAll()` helper called between phases. 06-05 SUMMARY recorded the per-assertion diffs. |
 | **SC #4** | `mvn verify` exits non-zero on assertion failure (TEST-06 — Failsafe binding from 06-02) | **PASS (structural)** | 06-02 SUMMARY confirmed `maven-failsafe-plugin:3.5.5` is bound to `integration-test` + `verify` goals (parent does NOT inherit from spring-boot-starter-parent — RESEARCH §2.5). Failsafe's `verify` mojo throws `MojoExecutionException` on any test failure → mvn exits non-zero. The empirical 4/4-green run today is the positive case; the negative case is structurally guaranteed by Failsafe's contract. (Optional sabotage proof skipped per plan: "optional sabotage check".) |
-| **SC #5** | Annotated tag `step-06-tests` applied AFTER human gate (orchestrator-owned per WORK-01 / D-21) | **PENDING ORCHESTRATOR / HUMAN GATE** | `git tag -l 'step-06-tests'` returns empty. Tag application is the orchestrator's responsibility AFTER the human gate per Phase 2-06 / Phase 5-06 precedent. This plan delivers the source artifacts and the verified-green state; the orchestrator commits the README delta atomically with `git tag -a step-06-tests` after gate approval. |
+| **SC #5** | Annotated tag `step-06-tests` applied AFTER human gate (orchestrator-owned per WORK-01 / D-21) | **PASS** | Status-flip commit `e5bcf99` (`docs(06): mark phase 6 verification-tests source-complete and tag step-06-tests`) atomically lands the ROADMAP + STATE deltas; annotated tag `step-06-tests` (object `387ecd8`) applied to that commit with the workshop-checkpoint message. `git show step-06-tests --no-patch` confirms annotation visible. |
 
 ## Deviations from Plan
 
@@ -169,8 +171,71 @@ After the atomic commit + tag, `/gsd-plan-phase 7` (Polish & Differentiators) is
 
 **Commits claimed:**
 - `5a1b5c1` `docs(06-06): add Step 6 README section and move Current marker` — FOUND in `git log --oneline -3`.
+- `e5bcf99` `docs(06): mark phase 6 verification-tests source-complete and tag step-06-tests` — status-flip commit (ROADMAP Phase-6 row `[ ]`→`[x]` + progress table `4/6 In Progress`→`6/6 Shipped (tag step-06-tests) | 2026-05-02`; STATE.md `completed_phases: 5`→`6`, percent `100`→`86`, `last_activity` updated, Phase 06-06 entry added under Recent decisions).
 
 **Smoke evidence claimed:**
 - `/tmp/06-06-smoke.log` — created and contains `BUILD SUCCESS` + `Tests run: 4, Failures: 0, Errors: 0, Skipped: 0` + `RabbitMQ test container available at localhost:32780`.
+
+## Post-Gate Evidence (status-flip + tag + infra)
+
+### Status-flip commit
+
+```
+$ git log -1 --format='%H %s' e5bcf99
+e5bcf9943681de0c56faac60915782ee5e2bde07 docs(06): mark phase 6 verification-tests source-complete and tag step-06-tests
+$ git diff --stat HEAD~1 HEAD
+ .planning/ROADMAP.md |  4 ++--
+ .planning/STATE.md   | 29 +++++++++++++++--------------
+ 2 files changed, 17 insertions(+), 16 deletions(-)
+```
+
+REQUIREMENTS.md TEST-01..TEST-06 rows were already `Complete` (set during earlier sub-plans 06-01..06-05); no diff in this commit for that file.
+
+### Annotated tag
+
+```
+$ git tag -l 'step-06-tests'
+step-06-tests
+$ git show step-06-tests --no-patch
+tag step-06-tests
+Tagger: Coto Cisternas <coto@petabyte.cl>
+Date:   Sat May 2 01:33:36 2026 -0400
+
+Workshop checkpoint: Phase 6 — Verification Tests. Cross-service Testcontainers IT proves the three-signal instrumentation chain in CI; RabbitMQContainer + InMemorySpanExporter + SimpleSpanProcessor make the full pipeline deterministic.
+
+commit e5bcf9943681de0c56faac60915782ee5e2bde07
+    docs(06): mark phase 6 verification-tests source-complete and tag step-06-tests
+$ git rev-parse step-06-tests
+387ecd897390ad1bcd4225a614a21520d53b6090
+```
+
+Tag is annotated (object SHA `387ecd8` distinct from commit SHA `e5bcf99`); annotation message visible.
+
+### Infra restoration (`mise run infra:up`)
+
+```
+$ mise run infra:up
+[infra:up] $ docker compose up -d --wait
+ Container ose-otel-lgtm Running
+ Container ose-otel-rabbitmq Starting
+ Container ose-otel-rabbitmq Started
+ Container ose-otel-lgtm Waiting
+ Container ose-otel-rabbitmq Waiting
+ Container ose-otel-lgtm Healthy
+ Container ose-otel-rabbitmq Healthy
+
+$ docker compose ps
+NAME                IMAGE                      SERVICE    STATUS                   PORTS
+ose-otel-lgtm       grafana/otel-lgtm:0.26.0   lgtm       Up 2 hours (healthy)     0.0.0.0:3000->3000/tcp, 0.0.0.0:4317-4318->4317-4318/tcp
+ose-otel-rabbitmq   rabbitmq:4.3-management    rabbitmq   Up 8 seconds (healthy)   0.0.0.0:5672->5672/tcp, 0.0.0.0:15672->15672/tcp
+
+$ curl -fsS -u guest:guest 'http://localhost:15672/api/aliveness-test/%2F'
+{"status":"ok"}
+
+$ curl -fsS http://localhost:3000/api/health
+{"database":"ok","version":"13.0.1","commit":"a100054f"}
+```
+
+Both containers healthy; RabbitMQ aliveness test green; Grafana health endpoint green.
 
 ## Self-Check: PASSED
