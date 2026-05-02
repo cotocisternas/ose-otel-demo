@@ -32,8 +32,9 @@ const REPO_ROOT = resolve(__dirname, '..', '..');
 const OUTPUT_DIR = resolve(REPO_ROOT, 'docs', 'screenshots');
 
 const GRAFANA_URL = process.env.GRAFANA_URL || 'http://localhost:3000';
-const GRAFANA_USER = process.env.GRAFANA_USER || 'admin';
-const GRAFANA_PASS = process.env.GRAFANA_PASS || 'admin';
+// Grafana auth is disabled in docker-compose (`GF_AUTH_ANONYMOUS_ENABLED=true`,
+// `GF_AUTH_DISABLE_LOGIN_FORM=true`); admin/admin credentials still exist for the
+// settings UI but the capture pipeline does not need them.
 const DASHBOARD_UID = 'ose-otel-demo';
 const WARMUP_MS = Number(process.env.WARMUP_MS || 30_000);
 
@@ -103,49 +104,17 @@ const CAPTURES = [
 ];
 
 // ---------------------------------------------------------------------------
-// Auth helper — login once, reuse storage state across all captures (D-05).
-// ---------------------------------------------------------------------------
-async function loginAndStoreState(browser) {
-  const context = await browser.newContext();
-  const page = await context.newPage();
-  await page.goto(`${GRAFANA_URL}/login`);
-  // Grafana login form selectors — verified against otel-lgtm v0.26.0 bundled Grafana.
-  // If selectors break across Grafana versions, the script reports a clear error and exits.
-  await page.fill('input[name="user"]', GRAFANA_USER);
-  await page.fill('input[name="password"]', GRAFANA_PASS);
-  await page.click('button[type="submit"]');
-
-  // Wait for ANY navigation away from /login. Grafana 13 may land on:
-  //   - /?orgId=1               (normal)
-  //   - /profile/password        (default admin/admin password-change prompt)
-  //   - /                        (no querystring)
-  await page.waitForURL(url => !new URL(url).pathname.startsWith('/login'), { timeout: 20_000 });
-
-  // If Grafana shows the "change password" prompt, click Skip.
-  // Selector: button with text "Skip" inside the change-password form.
-  // (Grafana 13 uses data-testid="data-testid Skip change password button" — fall back to text match.)
-  try {
-    const skipBtn = page.locator('button:has-text("Skip")').first();
-    if (await skipBtn.isVisible({ timeout: 2_000 })) {
-      await skipBtn.click();
-      await page.waitForURL(url => !new URL(url).pathname.startsWith('/profile/password'), { timeout: 10_000 });
-    }
-  } catch {
-    // No skip prompt — proceed.
-  }
-
-  const storage = await context.storageState();
-  await context.close();
-  return storage;
-}
-
-// ---------------------------------------------------------------------------
 // Per-tag capture: cycles git tag, brings up infra + dev + load, screenshots,
 // then tears down. The actual cycling logic lives in this Wave-1 scaffold but
 // is exercised by Wave 2 (plan 07-04).
+//
+// Auth: none. Grafana is configured with `GF_AUTH_ANONYMOUS_ENABLED=true`
+// (Admin role) and `GF_AUTH_DISABLE_LOGIN_FORM=true` in docker-compose.yml,
+// so navigations land directly on dashboards/Explore without a login form
+// (Phase 7 D-01 alignment — zero clicks, zero Grafana navigation).
 // ---------------------------------------------------------------------------
-async function captureForTag(browser, storageState, capture) {
-  const context = await browser.newContext({ storageState });
+async function captureForTag(browser, capture) {
+  const context = await browser.newContext();
   const page = await context.newPage();
   const { from, to } = fixedTimeRange();
   const outPath = resolve(OUTPUT_DIR, capture.output);
@@ -222,12 +191,12 @@ async function main() {
      undefined);
   const browser = await chromium.launch({ headless: true, executablePath });
   try {
-    const storage = await loginAndStoreState(browser);
     for (const c of filtered) {
       // The driving loop assumes the *current* checkout matches `c.tag` and infra+dev+load
       // are already running with `WARMUP_MS` of warm-up traffic. Wave 2 / plan 07-04
       // wraps this script with the per-tag git-worktree cycle.
-      await captureForTag(browser, storage, c);
+      // Anonymous Grafana access (see captureForTag header) means no auth context needed.
+      await captureForTag(browser, c);
     }
   } finally {
     await browser.close();
