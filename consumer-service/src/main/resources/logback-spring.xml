@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Phase 5: Logs Correlation — full Spring Boot defaults override (D-10).
+
+  No <include resource="org/springframework/boot/logging/logback/defaults.xml"/>:
+  this file is the source of truth for log formatting. Pedagogical justification —
+  no inherited magic; every appender visible in this file.
+
+  Two appenders + one MDC-wrapper appender + root attaches to both:
+
+    ROOT (INFO)
+     ├── MDC_CONSOLE (mdc.v1_0.OpenTelemetryAppender — injects trace_id/span_id into MDC,
+     │                 then forwards to its child)
+     │    └── CONSOLE (ConsoleAppender — renders the bracketed pattern with %mdc{trace_id:-})
+     └── OTEL (appender.v1_0.OpenTelemetryAppender — emits OTLP log records to :4317;
+               trace_id/span_id come from Span.current() directly, NOT from MDC)
+
+  The MDC injector is an APPENDER WRAPPER, NOT a TurboFilter — verified against
+  opentelemetry-logback-mdc-1.0:2.27.0-alpha source (see 05-RESEARCH.md Finding #1).
+-->
+<configuration>
+
+  <!--
+    CONSOLE: terminal output. The %mdc{trace_id:-} default-value syntax means
+    startup logs render `[trace_id= span_id=]` (brackets stay, values empty);
+    in-span logs render `[trace_id=4b2e... span_id=ad12...]`. The empty default
+    is Logback 1.5.x standard syntax — confirmed by Logback layouts manual.
+  -->
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level [trace_id=%mdc{trace_id:-} span_id=%mdc{span_id:-}] %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <!--
+    MDC_CONSOLE: opentelemetry-logback-mdc-1.0's wrapper appender. Reads
+    Span.current() and writes trace_id/span_id/trace_flags into the event's
+    MDC just-in-time, then forwards the event to its <appender-ref> child.
+    Default MDC keys (trace_id / span_id / trace_flags) match D-11's pattern;
+    no <traceIdKey> / <spanIdKey> overrides needed.
+  -->
+  <appender name="MDC_CONSOLE" class="io.opentelemetry.instrumentation.logback.mdc.v1_0.OpenTelemetryAppender">
+    <appender-ref ref="CONSOLE"/>
+  </appender>
+
+  <!--
+    OTEL: opentelemetry-logback-appender-1.0's OTLP export appender. Reads
+    Span.current() directly via LoggingEventMapper and emits an OTLP LogRecord
+    with trace_id/span_id as record-level attributes (NOT MDC values) — that's
+    why the Loki query in SC #2 (D-18) works against the OTLP attribute, not
+    the formatted message text.
+
+    OpenTelemetryAppender.install(openTelemetry) is called from a @PostConstruct
+    method on OtelSdkConfiguration AFTER the SDK bean is built (D-08, D-09 —
+    PITFALL #5 mitigation). Logs emitted before install() are buffered in this
+    appender's replay queue (default 1000 events) and replayed on install.
+  -->
+  <appender name="OTEL" class="io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender"/>
+
+  <!--
+    Root captures all business logs at INFO. No per-package overrides for v1.
+    MDC_CONSOLE (which wraps CONSOLE) handles terminal rendering with trace_id
+    stamping; OTEL handles OTLP export to Loki.
+  -->
+  <root level="INFO">
+    <appender-ref ref="MDC_CONSOLE"/>
+    <appender-ref ref="OTEL"/>
+  </root>
+
+</configuration>
