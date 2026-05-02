@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: complete
-stopped_at: v1.0 Workshop milestone CLOSED (tag `v1.0` applied; ROADMAP/REQUIREMENTS archived to milestones/v1.0-*)
-last_updated: "2026-05-02T21:30:00.000Z"
-last_activity: 2026-05-02 -- v1.0 Workshop milestone shipped: 7 phases, 41 plans, 61 tasks, 277 commits across 4 days; archives written to .planning/milestones/v1.0-*
+milestone: v2.0
+milestone_name: Production Shapes
+status: planning
+last_updated: "2026-05-02T22:03:09.494Z"
+last_activity: 2026-05-02
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 41
-  completed_plans: 42
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,12 +24,10 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 
 ## Current Position
 
-Phase: 07 — SHIPPED (no tag — D-09); milestone v1.0 complete (subject to /gsd-complete-milestone)
-Plan: 7 of 7
-Status: Phase 07 source-complete; all 4 ROADMAP success criteria verified green at live stack; D-09 honored: NO step-07-* tag applied
-Last activity: 2026-05-02
-
-Progress: [██████████] 100%
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-02 — Milestone v2.0 started
 
 ## Performance Metrics
 

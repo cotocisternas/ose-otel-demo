@@ -8,6 +8,30 @@ A workshop-grade demo project that teaches engineers how to instrument a Spring 
 
 A workshop attendee can clone the repo, run `docker compose up` + `mise run dev`, hit `POST /orders`, and see a single distributed trace flow from the HTTP handler through the RabbitMQ publish, into the consumer's processing logic, with correlated metrics and logs — and understand exactly which lines of SDK code made each piece work.
 
+## Current Milestone: v2.0 Production Shapes
+
+**Goal:** Evolve the v1.0 manual-SDK workshop into a production-shaped reference — decompose the all-in-one observability stack into a real Collector pipeline, teach in-SDK sampling + baggage and Collector-side tail sampling, expand instrumentation to JDBC/JPA + outbound HTTP, enrich the AMQP topology with fanout/topic/DLX variants, and wire cross-signal correlation (exemplars + log-based metrics) so attendees leave with patterns they can apply at work.
+
+**Target features:**
+
+*Operational chapters (production stack)*
+- Decompose `otel-lgtm` into separate OTel Collector + Tempo + Mimir + Loki + Grafana containers
+- Tail sampling at the Collector (keep-on-error, latency-based, probabilistic fallback)
+- Exemplars wiring: Prometheus histogram exemplars click-through into Tempo traces
+- Log-based metrics: Loki LogQL recording rules + log-derived metrics in Mimir
+
+*Instrumentation lessons (SDK teaching surface)*
+- JDBC/JPA database spans (manual `SPAN_KIND_CLIENT` beyond v1.0 Phase-8 db-cache, with `db.*` semconv attributes)
+- Outbound HTTP-client spans (RestClient/WebClient → external HTTP hop, peer.service propagation)
+- Sampling + baggage (parent-based head sampling, ratio sampling, baggage propagation across services)
+
+*Transport/pattern shapes*
+- AMQP fanout/topic/DLX variants (richer topologies on top of v1.0's `TracingMessagePostProcessor`/`Advice` scaffolding)
+
+**Deferred to v2.x backlog:**
+- gRPC service-to-service (substantial surface; candidate to anchor its own milestone)
+- `@Scheduled` / `@Async` span lifecycle (orthogonal to production-shapes theme)
+
 ## Requirements
 
 ### Validated
@@ -32,7 +56,7 @@ A workshop attendee can clone the repo, run `docker compose up` + `mise run dev`
 
 <!-- Current scope. Building toward these. -->
 
-(None — v1.0 milestone closed; next milestone scope TBD via `/gsd-new-milestone` after first cohort delivery feedback.)
+(v2.0 Production Shapes — 8 target features under definition. See `REQUIREMENTS.md` once generated for the REQ-ID-mapped list and `ROADMAP.md` for phase-level traceability. Phase numbering continues from Phase 10.)
 
 ### Out of Scope
 
@@ -116,4 +140,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-02 after v1.0 Workshop milestone shipped (tag `v1.0`)*
+*Last updated: 2026-05-02 — v2.0 Production Shapes milestone opened (continues from Phase 10; v1.0 Workshop archived under tag `v1.0`)*
