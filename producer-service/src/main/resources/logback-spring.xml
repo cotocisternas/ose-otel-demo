@@ -40,13 +40,17 @@
                          [...RabbitListenerEndpointContainer#0-1]; thread names
                          make the async hand-off across the AMQP boundary visible
       %-5level         — left-justified 5-char level (INFO / ERROR / WARN )
-      [trace_id=... span_id=...] — bracketed prefix, empty when no active span
+      [trace_id=... span_id=... flags=...] — bracketed prefix, empty when no
+                         active span; trace_flags is the W3C sampled bit
+                         (`01` = sampled, `00` = not sampled — visible to
+                         attendees so they can see the parentBased(alwaysOn)
+                         sampler decision per request, IN-07)
       %logger{36}      — abbreviated FQCN to 36 chars
       - %msg%n         — message and newline
   -->
   <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
-      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level [trace_id=%mdc{trace_id:-} span_id=%mdc{span_id:-}] %logger{36} - %msg%n</pattern>
+      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level [trace_id=%mdc{trace_id:-} span_id=%mdc{span_id:-} flags=%mdc{trace_flags:-}] %logger{36} - %msg%n</pattern>
     </encoder>
   </appender>
 
