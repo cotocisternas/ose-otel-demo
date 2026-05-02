@@ -83,16 +83,24 @@ public class ProcessingService {
             // Runs ONLY on the success path — the failure path throws before reaching this line.
             // traceId = Span.current().getSpanContext().getTraceId() — valid because this code
             // runs inside the INTERNAL span's try(Scope scope = span.makeCurrent()) block.
-            String orderId = String.valueOf(order.get("orderId"));
-            String traceId = Span.current().getSpanContext().getTraceId();
-            try {
-                String payloadJson = objectMapper.writeValueAsString(order);
-                repository.insertProcessedOrder(orderId, traceId, payloadJson);
-            } catch (Exception e) {
-                // Log the persistence failure but do NOT rethrow — a DB insert failure
-                // should not NACK the AMQP message and trigger requeue/DLX.
-                // The span.recordException path remains for trace visibility.
-                LOG.warn("failed to persist orderId={} to processed_orders: {}", orderId, e.getMessage());
+            //
+            // Reject missing/blank orderId BEFORE calling the repository — String.valueOf(null)
+            // would otherwise persist the literal "null" as a sentinel primary key, and
+            // ON CONFLICT DO NOTHING would silently no-op every subsequent missing-orderId
+            // message against that row (data loss + AMQP ACKed).
+            Object orderIdRaw = order.get("orderId");
+            if (orderIdRaw instanceof String orderId && !orderId.isBlank()) {
+                String traceId = Span.current().getSpanContext().getTraceId();
+                try {
+                    String payloadJson = objectMapper.writeValueAsString(order);
+                    repository.insertProcessedOrder(orderId, traceId, payloadJson);
+                } catch (Exception e) {
+                    // Log the persistence failure but do NOT rethrow — a DB insert failure
+                    // should not NACK the AMQP message and trigger requeue/DLX.
+                    LOG.warn("failed to persist orderId={} to processed_orders: {}", orderId, e.getMessage());
+                }
+            } else {
+                LOG.warn("skipping processed_orders persist: orderId missing or blank in payload");
             }
         } catch (RuntimeException e) {
             // D-03 catch shape from Phase 2 — preserved unchanged below.

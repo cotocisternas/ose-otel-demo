@@ -42,7 +42,17 @@ public class HikariCpConnectionGauge {
     private final ObservableLongGauge gauge;
 
     public HikariCpConnectionGauge(Meter meter, DataSource dataSource) {
-        HikariDataSource hikariDs = (HikariDataSource) dataSource;
+        // dataSource.unwrap() handles Spring/Actuator wrappers (e.g. LazyConnectionDataSourceProxy)
+        // per JDBC spec: returns the underlying HikariDataSource if reachable, throws SQLException
+        // otherwise. A direct cast would throw ClassCastException on any wrapper and abort startup.
+        HikariDataSource hikariDs;
+        try {
+            hikariDs = dataSource.unwrap(HikariDataSource.class);
+        } catch (java.sql.SQLException e) {
+            throw new IllegalStateException(
+                "DataSource cannot be unwrapped to HikariDataSource — Phase 8 expects HikariCP. "
+                + "Got: " + dataSource.getClass().getName(), e);
+        }
 
         // db.client.connection.count follows OTel DB client metrics semconv (incubating).
         // Surfaces in Mimir as db_client_connection_count{state="used|idle|pending"}.

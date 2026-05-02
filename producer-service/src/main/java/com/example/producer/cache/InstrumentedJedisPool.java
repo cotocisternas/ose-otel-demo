@@ -7,6 +7,7 @@ import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
+import io.opentelemetry.semconv.DbAttributes;
 import io.opentelemetry.semconv.ServerAttributes;
 import io.opentelemetry.semconv.incubating.DbIncubatingAttributes;
 
@@ -81,18 +82,17 @@ public class InstrumentedJedisPool implements Closeable {
         //   server.address + server.port = Valkey host:port (stable semconv)
         Span span = tracer.spanBuilder("SET")
             .setSpanKind(SpanKind.CLIENT)
-            .setAttribute(DbIncubatingAttributes.DB_SYSTEM_NAME,
+            .setAttribute(DbAttributes.DB_SYSTEM_NAME,
                 DbIncubatingAttributes.DbSystemNameIncubatingValues.REDIS)
-            .setAttribute(io.opentelemetry.semconv.DbAttributes.DB_OPERATION_NAME, "SET")
+            .setAttribute(DbAttributes.DB_OPERATION_NAME, "SET")
             .setAttribute(ServerAttributes.SERVER_ADDRESS, host)
             .setAttribute(ServerAttributes.SERVER_PORT, (long) port)
             .startSpan();
-        try (Scope scope = span.makeCurrent(); Jedis jedis = pool.getResource()) {
-            // jedis.set(key, value, SetParams.setParams().nx().ex(ttl)) is the
-            // Jedis 7.x atomic idiom. Returns "OK" if the key was inserted; null
-            // if the key already existed (NX = no-overwrite).
-            String result = jedis.set(key, value, SetParams.setParams().nx().ex(ttlSeconds));
-            return "OK".equals(result);
+        try (Scope scope = span.makeCurrent()) {
+            try (Jedis jedis = pool.getResource()) {
+                String result = jedis.set(key, value, SetParams.setParams().nx().ex(ttlSeconds));
+                return "OK".equals(result);
+            }
         } catch (Exception e) {
             span.recordException(e);
             span.setStatus(StatusCode.ERROR, e.getMessage());

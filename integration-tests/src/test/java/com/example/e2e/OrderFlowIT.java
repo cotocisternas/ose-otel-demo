@@ -30,6 +30,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.testcontainers.containers.GenericContainer;
@@ -410,10 +412,17 @@ class OrderFlowIT {
     // ----------------------------------------------------------------------
     @Test
     void dbClientSpansPresentInTrace_spanAssertions() {
-        ResponseEntity<Void> response = rest.postForEntity(
-            orderUrl,
-            new TestOrderRequest("WIDGET-DB-1", 1, "standard"),
-            Void.class);
+        // X-Idempotency-Key header drives the producer's Valkey SETNX path.
+        // TestOrderRequest has no orderId field, so the controller's body fallback
+        // would resolve to null and skip the cache check entirely (no Valkey CLIENT
+        // span emitted). System.nanoTime() makes the key unique across test re-runs
+        // so the cache lookup always misses (returns 202, not 409 duplicate).
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Idempotency-Key", "WIDGET-DB-1-" + System.nanoTime());
+        HttpEntity<TestOrderRequest> request = new HttpEntity<>(
+            new TestOrderRequest("WIDGET-DB-1", 1, "standard"), headers);
+
+        ResponseEntity<Void> response = rest.postForEntity(orderUrl, request, Void.class);
         // 202 Accepted = new order (idempotency cache miss)
         org.assertj.core.api.Assertions.assertThat(response.getStatusCode())
             .isEqualTo(HttpStatus.ACCEPTED);
