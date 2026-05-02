@@ -64,7 +64,7 @@ Requirements for initial release. Each maps to a roadmap phase. All requirements
 - [ ] **TEST-03**: A cross-service integration test triggers the full `POST /orders` → publish → consume flow and asserts that producer and consumer spans share the same `traceId`
 - [ ] **TEST-04**: The same test asserts the consumer span's `parentSpanId` equals the producer span's `spanId` (proving the inject/extract pair works)
 - [ ] **TEST-05**: The same test asserts both spans carry correct `SpanKind` (`PRODUCER` / `CONSUMER`) and the messaging semantic-convention attributes
-- [ ] **TEST-06**: `mise run test` runs all module tests and exits non-zero on any assertion failure (suitable for CI)
+- [x] **TEST-06**: `mise run test` runs all module tests and exits non-zero on any assertion failure (suitable for CI)
 
 ### Documentation (DOC)
 
@@ -163,7 +163,7 @@ Every v1 requirement maps to exactly one phase. Updated by `gsd-roadmapper` 2026
 | TEST-03 | Phase 6 | Pending |
 | TEST-04 | Phase 6 | Pending |
 | TEST-05 | Phase 6 | Pending |
-| TEST-06 | Phase 6 | Pending |
+| TEST-06 | Phase 6 | Complete |
 | DOC-01 | Phase 7 | Pending |
 | DOC-02 | Phase 1 | Pending |
 | DOC-03 | Phase 2 | Complete |

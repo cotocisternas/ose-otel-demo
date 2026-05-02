@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Phase 06 planned — ready to execute
-stopped_at: Phase 6 plans committed (6 plans across 6 waves)
-last_updated: "2026-05-02T04:30:00.000Z"
-last_activity: 2026-05-02 -- Phase 06 planned: research + patterns + 6 plans (D-07.1 TestOtelHolder resolved); plan-checker iteration 1 → REVISE → 5 surgical fixes applied → committed
+status: executing
+stopped_at: Phase 6 context gathered
+last_updated: "2026-05-02T04:50:37.634Z"
+last_activity: 2026-05-02
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 28
-  completed_plans: 29
-  percent: 100
+  total_plans: 34
+  completed_plans: 30
+  percent: 88
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** A workshop attendee can clone the repo, run `docker compose up` + `mise run dev`, hit `POST /orders`, and see a single distributed trace flow from the HTTP handler through the RabbitMQ publish, into the consumer's processing logic, with correlated metrics and logs — and understand exactly which lines of SDK code made each piece work.
-**Current focus:** Phase 06 — verification-tests (next)
+**Current focus:** Phase 06 — verification-tests
 
 ## Current Position
 
-Phase: 06 — PLANNED (0 of 6 plans executed)
-Plan: 0 of 6
-Status: Ready to execute Phase 06 — `/gsd-execute-phase 06`
-Last activity: 2026-05-02 -- Phase 06 planning complete (research + patterns + 6 plans); D-07.1 TestOtelHolder static-singleton resolves the per-context bean isolation flaw in D-07; plan-checker iteration 1 REVISE → 5 surgical fixes applied → committed (7fa401f)
+Phase: 06 (verification-tests) — EXECUTING
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-05-02
 
-Progress: [██████████] 100%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Progress: [██████████] 100%
 | Phase 02 P05 (consumer-instrumentation) | 5.5min | 3 | 2 |
 | Phase 02 P06 (readme-and-exit-gate) | 8min | 2 (T3 staged) | 1 |
 | Phase 5 P6 | 30min | 2 tasks | 2 files |
+| Phase 06 P01 | 3min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 05-06] README Step 5 section + checkpoint marker move + obsolete bullet removal landed cleanly (commit ea7b1dd). Section length 80 lines vs 35-70 advisory band — paste-verbatim directive took precedence.
 - [Phase ?]: [Phase 05-06] Smoke surfaced a Spring circular-reference cycle on otelSdkConfiguration bean — @Autowired field on the same @Configuration that produces the bean (Plans 05-02/05-03). mvn compile passes; cycle is runtime-only. Recommended fix: assign this.openTelemetry = sdk inside @Bean factory body and drop @Autowired field. Per SCOPE BOUNDARY rule, not auto-fixed in 05-06; routed to orchestrator for revision against 05-02/05-03.
 - [Phase ?]: [Phase 05-06] step-05-logs annotated tag NOT applied — orchestrator-owned per WORK-01 / D-21 / Phase 2-06 precedent. Tag MUST NOT be applied until SC #1 + SC #2 verify green at the live stack, which requires the bean-cycle defect to be revised first.
+- [Phase ?]: [Phase 06-01] Followed plan verbatim; reactor build deliberately broken between 06-01 and 06-02 (plan invariant)
 
 ### Pending Todos
 
@@ -116,6 +118,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-02T03:48:25.696Z
+Last session: 2026-05-02T04:50:29.233Z
 Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-verification-tests/06-CONTEXT.md
+Resume file: None

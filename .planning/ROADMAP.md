@@ -198,7 +198,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. The annotated git tag `step-06-tests` exists on `main`.
 **Plans** (6 plans, 6 waves):
 - **Wave 1** *(no dependencies)*
-  - [ ] `06-01-parent-pom-and-classifier-config` — TEST-06 — Add `<module>integration-tests</module>` to parent reactor + `<classifier>exec</classifier>` repackage execution to producer/consumer service POMs (RESEARCH §3.1; D-04). Produces both plain classes jars (top-level ApplicationClass.class) and `-exec` fat jars per service.
+  - [x] `06-01-parent-pom-and-classifier-config` — TEST-06 — Add `<module>integration-tests</module>` to parent reactor + `<classifier>exec</classifier>` repackage execution to producer/consumer service POMs (RESEARCH §3.1; D-04). Produces both plain classes jars (top-level ApplicationClass.class) and `-exec` fat jars per service.
 - **Wave 2** *(blocked on Wave 1)*
   - [ ] `06-02-integration-tests-pom` — TEST-01, TEST-02, TEST-06 — Create `integration-tests/pom.xml` with 8 deps (producer/consumer plain jars + spring-boot-starter-test + spring-boot-testcontainers + testcontainers junit-jupiter + rabbitmq + opentelemetry-sdk-testing + awaitility) + EXPLICIT `maven-failsafe-plugin:3.5.5` binding (parent does NOT inherit from spring-boot-starter-parent — RESEARCH §2.5).
 - **Wave 3** *(blocked on Wave 2)*
@@ -223,7 +223,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Workshop attendee can `git checkout step-NN-NAME` for any step, follow the README section keyed to that tag with copy-pasteable curl commands, and reproduce the demonstrated state — every step has a paired README block (DOC-01).
 **Plans** (6 plans, 6 waves):
 - **Wave 1** *(no dependencies)*
-  - [ ] `06-01-parent-pom-and-classifier-config` — TEST-06 — Add `<module>integration-tests</module>` to parent reactor + `<classifier>exec</classifier>` repackage execution to producer/consumer service POMs (RESEARCH §3.1; D-04). Produces both plain classes jars (top-level ApplicationClass.class) and `-exec` fat jars per service.
+  - [x] `06-01-parent-pom-and-classifier-config` — TEST-06 — Add `<module>integration-tests</module>` to parent reactor + `<classifier>exec</classifier>` repackage execution to producer/consumer service POMs (RESEARCH §3.1; D-04). Produces both plain classes jars (top-level ApplicationClass.class) and `-exec` fat jars per service.
 - **Wave 2** *(blocked on Wave 1)*
   - [ ] `06-02-integration-tests-pom` — TEST-01, TEST-02, TEST-06 — Create `integration-tests/pom.xml` with 8 deps (producer/consumer plain jars + spring-boot-starter-test + spring-boot-testcontainers + testcontainers junit-jupiter + rabbitmq + opentelemetry-sdk-testing + awaitility) + EXPLICIT `maven-failsafe-plugin:3.5.5` binding (parent does NOT inherit from spring-boot-starter-parent — RESEARCH §2.5).
 - **Wave 3** *(blocked on Wave 2)*
@@ -250,7 +250,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. AMQP Context Propagation | 0/5 | In progress (planned) | - |
 | 4. Metrics | 0/5 | In progress (planned) | - |
 | 5. Logs Correlation | 6/6 | Complete   | 2026-05-02 |
-| 6. Verification Tests | 0/6 | Planned | - |
+| 6. Verification Tests | 1/6 | In Progress | - |
 | 7. Polish & Differentiators | 0/TBD | Not started | - |
 
 ## Research Flags
