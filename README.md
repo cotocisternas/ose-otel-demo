@@ -70,8 +70,8 @@ In Phase 1 there is **no telemetry** — the OTLP endpoint is open and the Grafa
 - `step-01-baseline` — Working two-service Spring Boot + RabbitMQ app on host JVM with ZERO telemetry.
 - `step-02-traces` — Manual SDK bootstrap; producer and consumer emit DISCONNECTED traces (intentional setup for the Phase 3 propagation lesson).
 - `step-03-context-propagation` — THE headline lesson: AMQP context propagation joins the two traces; `consumer.parentSpanId == producer.spanId` after this checkpoint.
-- `step-04-metrics` — `SdkMeterProvider` lands as a sibling pipeline next to the tracer pipeline; `orders.created` (Counter), `http.server.request.duration` (Histogram, seconds), `orders.queue.depth.estimate` (ObservableGauge) flow to Mimir on a 10-second interval. **Current.**
-- `step-05-logs` — (Phase 5) Logs correlation + Loki-to-Tempo click-through.
+- `step-04-metrics` — `SdkMeterProvider` lands as a sibling pipeline next to the tracer pipeline; `orders.created` (Counter), `http.server.request.duration` (Histogram, seconds), `orders.queue.depth.estimate` (ObservableGauge) flow to Mimir on a 10-second interval.
+- `step-05-logs` — Logs correlation + Loki-to-Tempo click-through. **Current.**
 - `step-06-tests` — (Phase 6) Testcontainers verification.
 
 This section establishes the convention; Phase 7 turns each bullet into a full walkthrough.
@@ -124,6 +124,85 @@ The same Resource attributes from Phase 2 (`service.name`, `service.namespace`,
 point (D-05 — built once and shared between traces and metrics for cross-signal
 correlation in Grafana).
 
+## Step 5: Logs Correlation
+
+`step-05-logs` adds the **third** OTel signal — logs — to both services, closing
+the three-signals loop. The two `OtelSdkConfiguration.java` files now build a
+`SdkLoggerProvider` next to the existing `SdkTracerProvider` and `SdkMeterProvider`
+(D-01 in `05-CONTEXT.md` lands a third sibling helper `buildLoggerProvider(Resource)`,
+parallel to the Phase 2 and Phase 4 helpers, so the diff against `step-04-metrics`
+reads as "we added a sibling pipeline next to the trace and metric pipelines"). A
+new `logback-spring.xml` per service declares the `OpenTelemetryAppender` for OTLP
+export plus the MDC injector wrapper appender that stamps `trace_id`/`span_id`
+into the console pattern.
+
+The three Phase 5 SDK + Logback touch points cover the two ways trace context
+flows into a log line:
+
+- **`SdkLoggerProvider` + `BatchLogRecordProcessor` + `OtlpGrpcLogRecordExporter`** —
+  the third pipeline added to
+  [`OtelSdkConfiguration.java`](./producer-service/src/main/java/com/example/producer/config/OtelSdkConfiguration.java)
+  (and its consumer mirror at
+  [`consumer-service/.../OtelSdkConfiguration.java`](./consumer-service/src/main/java/com/example/consumer/config/OtelSdkConfiguration.java)).
+  Same OTLP endpoint as traces and metrics (`:4317`, `OTEL_EXPORTER_OTLP_ENDPOINT`
+  env var with fallback — D-04 carryforward); same shared `Resource` for cross-signal
+  correlation (D-05 — same `service.name` / `service.namespace` / `service.instance.id`
+  attributes appear on every log record, every span, every metric data point).
+  The `opentelemetry-exporter-otlp` artifact already on classpath since Phase 2
+  ships log + metric + span exporters from one jar — Phase 5 adds **zero** new
+  SDK-side dependencies.
+- **`OpenTelemetryAppender` (OTLP export) + the MDC injector wrapper** — declared
+  in [`producer-service/src/main/resources/logback-spring.xml`](./producer-service/src/main/resources/logback-spring.xml)
+  (and its byte-identical consumer mirror at
+  [`consumer-service/src/main/resources/logback-spring.xml`](./consumer-service/src/main/resources/logback-spring.xml)).
+  Two artifacts pulled from the `opentelemetry-instrumentation-bom-alpha:2.27.0-alpha`
+  BOM that Phase 1 declared forward-compat for this exact moment:
+  `opentelemetry-logback-appender-1.0` (the OTLP export appender) and
+  `opentelemetry-logback-mdc-1.0` (the MDC injector). **Heads-up — both ship a
+  class named `OpenTelemetryAppender` in different packages**: the
+  `appender.v1_0.OpenTelemetryAppender` is the OTLP exporter (has the `install()`
+  static); the `mdc.v1_0.OpenTelemetryAppender` is an appender WRAPPER that reads
+  `Span.current()` and stamps `trace_id`/`span_id` into MDC before forwarding to
+  its child appender. The MDC injector is wrapped around `CONSOLE` so the
+  bracketed pattern `[trace_id=%mdc{trace_id:-} span_id=%mdc{span_id:-}]`
+  resolves correctly for in-span events.
+- **`@PostConstruct installLogbackAppender()`** — the load-bearing PITFALL #5
+  mitigation (LOG-03 / D-08 / D-09). **The order-of-operations problem:** Logback
+  initializes BEFORE the Spring `ApplicationContext` is built, so the
+  `OpenTelemetryAppender` constructed at startup defaults to `OpenTelemetry.noop()`.
+  The `@PostConstruct` method on `OtelSdkConfiguration` runs AFTER the `@Bean`
+  factory returns, giving Spring a guaranteed point to call
+  `OpenTelemetryAppender.install(this.openTelemetry)` — which walks the global
+  `LoggerContext`, finds the OTEL appender, and swaps the noop reference for the
+  real SDK. Logs emitted before this method runs are buffered in the appender's
+  replay queue (1000-event default) and replayed on install — so nothing is lost
+  in normal Spring Boot startup, but if `install()` is never called, log records
+  beyond the buffer are silently dropped. **The `@PostConstruct` IS the lesson** —
+  the silent-no-op trap is a textbook OTel logback gotcha (see
+  [opentelemetry-java-instrumentation#10307](https://github.com/open-telemetry/opentelemetry-java-instrumentation/issues/10307)).
+
+`mise run demo:order` now produces a console line per service with `trace_id` /
+`span_id` stamped in brackets — pre-`POST` startup logs render
+`[trace_id= span_id=]` (empty defaults via Logback's `%mdc{key:-}` syntax),
+in-span logs render `[trace_id=4b2e... span_id=ad12...]`. The same trace_id
+flows to Loki via the OTLP appender. In Grafana → Explore → Loki, run:
+
+```
+{service_name="order-producer"} |~ "<traceId>"
+```
+
+(replace `<traceId>` with the 32-hex value you copied from the console). Click
+the `trace_id` field on a returned log line and Grafana opens the matching trace
+in Tempo's Explore tab. **The triple-signal correlation highlight** lands on the
+deterministic 10th order (Phase 3 APP-04): the consumer's `LOG.error` in
+[`ProcessingService`](./consumer-service/src/main/java/com/example/consumer/domain/ProcessingService.java)
+fires alongside the existing `span.recordException(e)` — the Loki query
+`{service_name="order-consumer"} |= "ERROR"` returns the failure log; click
+its trace_id and Tempo shows the trace whose CONSUMER span carries the
+recordException event AND a metric data point in Mimir for the same priority/method.
+All three signals share the trace_id; the resource attributes (D-05) make the
+identity match across Loki / Tempo / Mimir.
+
 ## Reading the code
 
 The two `OtelSdkConfiguration.java` files are the workshop's textbook for the manual SDK setup. Open them in your IDE and read top-to-bottom — every `@Bean` carries an inline comment explaining what each builder call does and why (DOC-03):
@@ -158,6 +237,5 @@ Phase 3 also corrects an OTel messaging semconv divergence from Phase 2: the pro
 The following are deliberate Phase 1 omissions — the repo isn't incomplete, it's **uninstrumented on purpose** so each later phase has something concrete to add:
 
 - No `OtelSdkConfiguration.java` (Phase 2)
-- No log correlation (Phase 5)
 - No integration tests (Phase 6)
 - No pre-built Grafana dashboard or load script (Phase 7)
