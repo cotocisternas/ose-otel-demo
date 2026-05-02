@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Manual SDK Bootstrap & First Traces** *(shipped 2026-05-01; tag `step-02-traces`)* — `OpenTelemetrySdk` wired per-service, traces emitted, but producer and consumer in **separate** traces (intentional setup for Phase 3's "aha")
 - [x] **Phase 3: AMQP Context Propagation** — THE headline lesson: `TextMapSetter`/`TextMapGetter` pair joins producer and consumer into ONE trace
 - [ ] **Phase 4: Metrics** — `SdkMeterProvider` + Counter, Histogram, ObservableGauge instrument shapes flowing to Mimir
-- [ ] **Phase 5: Logs Correlation** — `OpenTelemetryAppender` + MDC trace_id/span_id; Loki-to-Tempo click-through working
+- [x] **Phase 5: Logs Correlation** — `OpenTelemetryAppender` + MDC trace_id/span_id; Loki-to-Tempo click-through working (completed 2026-05-02)
 - [ ] **Phase 6: Verification Tests** — Testcontainers `RabbitMQContainer` + `InMemorySpanExporter` proves the full chain in CI
 - [ ] **Phase 7: Polish & Differentiators** — Pre-built dashboard, load script, screenshots, full README walkthrough
 
@@ -225,7 +225,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Manual SDK Bootstrap & First Traces | 6/6 | Shipped | 2026-05-01 |
 | 3. AMQP Context Propagation | 0/5 | In progress (planned) | - |
 | 4. Metrics | 0/5 | In progress (planned) | - |
-| 5. Logs Correlation | 0/6 | In progress (planned) | - |
+| 5. Logs Correlation | 6/6 | Complete   | 2026-05-02 |
 | 6. Verification Tests | 0/TBD | Not started | - |
 | 7. Polish & Differentiators | 0/TBD | Not started | - |
 

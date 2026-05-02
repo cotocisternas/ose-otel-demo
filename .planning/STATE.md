@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 5 context gathered
-last_updated: "2026-05-02T01:47:38.128Z"
-last_activity: 2026-05-02 -- Phase 05 execution started
+stopped_at: Phase 05-06 README done; smoke surfaced Spring bean-cycle blocker in 05-02/05-03; tag deferred to orchestrator post-revision
+last_updated: "2026-05-02T02:26:43.121Z"
+last_activity: 2026-05-02
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 28
-  completed_plans: 23
-  percent: 82
+  completed_plans: 29
+  percent: 100
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-04-29)
 ## Current Position
 
 Phase: 05 (logs-correlation) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 05
-Last activity: 2026-05-02 -- Phase 05 execution started
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-05-02
 
-Progress: [████████████] 100% of Phases 1-3 plans complete (Phases 4-7 outstanding — no plans yet)
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Progress: [████████████] 100% of Phases 1-3 plans comple
 | Phase 02 P04 (producer-instrumentation) | 8min | 3 | 2 |
 | Phase 02 P05 (consumer-instrumentation) | 5.5min | 3 | 2 |
 | Phase 02 P06 (readme-and-exit-gate) | 8min | 2 (T3 staged) | 1 |
+| Phase 5 P6 | 30min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,9 @@ Recent decisions affecting current work:
 - [Phase 02-06]: Followed the plan's verbatim Edit-1/Edit-2/Edit-3 README instructions character-for-character (no abbreviation, no rewording). Did NOT apply the tag — orchestrator/user gate per `<checkpoint_handling>`. Did NOT pre-flip Phase 2 SHIPPED status in STATE/ROADMAP/REQUIREMENTS — the tag is the load-bearing artifact, so SHIPPED state lands atomically with the orchestrator's tag-apply commit.
 - [Phase 02-06]: All 6 Phase 2 success criteria verified end-to-end against live infra at HEAD 0f6c99e: producer trace = SERVER+INTERNAL+PRODUCER (3 spans), consumer trace = CONSUMER+INTERNAL (2 spans, empty parentSpanId proves D-10 Context.root() honored at runtime), Ctrl-C flushed last batch (1→2 traces), 0 unknown_service:java traces, 137/131 comment lines in OtelSdkConfiguration files, README DOC-05 callout present, clean tree, mise verify:bom green.
 - [Phase 03 discuss]: 13 implementation decisions captured in 03-CONTEXT.md across 4 areas: (Bootstrap wiring) plain Java classes + per-service @Bean wiring + 4 separate top-level classes (TracingMessagePostProcessor / TracingMessageListenerAdvice / MessagePropertiesSetter / MessagePropertiesGetter) + explicit RabbitTemplate @Bean + per-service Tracer scope; (Producer span ownership) post-processor owns the PRODUCER span lifecycle (Phase 2 D-09 hand-off honored), inject-only span lifetime (matches OTel Kafka/JMS convention), exchange-based destination naming (semconv-correct, corrects Phase 2's queue-as-destination); (APP-04 failure design) AtomicInteger counter modulus, custom ProcessingFailedException, setDefaultRequeueRejected(false) safety; (Listener factory wiring) Configurer-aided SimpleRabbitListenerContainerFactory @Bean, OrderListener.onOrder simplified to 3-line pass-through (Tracer param removed), CONSUMER span mirrors producer's semconv-correct shape with .setParent(extracted).
+- [Phase ?]: [Phase 05-06] README Step 5 section + checkpoint marker move + obsolete bullet removal landed cleanly (commit ea7b1dd). Section length 80 lines vs 35-70 advisory band — paste-verbatim directive took precedence.
+- [Phase ?]: [Phase 05-06] Smoke surfaced a Spring circular-reference cycle on otelSdkConfiguration bean — @Autowired field on the same @Configuration that produces the bean (Plans 05-02/05-03). mvn compile passes; cycle is runtime-only. Recommended fix: assign this.openTelemetry = sdk inside @Bean factory body and drop @Autowired field. Per SCOPE BOUNDARY rule, not auto-fixed in 05-06; routed to orchestrator for revision against 05-02/05-03.
+- [Phase ?]: [Phase 05-06] step-05-logs annotated tag NOT applied — orchestrator-owned per WORK-01 / D-21 / Phase 2-06 precedent. Tag MUST NOT be applied until SC #1 + SC #2 verify green at the live stack, which requires the bean-cycle defect to be revised first.
 
 ### Pending Todos
 
@@ -100,6 +104,7 @@ None yet.
 
 - **Phase 5 research flag**: Confirm Maven coordinate for MDC injector (`opentelemetry-logback-mdc-1.0` artifact vs `<captureMdcAttributes>` on appender).
 - **Phase 6 research flag**: Validate `@ServiceConnection` + `RabbitMQContainer` on Spring Boot 3.4.13.
+- [Phase 5] Spring circular-reference cycle on otelSdkConfiguration bean (producer + consumer) blocks Phase 5 exit-gate smoke verification. Plans 05-02/05-03 added @Autowired field on the @Configuration class that produces the bean. mvn compile clean; cycle runtime-only. Recommended fix: assign this.openTelemetry = sdk inside @Bean factory body, drop @Autowired field. Surfaced by Plan 05-06 smoke; orchestrator should route a revision plan against 05-02/05-03 before tag application.
 
 ## Deferred Items
 
@@ -111,6 +116,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-01T23:51:54.145Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-logs-correlation/05-CONTEXT.md
+Last session: 2026-05-02T02:26:39.058Z
+Stopped at: Phase 05-06 README done; smoke surfaced Spring bean-cycle blocker in 05-02/05-03; tag deferred to orchestrator post-revision
+Resume file: .planning/phases/05-logs-correlation/05-06-SUMMARY.md
