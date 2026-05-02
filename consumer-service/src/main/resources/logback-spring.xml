@@ -71,11 +71,13 @@
     why the Loki query in SC #2 (D-18) works against the OTLP attribute, not
     the formatted message text.
 
-    OpenTelemetryAppender.install(openTelemetry) is called from a @PostConstruct
-    method on OtelSdkConfiguration AFTER the SDK bean is built (D-08, D-09 —
-    PITFALL #5 mitigation). Logs emitted before install() are buffered in this
-    appender's replay queue (default 1000 events) and replayed on install
-    (RESEARCH Finding #2).
+    OpenTelemetryAppender.install(openTelemetry) is called inline inside the
+    @Bean factory in OtelSdkConfiguration, immediately after the SDK is built
+    and before the bean is returned (D-08, D-09 — PITFALL #5 mitigation; the
+    @PostConstruct shape was rejected because it would create a Spring
+    self-cycle on the @Configuration bean). Logs emitted before install() are
+    buffered in this appender's replay queue (default 1000 events) and
+    replayed on install (RESEARCH Finding #2).
 
     No <captureMdcAttributes> here — D-14 + RESEARCH Finding #1: the MDC values
     are populated by MDC_CONSOLE (the mdc.v1_0 wrapper) for terminal rendering,
