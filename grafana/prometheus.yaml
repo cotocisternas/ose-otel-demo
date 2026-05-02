@@ -48,6 +48,12 @@ scrape_configs:
   # compose default network. Static label `source: infra-exporter` is the
   # disambiguator for the two-lens story (app-emitted vs exporter-scraped).
   - job_name: rabbitmq
+    # Scrape /metrics/per-object instead of the default /metrics so per-queue
+    # series carry {queue="..."} (and per-connection/per-channel/per-exchange)
+    # labels. The default aggregate /metrics endpoint sums across all queues
+    # into a single scalar — fine for one-queue demos but blank for the
+    # workshop's per-queue dashboard panels (queue depth, ack rate, etc.).
+    metrics_path: /metrics/per-object
     static_configs:
       - targets: ['rabbitmq:15692']
         labels:
