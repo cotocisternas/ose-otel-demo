@@ -15,18 +15,18 @@ Each requirement is user-centric (workshop attendee can observe / verify it), at
 
 > Small carryover items that must clear before v2.0 phases that touch the affected files. Sourced from STATE.md "Blockers/Concerns" + "Deferred Items" at v1.0 close.
 
-- [ ] **PREREQ-01**: Workshop attendee can start both `producer-service` and `consumer-service` without `BeanCurrentlyInCreationException` on the `otelSdkConfiguration` bean — the `@Autowired OpenTelemetry openTelemetry` field on the `@Configuration` class that produces the bean is removed; the assignment `this.openTelemetry = sdk` happens inside the `@Bean openTelemetry()` factory body just before `return sdk` (same shape v1.0's LOG-03 already established for the Logback appender install)
-- [ ] **PREREQ-02**: Workshop attendee can view `docs/screenshots/step-04-metrics.png` paired with Step 4 of the README (the deferred PNG from v1.0 Phase 7 polish)
+- [x] **PREREQ-01**: Workshop attendee can start both `producer-service` and `consumer-service` without `BeanCurrentlyInCreationException` on the `otelSdkConfiguration` bean — the `@Autowired OpenTelemetry openTelemetry` field on the `@Configuration` class that produces the bean is removed; the assignment `this.openTelemetry = sdk` happens inside the `@Bean openTelemetry()` factory body just before `return sdk` (same shape v1.0's LOG-03 already established for the Logback appender install)
+- [x] **PREREQ-02**: Workshop attendee can view `docs/screenshots/step-04-metrics.png` paired with Step 4 of the README (the deferred PNG from v1.0 Phase 7 polish)
 
 ### Decomposed Observability Stack (STACK)
 
 > Replaces `grafana/otel-lgtm:0.26.0` with five separate containers — the foundation of v2.0; unblocks TSAMP / EXMP / LMET.
 
-- [ ] **STACK-01**: Workshop attendee runs `mise run infra:up` and sees five containers running side-by-side: `otel/opentelemetry-collector-contrib:0.151.0`, `grafana/tempo:2.10.5`, `grafana/mimir:3.0.6`, `grafana/loki:3.7.1`, `grafana/grafana:13.0.1` — the `grafana/otel-lgtm` service is removed entirely from `docker-compose.yml`
-- [ ] **STACK-02**: All five container images are pinned to exact patch versions (no `:latest`, no `:0.x`-style floating tags); `mise run verify:images` (or equivalent) refuses to pass if any tag matches a floating pattern
-- [ ] **STACK-03**: Workshop attendee's `OtelSdkConfiguration` files require zero change for this migration — the Collector still listens on `:4317` (gRPC) and `:4318` (HTTP) and the `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317` env var stays the same as v1.0
-- [ ] **STACK-04**: Workshop attendee can open Grafana at `:3000` and see the existing `ose-otel-demo` dashboard load every panel without any "Datasource not found" error — datasource UIDs in the new `grafana/datasources.yaml` provisioning match the UIDs the v1.0 dashboard JSON references (UIDs to be inspected from the running `grafana/otel-lgtm:0.26.0` container during planning research)
-- [ ] **STACK-05**: Mimir runs with `auth_enabled: false` in `mimir-config.yaml`; after `POST /orders` the workshop attendee sees zero `401` errors in Mimir container logs and metrics are visible in Grafana within ~10 seconds
+- [x] **STACK-01**: Workshop attendee runs `mise run infra:up` and sees five containers running side-by-side: `otel/opentelemetry-collector-contrib:0.151.0`, `grafana/tempo:2.10.5`, `grafana/mimir:3.0.6`, `grafana/loki:3.7.1`, `grafana/grafana:13.0.1` — the `grafana/otel-lgtm` service is removed entirely from `docker-compose.yml`
+- [x] **STACK-02**: All five container images are pinned to exact patch versions (no `:latest`, no `:0.x`-style floating tags); `mise run verify:images` (or equivalent) refuses to pass if any tag matches a floating pattern
+- [x] **STACK-03**: Workshop attendee's `OtelSdkConfiguration` files require zero change for this migration — the Collector still listens on `:4317` (gRPC) and `:4318` (HTTP) and the `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317` env var stays the same as v1.0
+- [x] **STACK-04**: Workshop attendee can open Grafana at `:3000` and see the existing `ose-otel-demo` dashboard load every panel without any "Datasource not found" error — datasource UIDs in the new `grafana/datasources.yaml` provisioning match the UIDs the v1.0 dashboard JSON references (UIDs to be inspected from the running `grafana/otel-lgtm:0.26.0` container during planning research)
+- [x] **STACK-05**: Mimir runs with `auth_enabled: false` in `mimir-config.yaml`; after `POST /orders` the workshop attendee sees zero `401` errors in Mimir container logs and metrics are visible in Grafana within ~10 seconds
 
 ### Tail Sampling at the Collector (TSAMP)
 
