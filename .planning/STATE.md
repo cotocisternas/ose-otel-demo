@@ -4,14 +4,14 @@ milestone: v2.0
 milestone_name: Production Shapes
 status: executing
 stopped_at: Phase 12 context gathered
-last_updated: "2026-05-03T20:23:47.444Z"
+last_updated: "2026-05-03T20:27:37.826Z"
 last_activity: 2026-05-03
 progress:
   total_phases: 9
   completed_phases: 2
   total_plans: 15
-  completed_plans: 13
-  percent: 87
+  completed_plans: 14
+  percent: 93
 ---
 
 # Project State
@@ -27,12 +27,12 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 ## Current Position
 
 Phase: 12 (exemplars-metrics-to-trace-click-through) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-05-03
 
 ```
-Progress: [█████████░] 87%
+Progress: [█████████░] 93%
 ```
 
 ## Performance Metrics
@@ -66,6 +66,7 @@ Progress: [█████████░] 87%
 | Phase 11 P03 | 197 | 2 tasks | 2 files |
 | Phase 11-tail-sampling-at-the-collector P05 | 2min | 1 tasks | 1 files |
 | Phase 12-exemplars-metrics-to-trace-click-through P01 | 1min | 2 tasks | 3 files |
+| Phase 12-exemplars-metrics-to-trace-click-through P03 | 4min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,8 @@ Recent decisions affecting current work:
 - [Phase 11-05]: D-T16 POLICY-NAMES CONTRACT JSDoc reminder embedded in row description field citing the alpha recordpolicy feature gate as a Route A dependency
 - [Phase 12-01]: ExemplarFilter.traceBased() inserted between .setResource() and .registerMetricReader() in buildMeterProvider() — filter must precede reader registration; correct insertion point for EXMP-01 in both services
 - [Phase 12-01]: scope.close() placed as last statement in HttpServerSpanFilter.doFilterInternal() finally block (after requestDuration.record() and span.end()) — D-E1/F3-1 mitigation: ExemplarFilter.traceBased() requires an active span context to attach trace_id/span_id to histogram data points
+- [Phase ?]: Panel id=15 row uses panels: [] — uncollapsed rows have sibling panels at top-level array, not nested inside the row object
+- [Phase ?]: [Phase 12-03]: verify:exemplars queries Mimir /query_exemplars API with 10-minute window; jq asserts trace_id label on first exemplar
 
 ### Roadmap Evolution
 
@@ -150,6 +153,6 @@ Items acknowledged and carried forward at milestone close on 2026-05-02:
 
 ## Session Continuity
 
-Last session: 2026-05-03T20:23:47.439Z
+Last session: 2026-05-03T20:27:26.425Z
 Stopped at: Phase 12 context gathered
 Resume file: None
