@@ -32,8 +32,8 @@ Each requirement is user-centric (workshop attendee can observe / verify it), at
 
 > Pure Collector configuration; no Java changes. Depends on STACK.
 
-- [ ] **TSAMP-01**: The Collector's traces pipeline includes a `tail_sampling` processor with three policies (in this order): `status_code ERROR` keep-100%, `latency` keep-100% above 1s, probabilistic `20%` fallback; `decision_wait: 10s` and `num_traces: 10000` for workshop responsiveness
-- [ ] **TSAMP-02**: The Collector config file contains an explicit comment block documenting the OR-semantics priority chain (`drop > inverted_not_sample > sample > inverted_sample`) — workshop attendees learn that policies are NOT first-match
+- [x] **TSAMP-01**: The Collector's traces pipeline includes a `tail_sampling` processor with three policies (in this order): `status_code ERROR` keep-100%, `latency` keep-100% above 1s, probabilistic `20%` fallback; `decision_wait: 10s` and `num_traces: 10000` for workshop responsiveness
+- [x] **TSAMP-02**: The Collector config file contains an explicit comment block documenting the OR-semantics priority chain (`drop > inverted_not_sample > sample > inverted_sample`) — workshop attendees learn that policies are NOT first-match
 - [ ] **TSAMP-03**: Workshop attendee runs `scripts/load.sh` (or equivalent), opens Tempo, and observes two facts: (a) every error-status trace is preserved, (b) the volume of non-error traces drops to ~20% of pre-tail-sampling baseline — `step-XX-tail-sampling.png` README screenshot pairs ON-vs-OFF trace counts side-by-side
 
 ### Exemplars (EXMP)

@@ -4,14 +4,14 @@ milestone: v2.0
 milestone_name: Production Shapes
 status: executing
 stopped_at: Phase 11 context gathered
-last_updated: "2026-05-03T04:48:27.095Z"
-last_activity: 2026-05-03 -- Phase 11 planning complete
+last_updated: "2026-05-03T05:18:31.031Z"
+last_activity: 2026-05-03
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 11
-  completed_plans: 5
-  percent: 45
+  completed_plans: 7
+  percent: 64
 ---
 
 # Project State
@@ -22,17 +22,17 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A workshop attendee who already shipped v1.0's manual-SDK demo can run `docker compose up` against a decomposed Tempo/Mimir/Loki/Grafana stack, see Collector-side tail sampling shape what reaches Tempo, click a histogram exemplar to land on the originating trace, watch a JDBC/JPA span tree under a CONSUMER span, follow baggage from an HTTP header through AMQP into a consumer log, and understand exactly which lines of SDK and Collector config made each piece work.
 
-**Current focus:** Phase 10 — prerequisites-stack-decomposition
+**Current focus:** Phase 11 — tail-sampling-at-the-collector
 
 ## Current Position
 
-Phase: 11
-Plan: Not started
+Phase: 11 (tail-sampling-at-the-collector) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-05-03 -- Phase 11 planning complete
+Last activity: 2026-05-03
 
 ```
-Progress: [░░░░░░░░░░░░░░░░░░░░] 0% (0/8 phases)
+Progress: [██████░░░░] 64%
 ```
 
 ## Performance Metrics
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░░░░░░░░░░░] 0% (0/8
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | (none yet) | | | |
+| Phase 11-tail-sampling-at-the-collector P02 | 3 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -135,6 +136,6 @@ Items acknowledged and carried forward at milestone close on 2026-05-02:
 
 ## Session Continuity
 
-Last session: 2026-05-03T03:10:52.768Z
+Last session: 2026-05-03T05:18:31.026Z
 Stopped at: Phase 11 context gathered
-Resume file: .planning/phases/11-tail-sampling-at-the-collector/11-CONTEXT.md
+Resume file: None
