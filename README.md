@@ -547,6 +547,88 @@ The all-in-one `lgtm` container hides each backend's HTTP API; the decomposed st
 
 **Verification screenshot pending** (PREREQ-02 / DOC-04 deferred — see TODO at Step 4). When captured, `docs/screenshots/step-04-metrics.png` will show the post-decomposition Grafana metrics-panel — the dashboard JSON itself is unchanged since v1.0 Phase 7, so the migration is invisible to the dashboard artifact.
 
+## Step 11: Tail Sampling at the Collector — what survives the Tempo write path
+
+### What you'll learn
+
+- A Collector-side `tail_sampling` processor sees the **complete assembled trace** before deciding whether to ship it to Tempo — a decision the SDK can never make because the SDK only sees one process at a time.
+- The TSAMP-01 three-policy chain — **status_code ERROR keep-100%**, **latency >1s keep-100%**, **probabilistic 20% fallback** — is **OR-semantics**, not first-match: every policy votes on every trace, and the four-tier priority chain `drop > inverted_not_sample > sample > inverted_sample` decides the outcome (the inverted_* tiers are deprecated as of collector-contrib v0.150+ and our workshop config uses neither, so in practice the chain reduces to "ANY sub-policy votes sample → trace kept" — but the four-tier ordering is the reality, and the verbatim YAML comment in `infra/observability/otelcol-config.yaml` quotes it in full).
+- The `composite` envelope adds a **per-branch rate-limit** lesson on top of OR-semantics: each sub-policy has its own `spans/s` budget that gates its vote BEFORE composite returns. Bursts visibly clamp.
+- A WIDGET-SLOW SKU branch in `OrderService.place()` plus a fourth oha stream in `scripts/load.sh` (`SLOW_RPS=2` default) reliably trip the latency policy under workshop load — without these, the latency branch would be inert.
+- A new "Tail Sampling diagnostics" Grafana row surfaces which policy fired how often, late-span behavior, and decision-loop latency so attendees can SEE the processor's internals — backed at runtime by `mise run verify:tail-sampling`.
+
+### Checkpoint
+
+Workshop is at `step-11-tail-sampling` — the orchestrator applies this annotated tag atomically with the phase-completion merge per WORK-01 / D-21. `git checkout step-11-tail-sampling` jumps to this point. The previous tag is `step-10-collector-decompose`; `git diff step-10-collector-decompose..step-11-tail-sampling` shows the focused diff: ~70 YAML lines, ~5 Java lines, ~25 bash lines, ~150 dashboard JSON lines, one docker-compose flag, and this README section.
+
+### Run
+
+```bash
+mise run preflight
+mise run infra:up
+mise run dev
+# In another terminal — the SLOW_RPS=2 stream drives the latency policy:
+mise run load SLOW_RPS=2
+# Wait ~60s for the Collector to populate the decision_wait window:
+mise run verify:tail-sampling
+# Open Grafana and expand the Tail Sampling diagnostics row:
+mise run ui:grafana
+```
+
+`verify:tail-sampling` is a two-tier check (Phase 11 D-T14): Tier 1 curls `:8888/metrics` and asserts the `composite-policy` outer name is registered; Tier 2 curls Tempo `:3200/api/search` and asserts each of the three sub-policy names (`keep-errors`, `keep-slow`, `probabilistic-fallback`) appears as a `tailsampling.composite_policy` span attribute. The second tier depends on the alpha feature gate `processor.tailsamplingprocessor.recordpolicy` being enabled on the otel-collector container — see "Why composite + alpha gate?" below.
+
+### What to look for
+
+> **A note on three artifacts saying the same thing (per CONTEXT.md `<specifics>` bullet 3 / WARNING-2 fix).** The OR-semantics priority chain is documented in three places: (1) the verbatim YAML comment above the `composite:` block in `infra/observability/otelcol-config.yaml` quotes the full TSAMP-02 four-tier chain exactly as it appears in the upstream collector-contrib docs; (2) this README §11 paraphrases the chain in workshop voice but acknowledges the four-tier reality (see the third "What you'll learn" bullet — `drop > inverted_not_sample > sample > inverted_sample`); (3) the F2-3 double-filter trap callout at the end of this section names the priority-chain tiers consistently. All three artifacts agree on the four-tier reality. If you see a divergence — e.g., a paraphrase that reduces the chain to three tiers — it is a documentation bug; please open an issue.
+
+**Trace count delta in Tempo.** Before and after Phase 11, the same `Service Name = order-producer / Last 5 minutes` Tempo Search returns very different counts:
+
+<table>
+<tr>
+<td><b>Pre-Phase-11 (OFF) — all traces reach Tempo</b></td>
+<td><b>Post-Phase-11 (ON) — composite policy in effect</b></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/step-11-tail-sampling-OFF.png" alt="Tempo Search showing N traces in last 5 min, no tail sampling"></td>
+<td><img src="docs/screenshots/step-11-tail-sampling-ON.png"  alt="Tempo Search showing M traces in last 5 min — every error trace, every slow trace, ~20% of the rest"></td>
+</tr>
+</table>
+
+The exact ratio depends on load mix: at default `mise run load SLOW_RPS=2` settings (~200 rps steady, ~10% errors, ~2 slow rps), the kept-trace count drops to roughly **30%** of the unsampled baseline (100% errors + 100% slow + 20% of the rest).
+
+**The OR-semantics priority chain in action.** The TSAMP-01 policies are wrapped in a `composite` envelope — they all vote on every trace, and composite returns SAMPLED on the first sub-policy that votes sample within its rate cap. Concretely:
+
+- A trace with `status=ERROR` → `keep-errors` votes sample → trace kept.
+- A trace with duration > 1s but no error → `keep-slow` votes sample → trace kept.
+- A trace with neither → `probabilistic-fallback` rolls a 20% die → trace kept ~20% of the time.
+- A trace that is BOTH error AND slow (every ~10th `WIDGET-SLOW` order under the deterministic 10% failure path) → `keep-errors` votes sample first, `keep-slow` never gets a vote, trace kept exactly ONCE. **This is the visible OR-semantics demo: the trace appears once, not twice.**
+
+The four-tier priority chain documented above the `composite:` block in `infra/observability/otelcol-config.yaml` is the canonical TSAMP-02 reference: `drop > inverted_not_sample > sample > inverted_sample`. With our config we use no `drop` policies and no `inverted_*` policies, so the chain reduces in practice to "ANY sub-policy votes sample → trace kept" — but the four-tier ordering is the upstream reality and matters if you ever add a `drop` policy (which would override every `sample` vote).
+
+**The Tail Sampling diagnostics dashboard row.** Open `mise run ui:grafana`, navigate to the `ose-otel-demo` dashboard, and expand the "Tail Sampling diagnostics (Phase 11)" collapsed row. Five panels:
+
+1. **Sampling decisions (composite envelope)** — under Route A composite collapses sub-policy attribution at the metric layer, so this panel shows ONE series per `policy=composite-policy / decision=...`. For per-sub-policy attribution, click through to a kept trace in Tempo and inspect the `tailsampling.composite_policy` span attribute (this is exactly what `verify:tail-sampling` Tier 2 asserts).
+2. **Per-policy not-sample votes** — surfaces the drop-vote rate; should show probabilistic-fallback's not_sampled rate ≈ 4× its sample rate (20% sampling → 80% not-sampled).
+3. **Late-arriving spans** — F2-2 mitigation surface. Low and stable means `decision_wait: 10s` is right-sized.
+4. **Sampling decision-loop latency (p50/p95/p99)** — should stay well under 10ms at workshop scale.
+5. **Traces in memory (sanity gauge)** — should oscillate around `decision_wait × incoming_rps` ≈ 2000.
+
+### Why it matters
+
+Tail sampling is the **single biggest cost lever** in production observability. Head sampling (Phase 16) saves bandwidth at the SDK boundary but the SDK can't see the trace it's about to drop. Tail sampling buffers each trace at the Collector for `decision_wait` seconds, then makes a decision based on the **assembled** trace's content — error status, total latency, length. Production teams routinely run head sampling at 100% (no SDK-side dropping) AND tail sampling at 1-5% (Collector keeps the interesting ones) — exactly the layering Phase 11 sets up the demonstration for.
+
+**Why composite + alpha gate?** TSAMP-01's three policies could have been written as a flat top-level list; we wrapped them in a `composite` envelope to demonstrate per-branch rate-limits (the production-realism payoff). The trade-off: at collector-contrib v0.151.0, composite collapses sub-policy attribution at the metric layer — `count_traces_sampled` only carries `policy="composite-policy"`. To recover per-sub-policy attribution we enable the alpha feature gate `processor.tailsamplingprocessor.recordpolicy` on the otel-collector container (see `docker-compose.yml`), which causes the Collector to stamp each sampled span with a `tailsampling.composite_policy` attribute carrying the sub-policy name. This is alpha at v0.151.0 — could rename or default-on in v0.152+, hence `verify:tail-sampling` Tier 2 fast-fails any drift. The full trade-off discussion is in `.planning/phases/11-tail-sampling-at-the-collector/11-DISCUSSION-LOG.md` plan-time amendment.
+
+**The `decision_wait` / `num_traces` sizing tradeoff.** Lower `decision_wait` = faster workshop iteration but more late-span fragments (Scenario 2 of the v0.151.0 README's three late-span scenarios). Higher = lower late-span risk but slower workshop feedback. We picked `10s` and `10000` traces — at ~200 rps steady that's ~2000 in-flight traces vs 10000 buffer = 5× headroom; F2-2 mitigation. The "Traces in memory" panel is the sanity check.
+
+**Policy names as a stable contract.** The three sub-policy names `keep-errors`, `keep-slow`, and `probabilistic-fallback` appear in four places: the YAML `composite:` block, the Grafana dashboard panel legends, the `verify:tail-sampling` assertion targets, and the `tailsampling.composite_policy` span attribute value. Renaming any policy in the YAML requires updating all four locations. The `verify:tail-sampling` gate hard-fails if any name drifts, catching configuration rot before workshop day.
+
+Run `mise run verify:tail-sampling` any time you want a fast confidence check that the processor is live, the policy names are intact, and the alpha feature gate is wired correctly.
+
+**The WIDGET-SLOW interaction.** A pure-Collector phase would leave the latency policy inert — without the producer-side `Thread.sleep(1500)` for `sku=WIDGET-SLOW` (D-T5 / D-T6) and the `SLOW_RPS=2` load.sh stream (D-T7), no trace would exceed 1s under default load. The 5-line Java branch + 25-line bash addition is a small "bend the pure-Collector framing" cost paid for a high-payoff teaching moment: attendees see all three policies fire concurrently, and the deterministic 10% counter on the consumer side means ~10% of slow traces are ALSO error traces — perfect OR-semantics demonstration.
+
+> **CRITICAL: Double-filter trap (F2-3).** Phase 16 will introduce **SDK-side head sampling** at 50% via `Sampler.parentBased(Sampler.traceIdRatioBased(0.5))`. Running Phase 16's head sampling (50%) simultaneously with Phase 11's tail sampling (20% probabilistic fallback) produces an **effective rate of approximately 10%** (50% head × 20% tail) — visibly under-sampled. Workshop attendees who have Phase 11's `step-11-tail-sampling` checkpoint active while activating Phase 16 MUST either (a) set `OTEL_TRACES_SAMPLER=parentbased_always_on` to disable head sampling during tail-sampling demos, or (b) explicitly accept the ~10% effective rate. Phase 16's README §16 callout will back-link to this blockquote anchor. (The four-tier OR-semantics priority chain — `drop > inverted_not_sample > sample > inverted_sample` — described in "What you'll learn" above governs which trace survives this double filter.)
+
 ## Concepts & FAQ
 
 The following four sections collect the narrative deep-dives the per-step *Why it matters* paragraphs cross-reference. They preserve a second reading mode: skim the per-step walkthrough top-to-bottom, then dive into the conceptual narrative — or read this section first and use the per-step blocks as worked examples.
