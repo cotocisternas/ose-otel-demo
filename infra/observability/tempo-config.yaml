@@ -1,0 +1,90 @@
+# Grafana Tempo 2.10.5 — single-binary trace backend with metrics_generator.
+#
+# THIS FILE IS THE WORKSHOP'S TEXTBOOK FOR TEMPO.
+# Every block below carries an inline `# WHY:` comment.
+#
+# WHY this file exists: grafana/tempo:2.10.5 does NOT bake in a default config
+# — running without -config.file=/etc/tempo.yaml fails immediately. Plan 04
+# bind-mounts this file at /etc/tempo.yaml and passes -config.file in the
+# compose `command:`.
+#
+# Two D-09 named volumes (mounted in Plan 04's docker-compose.yml):
+#   - tempo-data → /var/tempo  (long-term sealed trace blocks under /var/tempo/blocks)
+#   - tempo-wal  → /var/tempo/wal (Write-Ahead Log + metrics_generator state — F1-2)
+#
+# F1-2 MITIGATION: the WAL volume is SEPARATE from the data volume. Without
+# persistence, metrics_generator state is lost on `infra:down`/`up` and the
+# service-graph + RED panels stay empty for 1-5 min while traces re-prime
+# the windows. With the WAL named volume, only `infra:reset` (which also wipes
+# the volumes) re-primes — README Step 10 callout deferred to Plan 05.
+
+stream_over_http_enabled: true   # WHY: enables /api/v2/search/tag/.../values streaming the dashboard uses
+
+server:
+  http_listen_port: 3200   # D-10 + STACK-04: host port 3200; debug: curl localhost:3200/api/echo
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        # WHY: Tempo's INTERNAL OTLP listeners (NOT the Collector's host-mapped 4317/4318).
+        # Tempo runs in its own container; container-internal 4317 collisions are fine
+        # (each container has its own loopback). Plan 04 does NOT host-map these — they
+        # are reachable only from the Collector via http://tempo:4318.
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+ingester:
+  max_block_duration: 5m   # WHY: workshop-grade — flush traces to /var/tempo/blocks every 5 min
+
+compactor:
+  compaction:
+    block_retention: 720h   # WHY: 30 days; small enough that filesystem fills slowly during workshops
+
+metrics_generator:
+  registry:
+    external_labels:
+      source: tempo            # WHY: distinguishes Tempo-derived metrics from app-emitted in Mimir
+      cluster: ose-otel-demo   # WHY: matches the workshop's deployment.environment
+  storage:
+    # F1-2 MITIGATION: WAL must persist across container restarts. Named volume
+    # tempo-wal is mounted here in Plan 04. Without persistence, metrics_generator
+    # state is lost on `infra:down`/`up` and service-graph panels stay empty for
+    # 1-5 min while traces re-prime the windows.
+    path: /var/tempo/generator/wal
+    remote_write:
+      # F1-2 MITIGATION: Use Docker service name `mimir`, NOT localhost. Tempo runs
+      # in its own container; localhost from inside Tempo resolves to Tempo itself.
+      # D-06 spirit: "the Collector is the single mouth feeding the backends" —
+      # but metric-generation is a Tempo↔Mimir bypass that demonstrates backends
+      # can be polyglot in production.
+      - url: http://mimir:9009/api/v1/push
+        send_exemplars: true   # WHY: forwards trace_id/span_id to Mimir (Phase 12 enables click-through)
+  traces_storage:
+    path: /var/tempo/generator/traces   # WHY: span buffer for in-progress metric windows
+  processor:
+    span_metrics:
+      # WHY: dimensions become PromQL labels on traces_spanmetrics_* series.
+      # service.name + http.route + messaging.destination.name = the trio used by
+      # the existing ose-otel-demo dashboard's RED panels.
+      dimensions: [service.name, http.route, messaging.destination.name]
+    service_graphs:
+      {}   # WHY: empty = upstream defaults; service_graphs computes service-to-service edges
+
+storage:
+  trace:
+    backend: local              # WHY: filesystem; no S3/GCS for workshop
+    wal:
+      path: /var/tempo/wal      # F1-2: backed by tempo-wal named volume
+    local:
+      path: /var/tempo/blocks   # backed by tempo-data named volume
+
+overrides:
+  defaults:
+    metrics_generator:
+      processors: [service-graphs, span-metrics]   # WHY: enables both processors above
+
+usage_report:
+  reporting_enabled: false   # WHY: workshop-only; opt out of analytics

@@ -1,0 +1,69 @@
+# Grafana Mimir 3.0.6 — single-binary single-tenant metric backend.
+#
+# THIS FILE IS THE WORKSHOP'S TEXTBOOK FOR MIMIR.
+# Every block below carries an inline `# WHY:` comment.
+#
+# CRITICAL CORRECTION (RESEARCH §F1-3 reversed; live-verified 2026-05-02):
+# the YAML key is `multitenancy_enabled` (NOT `auth_enabled`). `auth_enabled` is
+# the Cortex-era / older-Mimir name; Mimir 3.0.6 rejects it at config-parse time:
+#   error loading config from /etc/mimir.yaml: Error parsing config file:
+#   yaml: unmarshal errors: line 1: field auth_enabled not found in type mimir.Config
+# Earlier research artifacts (CONTEXT.md D-06 / STACK.md / PITFALLS.md F1-3) used
+# the older key. STACK-05 acceptance gate (zero 401 errors after POST /orders) is
+# satisfied by `multitenancy_enabled: false` — the new spelling for the same idea.
+#
+# Single D-09 named volume (mounted in Plan 04's docker-compose.yml):
+#   - mimir-data → /data/mimir  (TSDB blocks + ruler storage + compactor scratch)
+
+multitenancy_enabled: false   # WHY: STACK-05 — single-tenant workshop; no X-Scope-OrgID required, no 401s
+
+target: all                   # WHY: monolithic mode — distributor + ingester + querier + ruler + compactor in one process
+
+server:
+  http_listen_port: 9009      # D-10: host port 9009; debug: curl localhost:9009/ready
+  log_level: info             # WHY: default; switch to debug if Phase 12 exemplars don't show up
+
+common:
+  storage:
+    backend: filesystem
+    filesystem:
+      dir: /data/mimir        # WHY: mimir-data named volume mount target
+                              # Resolved as bucket prefix for blocks_storage and ruler_storage below.
+
+blocks_storage:
+  storage_prefix: blocks      # WHY: separates time-series blocks from rule files inside /data/mimir
+  tsdb:
+    dir: /data/mimir/tsdb     # WHY: TSDB head + WAL — must be writable
+
+ingester:
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: memberlist       # WHY: in-process gossip; no external Consul/etcd
+    replication_factor: 1     # WHY: single-binary — no replication needed
+
+distributor:
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: memberlist
+
+compactor:
+  data_dir: /data/mimir/compactor   # WHY: compactor scratch space
+  sharding_ring:
+    kvstore:
+      store: memberlist
+
+store_gateway:
+  sharding_ring:
+    replication_factor: 1
+
+ruler_storage:
+  backend: filesystem
+  filesystem:
+    dir: /data/mimir/rules    # WHY: where Mimir-side rules live (Phase 10 ships empty;
+                              # Phase 13's Loki ruler writes its outputs to Mimir as PRW,
+                              # not as rule files here)
+
+usage_stats:
+  enabled: false              # WHY: workshop-only; opt out of analytics

@@ -1,0 +1,83 @@
+# Grafana Loki 3.7.1 — single-binary log backend with ruler pre-enabled.
+#
+# THIS FILE IS THE WORKSHOP'S TEXTBOOK FOR LOKI.
+# Every block below carries an inline `# WHY:` comment.
+#
+# WHY this file exists: grafana/loki:3.7.1 ships a default config at
+# /etc/loki/local-config.yaml. We OVERRIDE that file (Plan 04 bind-mounts ours
+# at the same path) so the ruler is enabled from day one — D-07. Phase 13 lands
+# loki-rules/order-errors.yaml into the bind-mounted /loki/rules dir; no
+# loki-config.yaml change required at that point.
+#
+# CRITICAL CORRECTION (vs Mimir): Loki uses `auth_enabled` — that's the canonical
+# Loki key (different system from Mimir, which uses `multitenancy_enabled`).
+# Don't confuse them.
+#
+# Single D-09 named volume: loki-data → /loki  (chunks + cache + ring state)
+# Plus ONE bind-mount:    ./infra/observability/loki-rules → /loki/rules:ro  (D-07)
+#
+# F4-3 + Pitfall 7 MITIGATION: Loki has TWO rules-related paths that MUST stay separate:
+#   - common.storage.filesystem.rules_directory: /loki/rules-cache  (Loki INTERNAL cache)
+#   - ruler.storage.local.directory:             /loki/rules        (the bind-mount target)
+# Collapsing them to /loki/rules would conflict the read-only bind with Loki's
+# internal cache writes — produces "permission denied" or empty rules-list errors.
+
+auth_enabled: false             # WHY: Loki's single-tenant key; (Mimir's analog is `multitenancy_enabled`)
+
+server:
+  http_listen_port: 3100        # D-10: host port 3100; debug: curl localhost:3100/ready
+  grpc_listen_port: 9096        # WHY: bundled default; not exposed to host
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki            # WHY: loki-data named volume mount target
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules-cache   # F4-3 MITIGATION: Loki INTERNAL rules cache,
+                                           # NOT the ruler_storage bind-mount source.
+                                           # Keep separate from /loki/rules (Pitfall 7).
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  # WHY: tsdb v13 is the current stable; from-date is the canonical workshop start
+  # (matches lgtm-bundled).
+  configs:
+    - from: 2020-10-24
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+# D-07 LOKI RULER: pre-enabled with EMPTY rules dir.
+# Phase 13 drops `loki-rules/order-errors.yaml` into this dir — no loki-config.yaml change needed then.
+ruler:
+  storage:
+    type: local
+    local:
+      directory: /loki/rules    # F4-3 MITIGATION: this path matches Plan 04's bind-mount
+                                # `./infra/observability/loki-rules:/loki/rules:ro`.
+                                # Loki scans this dir on (re)start; SIGHUP triggers reload.
+  rule_path: /tmp/loki/scratch  # WHY: temp scratch for in-flight rule evaluations; not persistent
+  alertmanager_url: http://localhost:9093   # WHY: workshop has no Alertmanager; URL is required syntax
+                                            # by Loki's parser, but no Phase 10 / Phase 13 rule emits
+                                            # alerts (recording rules only) so it's never contacted.
+  ring:
+    kvstore:
+      store: inmemory
+  enable_api: true              # WHY: enables /loki/api/v1/rules read-back endpoint
+  evaluation_interval: 1m       # D-07 — every minute (F4-2 mitigation: Phase 13 uses [2m] window = 2x interval)
+  remote_write:
+    enabled: true
+    clients:
+      mimir:                    # WHY: client name is the map key. Loki uses `clients:` MAP
+                                # (NOT Prometheus's flat `remote_write:` array — RESEARCH Pitfall 7).
+        url: http://mimir:9009/api/v1/push   # D-06 spirit: same Mimir endpoint as Tempo + Collector
+
+analytics:
+  reporting_enabled: false      # WHY: workshop-only; opt out of analytics
