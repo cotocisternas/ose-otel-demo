@@ -38,9 +38,10 @@ const OTELCOL_CONFIG_BAK = OTELCOL_CONFIG + '.bak';
 // Fixed time-range pin — D-T3 deterministic-timing primitive.
 // Use a fixed 5-minute window ending "now" so panels render the same time slice
 // every run; Grafana URL params accept absolute Unix-ms.
+// 15-minute window ensures data is visible even if OTLP batch flushing adds latency.
 function fixedTimeRange() {
   const to = Date.now();
-  const from = to - 5 * 60 * 1000;
+  const from = to - 15 * 60 * 1000;
   return { from, to };
 }
 
@@ -114,8 +115,8 @@ const CAPTURES = [
     output: 'step-04-metrics.png',
     kind: 'dashboard',
     panelId: 3,
-    waitSelector: '[data-panel-id="3"] canvas',
-    waitTimeout: 15_000,
+    waitSelector: 'canvas',
+    waitTimeout: 20_000,
     notes: 'RED Metrics panel — closes PREREQ-02',
   },
   {
@@ -123,8 +124,8 @@ const CAPTURES = [
     output: 'step-11-tail-sampling-OFF.png',
     kind: 'tempo',
     tailSamplingToggle: 'OFF',
-    waitSelector: 'table tbody tr',
-    waitTimeout: 15_000,
+    waitSelector: '[role="gridcell"]',
+    waitTimeout: 25_000,
     serviceName: 'order-producer',
     notes: 'tail-sampling disabled — ALL traces visible',
   },
@@ -133,8 +134,8 @@ const CAPTURES = [
     output: 'step-11-tail-sampling-ON.png',
     kind: 'tempo',
     tailSamplingToggle: 'ON',
-    waitSelector: 'table tbody tr',
-    waitTimeout: 15_000,
+    waitSelector: '[role="gridcell"]',
+    waitTimeout: 25_000,
     serviceName: 'order-producer',
     notes: 'tail-sampling enabled — ~20% non-error traces visible',
   },
@@ -143,8 +144,8 @@ const CAPTURES = [
     output: 'step-12-exemplars.png',
     kind: 'dashboard',
     panelId: 16,
-    waitSelector: '[data-panel-id="16"] canvas',
-    waitTimeout: 20_000,
+    waitSelector: 'canvas',
+    waitTimeout: 25_000,
     notes: 'HTTP Request Duration histogram with exemplar dots — requires load running >30s',
   },
 ];
@@ -290,11 +291,12 @@ function buildDashboardUrl(from, to, panelId) {
   return panelId ? `${base}&viewPanel=${panelId}` : base;
 }
 
-// Tempo traceqlSearch Explore URL
+// Tempo nativeSearch Explore URL (traceqlSearch/traceql both 400 on Tempo 2.10.x in Explore;
+// nativeSearch renders a virtual-list grid with role="gridcell" cells, not <table> elements)
 function buildTempoUrl(from, to, serviceName) {
   const query = serviceName
-    ? { refId: 'A', queryType: 'traceqlSearch', filters: [{ id: 'service-name', tag: 'resource.service.name', operator: '=', value: [serviceName], type: 'tag' }] }
-    : { refId: 'A', queryType: 'traceqlSearch' };
+    ? { refId: 'A', queryType: 'nativeSearch', serviceName, limit: 20 }
+    : { refId: 'A', queryType: 'nativeSearch', limit: 20 };
   const panes = { tempo: { datasource: 'tempo', queries: [query], range: { from: String(from), to: String(to) } } };
   return `${GRAFANA_URL}/explore?orgId=1&schemaVersion=1&panes=${encodeURIComponent(JSON.stringify(panes))}`;
 }
@@ -332,6 +334,9 @@ async function captureView(browser, capture) {
     } else if (capture.kind === 'tempo') {
       const url = buildTempoUrl(from, to, capture.serviceName);
       await page.goto(url, { waitUntil: 'networkidle', timeout: 30_000 });
+      // Grafana Explore requires an explicit "Run query" click before data loads
+      const runBtn = page.getByRole('button', { name: 'Run query' });
+      if (await runBtn.count() > 0) await runBtn.click();
       await page.waitForSelector(capture.waitSelector, { state: 'visible', timeout: capture.waitTimeout ?? 15_000 });
       await page.waitForTimeout(500);
       await page.screenshot({ path: outPath, fullPage: true });
