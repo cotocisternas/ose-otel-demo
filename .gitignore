@@ -23,3 +23,6 @@ Thumbs.db
 # Local MCP secrets (Grafana service account token, etc.)
 .mcp.env
 
+# Claude Code local config
+.claude/
+
