@@ -508,7 +508,7 @@
       ],
       "targets": [
         {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (service) (rate(traces_spanmetrics_calls_total{service!=\"compose\",span_kind=~\"SPAN_KIND_(SERVER|CONSUMER)\"}[5m]))", "format": "table", "instant": true, "refId": "A"},
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "100 * (sum by (service) (rate(traces_spanmetrics_calls_total{service!=\"compose\",span_kind=~\"SPAN_KIND_(SERVER|CONSUMER)\",status_code=\"STATUS_CODE_ERROR\"}[5m])) or sum by (service) (0 * traces_spanmetrics_calls_total{service!=\"compose\",span_kind=~\"SPAN_KIND_(SERVER|CONSUMER)\"})) / clamp_min(sum by (service) (rate(traces_spanmetrics_calls_total{service!=\"compose\",span_kind=~\"SPAN_KIND_(SERVER|CONSUMER)\"}[5m])), 1e-9)", "format": "table", "instant": true, "refId": "B"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "100 * (sum by (service) (rate(traces_spanmetrics_calls_total{service!=\"compose\",span_kind=~\"SPAN_KIND_(SERVER|CONSUMER)\",status_code=\"STATUS_CODE_ERROR\"}[5m])) or (0 * sum by (service) (rate(traces_spanmetrics_calls_total{service!=\"compose\",span_kind=~\"SPAN_KIND_(SERVER|CONSUMER)\"}[5m])))) / scalar(clamp_min(sum(rate(orders_created_total[5m])), 1e-9))", "format": "table", "instant": true, "refId": "B"},
         {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "1000 * histogram_quantile(0.95, sum by (le, service) (rate(traces_spanmetrics_latency_bucket{service!=\"compose\",span_kind=~\"SPAN_KIND_(SERVER|CONSUMER)\"}[5m])))", "format": "table", "instant": true, "refId": "C"}
       ]
     },
