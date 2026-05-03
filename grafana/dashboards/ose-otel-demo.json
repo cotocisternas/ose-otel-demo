@@ -12,6 +12,18 @@
         "iconColor": "rgba(0, 211, 255, 1)",
         "name": "Annotations & Alerts",
         "type": "dashboard"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "enable": true,
+        "iconColor": "red",
+        "name": "Tail-sampling buffer saturated",
+        "expr": "otelcol_processor_tail_sampling_sampling_traces_on_memory >= 10000",
+        "titleFormat": "buffer saturated",
+        "textFormat": "num_traces hit cap (10000) — traces older than the eviction window are being dropped without reaching the composite policy. Threshold mirrors infra/observability/otelcol-config.yaml tail_sampling.num_traces; update both in lockstep if the cap changes."
       }
     ]
   },
