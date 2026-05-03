@@ -128,7 +128,7 @@ A workshop attendee can clone the repo, run `docker compose up` + `mise run dev`
 
 This document evolves at phase transitions and milestone boundaries.
 
-*Last updated: 2026-05-03 — Phase 11 complete (tail-sampling-at-the-collector). Next: Phase 18 (automated-screenshot-generation-playwright).*
+*Last updated: 2026-05-03 — Phase 18 complete (automated-screenshot-generation-playwright). All v2.0 milestone phases executed. PREREQ-02 PNG capture delivered via Playwright script.*
 
 **After each phase transition** (via `/gsd-transition`):
 1. Requirements invalidated? → Move to Out of Scope with reason
@@ -144,4 +144,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-03 — Phase 10 (prerequisites & stack decomposition) complete; lgtm replaced by 5 pinned obs services; PREREQ-01 cycle fix landed; PREREQ-02 PNG capture deferred to follow-up*
+*Last updated: 2026-05-03 — Phase 18 complete; PREREQ-02 delivered (step-04-metrics.png via Playwright); all docs/screenshots/ teaching PNGs now automated*
