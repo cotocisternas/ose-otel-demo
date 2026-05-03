@@ -1,6 +1,8 @@
 # Infrastructure only — apps run on host via mise tasks.
 # Phase 1: lgtm container runs but receives ZERO telemetry (no OTel libs in apps).
-# Pinned image tags for workshop reproducibility (no floating tags — see RESEARCH Anti-Patterns).
+# Phase 10: lgtm REPLACED by 5 separate production-shape containers (otel-collector,
+# tempo, mimir, loki, grafana). Pinned image tags for workshop reproducibility —
+# `mise run verify:images` enforces no floating tags (D-14 / X-3).
 
 services:
   rabbitmq:
@@ -61,10 +63,10 @@ services:
 
   # Step 9 (quick-260502-j00): redis_exporter scrapes Valkey and exposes
   # Prometheus metrics on :9121. No host port mapping needed — only the
-  # bundled Prometheus inside lgtm scrapes it (over the compose default
-  # network as `redis-exporter:9121`). Per RESEARCH §Pitfalls #5 we do NOT
-  # add a healthcheck — `redis_up=0` on the dashboard is a teaching moment,
-  # not a startup blocker.
+  # Collector inside the observability stack scrapes it (over the compose
+  # default network as `redis-exporter:9121`). Per RESEARCH §Pitfalls #5 we
+  # do NOT add a healthcheck — `redis_up=0` on the dashboard is a teaching
+  # moment, not a startup blocker.
   redis-exporter:
     image: oliver006/redis_exporter:v1.83.0
     container_name: ose-otel-redis-exporter
@@ -88,35 +90,191 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  lgtm:
-    # Image's built-in HEALTHCHECK checks all 5 backends — do NOT override.
-    image: grafana/otel-lgtm:0.26.0
-    container_name: ose-otel-lgtm
+  # ===== Observability stack (Phase 10 / D-08) =====
+  # Five containers replace the v1.0 all-in-one single-container observability stack.
+  # Pedagogical headline: "production observability is five separate services with
+  # explicit pipelines, and replacing the all-in-one container changes ZERO Java
+  # lines (STACK-03 — OTLP endpoint :4317 unchanged in OtelSdkConfiguration files)."
+
+  otel-collector:
+    # WHY pinned: collector-contrib v0.151.0 (Apr 2026); D-14 verify:images enforces.
+    image: otel/opentelemetry-collector-contrib:0.151.0
+    container_name: ose-otel-collector
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./infra/observability/otelcol-config.yaml:/etc/otelcol-contrib/config.yaml:ro
     ports:
-      - "3000:3000"      # Grafana UI (admin/admin)
-      - "4317:4317"      # OTLP gRPC ingest (unused in Phase 1)
-      - "4318:4318"      # OTLP HTTP ingest (unused in Phase 1)
+      - "4317:4317"      # OTLP gRPC ingest (debug: grpcurl -plaintext localhost:4317 list)
+      - "4318:4318"      # OTLP HTTP ingest (debug: curl localhost:4318/v1/traces)
+      - "13133:13133"    # health_check extension (debug: curl localhost:13133/)
+      - "8888:8888"      # Collector self-metrics (debug: curl localhost:8888/metrics)
+      - "8889:8889"      # prometheus_exporter receiver (Phase 11 use)
+    healthcheck:
+      # WHY: otel/opentelemetry-collector-contrib:0.151.0 is a distroless image —
+      # no wget, curl, or shell available inside the container. Docker HEALTHCHECK
+      # cannot use external tooling; the workaround is NONE here and rely on the
+      # health_check extension port :13133 for external readiness probing
+      # (curl localhost:13133/ returns {"status":"Server available"}).
+      # `mise run verify:datasources` and Plan 05 smoke use the external :13133 path.
+      test: ["NONE"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    depends_on:
+      # WHY (D-16): service_started — these don't ship Docker HEALTHCHECKs
+      # by default; rely on Collector's own retry-on-export to handle backend warmup.
+      tempo:
+        condition: service_started
+      mimir:
+        condition: service_started
+      loki:
+        condition: service_started
+    restart: unless-stopped
+
+  tempo:
+    # WHY pinned: grafana/tempo:2.10.5 (Apr 2026); aligns with v0.26.0-era lgtm.
+    image: grafana/tempo:2.10.5
+    container_name: ose-otel-tempo
+    user: "0:0"   # WHY (Rule 1 fix): Tempo image runs as uid 10001 but Docker named volumes
+                  # are created root-owned; Tempo cannot mkdir under them. Running as root
+                  # avoids the `mkdir /var/tempo/wal/blocks: permission denied` error that
+                  # prevents startup. Workshop/development context only — in production use
+                  # a volume init container or pre-chown the volume paths.
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./infra/observability/tempo-config.yaml:/etc/tempo.yaml:ro
+      - tempo-data:/var/tempo                       # WHY (D-09): long-term sealed trace blocks
+      - tempo-wal:/var/tempo/wal                    # WHY (D-09 / F1-2): WAL persists across restarts
+                                                     #   so metrics_generator state survives infra:down/up
+                                                     #   (otherwise service-graph re-primes for 1-5 min)
+    ports:
+      - "3200:3200"      # Tempo HTTP API (debug: curl localhost:3200/api/echo)
+                         #                debug: curl 'localhost:3200/api/search?tags=service.name=order-producer'
+    healthcheck:
+      # WHY: grafana/tempo:2.10.5 is a distroless image — no wget, curl, or shell.
+      # Docker HEALTHCHECK can't probe the /ready endpoint from inside the container.
+      # External readiness: curl localhost:3200/ready returns 200 once the
+      # ingester+distributor are accepting writes. Plan 05 smoke uses that path.
+      test: ["NONE"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s   # Tempo cold-start: ~5-15s observed
+    depends_on:
+      # WHY (D-16): Tempo's metrics_generator.remote_write retries on transient failures
+      # while Mimir warms up — service_started is sufficient.
+      mimir:
+        condition: service_started
+    restart: unless-stopped
+
+  mimir:
+    # WHY pinned: grafana/mimir:3.0.6 (Apr 2026); first 3.x line that ships
+    # `multitenancy_enabled` (the v3 spelling of the v2 `auth_enabled` key).
+    image: grafana/mimir:3.0.6
+    container_name: ose-otel-mimir
+    command: ["-config.file=/etc/mimir.yaml"]
+    volumes:
+      - ./infra/observability/mimir-config.yaml:/etc/mimir.yaml:ro
+      - mimir-data:/data/mimir                      # WHY (D-09): TSDB blocks + ruler storage + compactor scratch
+    ports:
+      - "9009:9009"      # Mimir HTTP API (debug: curl localhost:9009/ready, /metrics)
+                         #                debug: curl localhost:9009/api/v1/push  (POST PRW from outside)
+    healthcheck:
+      # WHY: grafana/mimir:3.0.6 is a distroless image — no wget, curl, or shell.
+      # Docker HEALTHCHECK can't probe /ready from inside the container.
+      # External readiness: curl localhost:9009/ready returns 200 once all ring
+      # members are up. Plan 05 smoke uses the external path.
+      test: ["NONE"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s   # Mimir cold-start: ~10-25s observed (multi-component init)
+    restart: unless-stopped
+
+  loki:
+    # WHY pinned: grafana/loki:3.7.1 (Mar 2026); supports OTLP-native receive on /otlp.
+    image: grafana/loki:3.7.1
+    container_name: ose-otel-loki
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    volumes:
+      - ./infra/observability/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - ./infra/observability/loki-rules:/loki/rules:ro     # WHY (D-07): bind-mount source for ruler;
+                                                             #   read-only so Loki's internal cache
+                                                             #   writes can't conflict (Pitfall 7).
+                                                             #   Empty in Phase 10 (.gitkeep placeholder);
+                                                             #   Phase 13 lands order-errors.yaml here.
+      - loki-data:/loki                                      # WHY (D-09): chunks + cache + ring state
+    ports:
+      - "3100:3100"      # Loki HTTP API (debug: curl localhost:3100/ready)
+                         #                debug: curl localhost:3100/loki/api/v1/rules
+    healthcheck:
+      # WHY: grafana/loki:3.7.1 is a distroless image — no wget, curl, or shell.
+      # Docker HEALTHCHECK can't probe /ready from inside the container.
+      # External readiness: curl localhost:3100/ready returns 200 once schema_config
+      # + storage init complete. Plan 05 smoke uses the external path.
+      test: ["NONE"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s   # Loki cold-start: ~5-15s observed
+    depends_on:
+      mimir:
+        condition: service_started   # WHY (D-16): Loki's ruler.remote_write retries on Mimir warmup
+    restart: unless-stopped
+
+  grafana:
+    # WHY pinned: grafana/grafana:13.0.1 (Apr 2026); standalone variant.
+    image: grafana/grafana:13.0.1
+    container_name: ose-otel-grafana
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
-      # Workshop UX (Phase 7 D-01 spirit — "zero clicks, zero Grafana navigation"):
-      # anonymous access is enabled with Admin role so attendees and the screenshot
-      # capture pipeline (DOC-04) can land directly on dashboards without a login form.
-      # The admin/admin credentials above remain available for the Grafana settings UI.
+      # WHY: Phase 7 D-01 carryforward — workshop UX requires zero-click access
+      # to dashboards (anonymous Admin enabled). Production deployments require
+      # real auth — README Step 10 must reiterate this.
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
       - GF_AUTH_DISABLE_LOGIN_FORM=true
     volumes:
-      - lgtm-data:/data  # persists Grafana state across infra:down/up cycles (Pitfall D)
-      - ./grafana/dashboards:/otel-lgtm/grafana/conf/provisioning/dashboards:ro  # WORK-02 / Phase 7 D-01 — auto-provision dashboards
-      - ./grafana/prometheus.yaml:/otel-lgtm/prometheus.yaml:ro  # Step 9 — custom scrape config (preserves bundled otlp ingest block + adds rabbitmq/redis/postgres exporters)
-    # NOTE: We deliberately do NOT add a `healthcheck:` block here.
-    # The image's Dockerfile already declares:
-    #   HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-    #               CMD ["/otel-lgtm/docker/healthcheck.sh"]
-    # which checks Grafana, Loki, Tempo, Mimir, AND OTel Collector ready
-    # endpoints. Overriding with a partial check would regress validation.
+      # WHY (Pitfall 8): standalone Grafana 13 reads provisioning from
+      # /etc/grafana/provisioning/{datasources,dashboards}/ — these paths
+      # do NOT exist inside lgtm and the lgtm-internal /otel-lgtm/grafana/conf/...
+      # paths do NOT exist inside standalone Grafana. The split is real.
+      - ./grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+      - ./grafana/dashboards/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro    # WHY: dashboard JSON files
+                                                                 # — D-01 makes them portable
+                                                                 # (UIDs match datasources.yaml verbatim)
+      - grafana-data:/var/lib/grafana                          # WHY (D-09): persists Grafana state
+                                                                 #   across infra:down/up (user prefs,
+                                                                 #   recently-viewed, etc.)
+    ports:
+      - "3000:3000"      # Grafana UI (anonymous Admin; admin/admin also works)
+    healthcheck:
+      # WHY: Grafana's /api/health returns {"database": "ok"} once provisioning finished.
+      # NOT /ready — Grafana doesn't expose that path.
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s   # Grafana cold-start: ~5-20s (datasource + dashboard provisioning)
+    depends_on:
+      tempo:
+        condition: service_started
+      mimir:
+        condition: service_started
+      loki:
+        condition: service_started
     restart: unless-stopped
 
+# Five named volumes per D-09 — replacing v1.0's single lgtm-data.
+# `infra:reset` (docker compose down -v) wipes all five.
+# `infra:down` / `infra:up` preserves them — workshop attendees can take a break,
+# restart, traces still in Tempo, dashboards still in Grafana.
 volumes:
-  lgtm-data:
+  tempo-data:        # WHY: Tempo long-term sealed trace blocks (/var/tempo/blocks)
+  tempo-wal:         # WHY: Tempo WAL + metrics_generator state (/var/tempo/wal) — F1-2 separation
+  mimir-data:        # WHY: Mimir TSDB + compactor + ruler storage (/data/mimir)
+  loki-data:         # WHY: Loki chunks + cache + ring state (/loki)
+  grafana-data:      # WHY: Grafana SQLite + user prefs + recently-viewed (/var/lib/grafana)
