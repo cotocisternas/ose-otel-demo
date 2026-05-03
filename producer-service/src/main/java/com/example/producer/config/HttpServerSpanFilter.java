@@ -167,7 +167,8 @@ public class HttpServerSpanFilter extends OncePerRequestFilter {
             .setAttribute(ServerAttributes.SERVER_PORT, (long) request.getServerPort())
             .setAttribute(HttpAttributes.HTTP_ROUTE, path)
             .startSpan();
-        try (Scope scope = span.makeCurrent()) {
+        Scope scope = span.makeCurrent();
+        try {
             chain.doFilter(request, response);
             // Set the response status AFTER the chain runs — by now the
             // controller (or an exception handler) has populated it.
@@ -214,6 +215,8 @@ public class HttpServerSpanFilter extends OncePerRequestFilter {
                 HttpAttributes.HTTP_RESPONSE_STATUS_CODE, (long) response.getStatus()));
 
             span.end();
+            // close scope AFTER record() so ExemplarFilter.traceBased() sees active span
+            scope.close();
         }
     }
 }
