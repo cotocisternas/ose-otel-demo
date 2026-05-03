@@ -106,7 +106,17 @@ services:
     # WHY pinned: collector-contrib v0.151.0 (Apr 2026); D-14 verify:images enforces.
     image: otel/opentelemetry-collector-contrib:0.151.0
     container_name: ose-otel-collector
-    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    command: [
+      "--config=/etc/otelcol-contrib/config.yaml",
+      # WHY (Phase 11 / DISCUSSION-LOG Route A): alpha feature gate that enables
+      # sub-policy attribution on sampled spans via the `tailsampling.composite_policy`
+      # span attribute. Without this gate, composite envelope collapses sub-policy
+      # names at the metric layer (only "composite-policy" appears as policy= label).
+      # Gate is alpha at v0.151.0 — could rename or default-on in v0.152+; revisit
+      # at the next collector-contrib bump. See `mise run verify:tail-sampling`
+      # (Tier 2) for the runtime contract this gate satisfies.
+      "--feature-gates=processor.tailsamplingprocessor.recordpolicy"
+    ]
     volumes:
       - ./infra/observability/otelcol-config.yaml:/etc/otelcol-contrib/config.yaml:ro
     ports:
