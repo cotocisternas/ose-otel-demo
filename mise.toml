@@ -448,3 +448,97 @@ fi
 
 echo "Phase 10 image-pin contract: $COUNT image:s, all pinned to exact patch versions."
 """
+
+# ──────────────────────────────────────────────────────────────────
+# Phase 11 — verify:tail-sampling (D-T14)
+# ──────────────────────────────────────────────────────────────────
+[tasks."verify:tail-sampling"]
+description = "Phase 11 invariant: tail_sampling processor is loaded AND emitting decisions for the composite envelope (Route A). Sub-policy names verified via Tempo span attribute (alpha recordpolicy gate)."
+run = """
+set -e
+
+# WHY: catches typos in policy names, processor not loaded, configuration
+# drift between otelcol-config.yaml and the ose-otel-demo.json dashboard
+# row. Mirrors verify:datasources (Phase 10 D-03) and verify:images (D-14)
+# pattern: bash one-liner with grep + assertion; non-zero exit on violation.
+#
+# Two-tier check:
+#   1. Self-metrics (:8888/metrics) — assert composite-policy is registered
+#      and emitting non-zero count_traces_sampled. This proves the processor
+#      LOADED and is making decisions.
+#   2. Tempo (:3200/api/search) — assert at least one recently-sampled
+#      trace carries a tailsampling.composite_policy attribute with one of
+#      the three configured sub-policy names (proves the recordpolicy
+#      feature gate is wired AND the YAML names match what's running).
+#
+# Retry loop (6×5s = 30s tolerance) — Collector cold-start + decision_wait
+# buffering means a freshly-started stack needs ~15s before the first
+# composite-policy series appears. Mirrors verify:datasources retry shape.
+
+EXPECTED_OUTER='composite-policy'
+EXPECTED_SUBS='keep-errors keep-slow probabilistic-fallback'
+ATTEMPTS=6
+SLEEP_SECS=5
+LAST_ERR=""
+
+# --- Tier 1: self-metrics ---
+for i in $(seq 1 $ATTEMPTS); do
+  ACTUAL=$(curl -fsS http://localhost:8888/metrics 2>&1) || {
+    LAST_ERR="curl :8888 failed: $ACTUAL"
+    [ "$i" -lt "$ATTEMPTS" ] && { echo "verify:tail-sampling tier-1 attempt $i/$ATTEMPTS — Collector self-metrics not ready ($LAST_ERR); retrying in ${SLEEP_SECS}s..."; sleep $SLEEP_SECS; continue; }
+    echo "ERROR: verify:tail-sampling tier-1 timed out after $((ATTEMPTS * SLEEP_SECS))s — Collector :8888 not reachable."
+    echo "Last error: $LAST_ERR"
+    echo "Run: mise run infra:up"
+    exit 1
+  }
+
+  # Match a non-zero count_traces_sampled series with policy=composite-policy.
+  # The _total suffix is added by the OTel-Go Prometheus exporter (§3.2 of
+  # 11-RESEARCH.md). The match is intentionally loose on label ordering since
+  # the exporter does not guarantee a stable label order.
+  if printf '%s\n' "$ACTUAL" | grep -E "^otelcol_processor_tail_sampling_count_traces_sampled_total\\{[^}]*policy=\\"${EXPECTED_OUTER}\\"" >/dev/null 2>&1; then
+    break
+  fi
+
+  LAST_ERR="metric otelcol_processor_tail_sampling_count_traces_sampled_total not yet emitted with policy=\\"${EXPECTED_OUTER}\\""
+  [ "$i" -lt "$ATTEMPTS" ] && { echo "verify:tail-sampling tier-1 attempt $i/$ATTEMPTS — $LAST_ERR; retrying in ${SLEEP_SECS}s..."; sleep $SLEEP_SECS; continue; }
+  echo "ERROR: verify:tail-sampling tier-1 — $LAST_ERR after $((ATTEMPTS * SLEEP_SECS))s."
+  echo "Diagnostics:"
+  printf '%s\n' "$ACTUAL" | grep -E '^otelcol_processor_tail_sampling_' | head -20
+  echo
+  echo "If composite-policy renamed in otelcol-config.yaml, update EXPECTED_OUTER above."
+  exit 1
+done
+
+echo "verify:tail-sampling tier-1: composite-policy registered and emitting (self-metrics)."
+
+# --- Tier 2: Tempo span attribute (recordpolicy feature gate) ---
+# Search Tempo for any span carrying the tailsampling.composite_policy
+# attribute set to one of the three expected sub-policy names. The
+# recordpolicy feature gate must be enabled on the otel-collector container
+# (--feature-gates=processor.tailsamplingprocessor.recordpolicy in compose).
+TEMPO_SEARCH='http://localhost:3200/api/search?tags=tailsampling.composite_policy'
+TEMPO_OUT=$(curl -fsS "$TEMPO_SEARCH" 2>&1) || {
+  echo "ERROR: verify:tail-sampling tier-2 — Tempo /api/search failed: $TEMPO_OUT"
+  exit 1
+}
+
+MISSING=""
+for sub in $EXPECTED_SUBS; do
+  if ! printf '%s' "$TEMPO_OUT" | grep -F "$sub" >/dev/null 2>&1; then
+    MISSING="$MISSING $sub"
+  fi
+done
+
+if [ -n "$MISSING" ]; then
+  echo "ERROR: verify:tail-sampling tier-2 — sub-policy names missing from Tempo span attributes:$MISSING"
+  echo "Either the recordpolicy feature gate isn't enabled on the otel-collector"
+  echo "container, OR the policy names in otelcol-config.yaml drifted from this task."
+  echo "Tempo response (first 500 chars):"
+  printf '%s' "$TEMPO_OUT" | head -c 500
+  exit 1
+fi
+
+echo "verify:tail-sampling tier-2: all three sub-policy names present on Tempo spans."
+echo "verify:tail-sampling: GREEN — composite + sub-policy contracts intact."
+"""
