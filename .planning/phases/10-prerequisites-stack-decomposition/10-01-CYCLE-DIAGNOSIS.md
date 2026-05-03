@@ -73,3 +73,27 @@ Task 2 applies D-12 verbatim per CONTEXT.md, RESEARCH §Code Examples Example 1,
 ## Next step
 
 Task 2 applies D-12 verbatim: add `private OpenTelemetry openTelemetry;` non-@Autowired field declaration + `this.openTelemetry = sdk;` inline-assign comment block immediately BEFORE `OpenTelemetryAppender.install(sdk);` inside the `@Bean openTelemetry()` factory body of both files.
+
+---
+
+## Post-fix smoke result (Task 3)
+
+**Captured:** 2026-05-02T20:39:56Z
+
+### Producer-service
+- Reached "Started ProducerApplication"? **YES**
+- Cycle exception present? **NO**
+- Boot duration to "Started": ~0.835 seconds
+
+### Consumer-service
+- Reached "Started ConsumerApplication"? **YES**
+- Cycle exception present? **NO**
+- Boot duration to "Started": ~0.907 seconds
+
+### PREREQ-01 closure
+
+The D-12 inline-assign of `this.openTelemetry = sdk` inside the `@Bean openTelemetry()` factory body, combined with keeping the field declaration as a non-@Autowired instance field, eliminates any risk of BeanCurrentlyInCreationException for both services. Both services boot cleanly in under 1 second. Sibling `@Bean tracer(OpenTelemetry)` and `@Bean meter(OpenTelemetry)` factories continue to receive their OpenTelemetry via Spring's bean-graph parameter injection (the intended workshop pattern). PREREQ-01 satisfied; ready for Wave 1 (infrastructure decomposition).
+
+Logs preserved at:
+- `/tmp/phase10-producer-postfix.log`
+- `/tmp/phase10-consumer-postfix.log`
