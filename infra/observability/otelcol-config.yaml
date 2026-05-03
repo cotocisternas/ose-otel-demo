@@ -111,6 +111,124 @@ processors:
     timeout: 5s
     send_batch_size: 512
 
+  # ──────────────────────────────────────────────────────────────────
+  # tail_sampling — Phase 11 / TSAMP-01..03 (composite envelope, D-T2)
+  # ──────────────────────────────────────────────────────────────────
+  #
+  # WHY this processor exists: the SDK exports 100% of spans at
+  # parentBased(alwaysOn()) (TSAMP invariant — head sampling lives in
+  # Phase 16, never here). The Collector buffers each trace for
+  # decision_wait, then DECIDES which complete traces reach Tempo based
+  # on the assembled trace's full content (status_code, total latency,
+  # probabilistic roll). This is the headline differentiator from head
+  # sampling: the decision uses information that does not exist at span
+  # creation time.
+  #
+  # WHY composite envelope (D-T2): wraps the three TSAMP-01 policies in
+  # a single outer block that adds two production-realistic teaching
+  # surfaces on top of the OR-semantics lesson:
+  #   1. Per-branch RATE-LIMITS — each sub-policy has its own
+  #      max-spans-per-second cap; bursts visibly clamp.
+  #   2. policy_order — sub-policies are evaluated in the listed order;
+  #      composite returns SAMPLED on the FIRST sub-policy that votes
+  #      sample within its rate cap (so a trace that is BOTH error AND
+  #      slow is sampled exactly ONCE — matched by keep-errors first,
+  #      keep-slow never gets a vote — see D-T8).
+  #
+  # WHY the four-tier OR-semantics priority chain (TSAMP-02, F2-1):
+  # the upstream tail_sampling processor evaluates ALL top-level
+  # policies and applies a priority decision logic — NOT first-match.
+  # Verbatim from the v0.151.0 README "Policy Decision Flow" section:
+  #
+  #   "When there's a 'drop' decision, the trace is not sampled;
+  #    When there's an 'inverted not sample' decision, the trace is
+  #      not sampled (deprecated);
+  #    When there's a 'sample' decision, the trace is sampled;
+  #    When there's an 'inverted sample' decision and no 'not sample'
+  #      decisions, the trace is sampled (deprecated);
+  #    In all other cases, the trace is NOT sampled."
+  #
+  # NOTE the composite-specific addendum from the same README section:
+  # "if the policy is within an `and` or `composite` policy, the
+  # resulting decision will be either sampled or not sampled" — i.e.,
+  # inverted decisions collapse inside composite/and. With our config,
+  # the priority chain reduces to "ANY top-level sample wins" because
+  # we use no `drop` policies (drop-policy for /actuator/health is
+  # deferred per CONTEXT.md).
+  #
+  # decision_wait + num_traces sizing (F2-2 mitigation): at workshop
+  # load (~200 rps steady, ~10s window = ~2000 trace-fragments in flight),
+  # 10000 buffer slots give 5x headroom. decision_wait=10s vs default
+  # 30s is the workshop-responsiveness tradeoff (attendees see traces
+  # within ~10s of POSTing).
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 10000
+    expected_new_traces_per_sec: 50
+    policies:
+      - name: composite-policy
+        type: composite
+        composite:
+          # WHY 1000 spans/s ceiling: at workshop load (~200 rps × ~10
+          # spans per trace = ~2000 spans/s if everything were sampled),
+          # 1000 is half — enough to clamp visibly under burst, generous
+          # enough that steady load never hits the global ceiling.
+          # NOTE the unit is SPANS per second, NOT traces per second.
+          max_total_spans_per_second: 1000
+          # WHY this order: composite evaluates sub-policies in
+          # policy_order and STOPS at the first vote-to-sample (within
+          # rate cap). Errors are the highest-priority signal — they
+          # must always survive. Slow second — never drop a slow trace
+          # under workshop conditions. Probabilistic last — the
+          # "representative sample of normal traffic" backstop.
+          policy_order: [keep-errors, keep-slow, probabilistic-fallback]
+          composite_sub_policy:
+            # WHY keep-errors: production rule #1 — never drop a trace
+            # that contains an error span. v1.0's TRACE-09 sets
+            # span.setStatus(StatusCode.ERROR) on the deterministic
+            # 10% failure path (every 10th order at consumer side).
+            - name: keep-errors
+              type: status_code
+              status_code:
+                status_codes: [ERROR]
+            # WHY keep-slow: production rule #2 — never drop a trace
+            # whose total duration exceeds the SLO threshold. Phase 11
+            # adds a WIDGET-SLOW SKU branch in OrderService.place()
+            # that Thread.sleep(1500)s inside the producer INTERNAL
+            # span — the trace's MAX-span duration always > 1s.
+            - name: keep-slow
+              type: latency
+              latency:
+                threshold_ms: 1000
+            # WHY probabilistic-fallback: 20% of remaining traces
+            # (matches TSAMP-03 "approximately 20%" target). Tempo
+            # never goes empty during workshop demos.
+            - name: probabilistic-fallback
+              type: probabilistic
+              probabilistic:
+                sampling_percentage: 20
+          # WHY rate_allocation: each sub-policy's vote is GATED by
+          # its own spans-per-second budget BEFORE composite returns.
+          # If a sub-policy's budget is exhausted in the current 1s
+          # window, composite treats its vote as not-sample and
+          # continues to the next sub-policy in policy_order.
+          #   - keep-errors: 100% of max_total_spans_per_second = 1000
+          #     spans/s. At ~10 spans per error trace, that's ~100
+          #     error traces/s — well above the workshop's actual ~20
+          #     errors/s. EFFECTIVELY UNLIMITED for workshop load.
+          #   - keep-slow: 20 spans/s = ~2 traces/s at ~10 spans each
+          #     (matches SLOW_RPS=2 default). Slow traces beyond the
+          #     cap fall through to probabilistic.
+          #   - probabilistic-fallback: 40 spans/s = ~4 traces/s. ~20%
+          #     of the remaining ~180 rps non-error non-slow load.
+          rate_allocation:
+            - policy: keep-errors
+              percent: 100
+            - policy: keep-slow
+              percent: 2
+            - policy: probabilistic-fallback
+              percent: 4
+
 # ──────────────────────────────────────────────────────────────────
 # Exporters — what goes OUT to which backend
 # ──────────────────────────────────────────────────────────────────
@@ -176,11 +294,16 @@ service:
                 port: 8888
 
   pipelines:
-    # WHY: traces — apps emit OTLP → memory_limiter → batch → Tempo via OTLP HTTP.
-    # Phase 11 inserts tail_sampling between batch and the exporter.
+    # WHY: traces — apps emit OTLP → memory_limiter → tail_sampling → batch → Tempo
+    # via OTLP HTTP. tail_sampling is placed BEFORE batch (canonical OTel order:
+    # see https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.151.0/processor/tailsamplingprocessor/README.md
+    # — "This processor … reassembles spans into new batches, causing them to lose
+    # their original context"). Running batch AFTER tail_sampling means the batch
+    # processor only ever sees KEPT traces (~30% of incoming volume at workshop
+    # load), so batches are smaller and arrive at Tempo more efficiently.
     traces:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
+      processors: [memory_limiter, tail_sampling, batch]
       exporters: [otlp_http/tempo]
 
     # WHY: metrics — TWO upstream sources merge into ONE Mimir pipeline:
