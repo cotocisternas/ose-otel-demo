@@ -43,6 +43,16 @@ import com.example.producer.messaging.OrderPublisher;
  * Prometheus exporter mangles dots to underscores and appends
  * {@code _total} for monotonic counters: this surfaces in Mimir as
  * {@code orders_created_total{order_priority="express"}}.
+ *
+ * <p><b>Phase 11 adds the WIDGET-SLOW SKU branch (D-T5/D-T6).</b> If the
+ * request's sku is "WIDGET-SLOW", {@link #place(Map)} {@link Thread#sleep}s
+ * 1500ms inside the INTERNAL span scope. The resulting trace duration > 1s
+ * triggers the Collector's tail_sampling keep-slow latency policy (TSAMP-01).
+ * No new architecture — mirrors the WIDGET-EXPRESS / WIDGET-STANDARD /
+ * WIDGET-IDEMPOTENT / WIDGET-BURST SKU family pattern. Driven by
+ * scripts/load.sh's SLOW_RPS stream (D-T7); workshop-safe range 0–5 (above 5,
+ * raise oha -c proportionally to avoid Tomcat thread starvation — Tomcat's
+ * default server.tomcat.threads.max=200 caps concurrent slow requests).
  */
 @Service
 public class OrderService {
@@ -88,6 +98,33 @@ public class OrderService {
             .startSpan();
         try (Scope scope = span.makeCurrent()) {
             String orderId = UUID.randomUUID().toString();
+
+            // ---- Phase 11 D-T5/D-T6: WIDGET-SLOW SKU branch (TSAMP-01 latency policy) ----
+            //
+            // If the request's sku is "WIDGET-SLOW", sleep 1500ms inside this
+            // INTERNAL span scope. The 1500ms span duration > the Collector's
+            // tail_sampling latency.threshold_ms=1000, so the keep-slow
+            // sub-policy fires reliably (50% buffer above threshold). Tail-
+            // sampling's latency policy uses MAX-span duration of the
+            // assembled trace — the producer-side sleep alone is sufficient;
+            // the consumer's CONSUMER+INTERNAL spans stay fast.
+            //
+            // Mirrors the WIDGET-EXPRESS / WIDGET-STANDARD / WIDGET-IDEMPOTENT /
+            // WIDGET-BURST family pattern (zero new architecture). Driven from
+            // scripts/load.sh's SLOW_RPS stream (D-T7) at ~2 rps default.
+            //
+            // See README §11 (Phase 11) for the workshop walkthrough; the
+            // F2-3 head-vs-tail double-filter callout at the end of §11
+            // explains why the SDK sampler stays parentBased(alwaysOn()) here.
+            if ("WIDGET-SLOW".equals(payload.get("sku"))) {
+                try {
+                    Thread.sleep(1500L);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("WIDGET-SLOW sleep interrupted", ie);
+                }
+            }
+
             publisher.publish(orderId, payload);
 
             // ---- Phase 4 D-08 / D-09: orders.created Counter (METRIC-02) ----
