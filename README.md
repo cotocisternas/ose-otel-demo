@@ -545,7 +545,7 @@ The all-in-one `lgtm` container hides each backend's HTTP API; the decomposed st
 
 > **A note on `infra:reset` vs `infra:down`/`up`:** Step 10 introduces a separate `tempo-wal` named volume specifically so Tempo's `metrics_generator` state survives container restarts. After `mise run infra:down` and `infra:up`, the service-graph panel re-renders immediately. After `mise run infra:reset` (which also wipes the volumes), the service-graph stays empty for ~1-5 minutes while traces re-prime the metric windows — that's expected; just keep load running.
 
-**Verification screenshot:** `docs/screenshots/step-04-metrics.png` is the post-decomposition Grafana metrics-panel capture (PREREQ-02 closure) — the dashboard JSON itself is unchanged since v1.0 Phase 7; the migration is invisible to the dashboard artifact.
+**Verification screenshot pending** (PREREQ-02 / DOC-04 deferred — see TODO at Step 4). When captured, `docs/screenshots/step-04-metrics.png` will show the post-decomposition Grafana metrics-panel — the dashboard JSON itself is unchanged since v1.0 Phase 7, so the migration is invisible to the dashboard artifact.
 
 ## Concepts & FAQ
 
