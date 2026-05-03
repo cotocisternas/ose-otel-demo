@@ -28,7 +28,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 
 - [x] **Phase 10: Prerequisites & Stack Decomposition** - Fix the OtelSdkConfiguration circular-ref carryover, replace the all-in-one otel-lgtm container with five separate production-shaped services, and restore all existing dashboards (completed 2026-05-03)
 - [x] **Phase 11: Tail Sampling at the Collector** - Configure the standalone Collector's tail_sampling processor to demonstrate intelligent, trace-complete sampling decisions impossible at the SDK level (completed 2026-05-03)
-- [ ] **Phase 12: Exemplars: Metrics to Trace Click-Through** - Wire ExemplarFilter on the SDK, send_exemplars on the Collector, and exemplarTraceIdDestinations on Grafana so one histogram click lands on the originating trace
+- [x] **Phase 12: Exemplars: Metrics to Trace Click-Through** - Wire ExemplarFilter on the SDK, send_exemplars on the Collector, and exemplarTraceIdDestinations on Grafana so one histogram click lands on the originating trace (completed 2026-05-03)
 - [ ] **Phase 13: Log-Based Metrics (Loki Recording Rules)** - Enable the Loki ruler and define a recording rule that derives an error-rate metric from log patterns, then visualize it alongside the SDK-emitted counter
 - [ ] **Phase 14: JDBC/JPA Database Spans** - Extend the consumer service with full Spring Data JPA instrumentation — transaction-parent span wrapping JPA repository child spans — using the complete stable db.* semconv attribute set
 - [ ] **Phase 15: Outbound HTTP-Client Spans** - Add TracingClientHttpRequestInterceptor to otel-bootstrap and wire it into the producer's RestClient so every outbound HTTP hop produces a CLIENT span with traceparent injected
@@ -120,7 +120,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 - [x] 12-01-PLAN.md — Wave 1: ExemplarFilter.traceBased() in both OtelSdkConfiguration.buildMeterProvider() + HttpServerSpanFilter manual scope fix (D-E1/EXMP-01)
 - [x] 12-02-PLAN.md — Wave 1: mimir-config.yaml limits.max_global_exemplars_per_user: 100000 + otelcol-config.yaml WHY comment (EXMP-02) — parallel with 12-01
 - [x] 12-03-PLAN.md — Wave 1: Exemplars open row in ose-otel-demo.json (D-E4/D-E5/D-E6) + verify:exemplars task in mise.toml (D-E7/EXMP-03) — parallel with 12-01 and 12-02
-- [ ] 12-04-PLAN.md — Wave 2: README §12 Phase-11-equivalent narrative (D-E8) + end-to-end human-verify checkpoint (EXMP-04)
+- [x] 12-04-PLAN.md — Wave 2: README §12 Phase-11-equivalent narrative (D-E8) + end-to-end human-verify checkpoint (EXMP-04)
 
 ---
 
