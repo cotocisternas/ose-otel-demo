@@ -73,6 +73,13 @@ N_CONNECTIONS="${N_CONNECTIONS:-10}"
 # Idempotency stream — set IDEMPOTENT_RPS=0 to disable.
 IDEMPOTENT_RPS="${IDEMPOTENT_RPS:-5}"
 
+# Slow stream — set SLOW_RPS=0 to disable. Default 2 rps drives the
+# Collector tail_sampling latency policy (Phase 11 D-T7). At ~2 rps,
+# ~20 slow traces fall inside the 10s decision_wait window — visible
+# in dashboards without dominating the steady streams.
+# Workshop-safe range: 0–5; above SLOW_RPS=5, raise -c proportionally to avoid Tomcat thread pressure (200 workers default).
+SLOW_RPS="${SLOW_RPS:-2}"
+
 # Burst stream — disabled by default.
 BURST_RPS="${BURST_RPS:-150}"
 BURST_DURATION="${BURST_DURATION:-60s}"
@@ -86,7 +93,7 @@ cleanup() {
   # children before killing the loop itself, so they're still findable.
   [[ -n "${PID_BURST_LOOP:-}" ]] && pkill -P "$PID_BURST_LOOP" 2>/dev/null || true
   [[ -n "${PID_IDEMPOTENT:-}" ]] && pkill -P "$PID_IDEMPOTENT" 2>/dev/null || true
-  for pid in "${PID_EXPRESS:-}" "${PID_STANDARD:-}" "${PID_IDEMPOTENT:-}" "${PID_BURST_LOOP:-}" "${PID_HEARTBEAT:-}"; do
+  for pid in "${PID_EXPRESS:-}" "${PID_STANDARD:-}" "${PID_IDEMPOTENT:-}" "${PID_BURST_LOOP:-}" "${PID_HEARTBEAT:-}" "${PID_SLOW:-}"; do
     [[ -n "$pid" ]] && kill "$pid" 2>/dev/null || true
   done
   wait 2>/dev/null || true
@@ -109,6 +116,12 @@ if [[ "$BURST_RPS" -gt 0 ]]; then
   echo "  duration ${BURST_DURATION}, idle ${BURST_INTERVAL} between bursts"
 else
   echo "Burst: disabled (set BURST_RPS>0 to enable)"
+fi
+if [[ "$SLOW_RPS" -gt 0 ]]; then
+  echo "Slow stream:"
+  echo "  priority=standard sku=WIDGET-SLOW @ ${SLOW_RPS} rps (Phase 11 D-T7)"
+else
+  echo "Slow stream: disabled (set SLOW_RPS>0 to enable)"
 fi
 echo "Total duration: ${DURATION} (Ctrl-C to stop early)"
 echo
@@ -134,6 +147,28 @@ oha -z "${DURATION}" \
     --no-tui \
     "${TARGET}" >/dev/null 2>&1 &
 PID_STANDARD=$!
+
+# --- Slow stream (Phase 11 D-T7) ----------------------------------------
+#
+# Drives the Collector tail_sampling latency.threshold_ms=1000 policy
+# by sending requests with sku=WIDGET-SLOW. OrderService.place() sleeps
+# 1500ms inside its INTERNAL span scope when it sees this sku — total
+# trace duration ~1.5s reliably trips the keep-slow sub-policy.
+#
+# Single oha invocation with -q $SLOW_RPS, fixed payload — same shape
+# as WIDGET-EXPRESS and WIDGET-STANDARD streams. No per-request
+# templating needed (sku is constant).
+if [[ "$SLOW_RPS" -gt 0 ]]; then
+  oha -z "${DURATION}" \
+      -q "${SLOW_RPS}" \
+      -c 1 \
+      -m POST \
+      -T application/json \
+      -d '{"sku":"WIDGET-SLOW","quantity":1,"priority":"standard"}' \
+      --no-tui \
+      "${TARGET}" >/dev/null 2>&1 &
+  PID_SLOW=$!
+fi
 
 # --- Idempotency stream -----------------------------------------------------
 #
@@ -194,8 +229,8 @@ fi
   start=$(date +%s)
   while sleep 30; do
     elapsed=$(( $(date +%s) - start ))
-    printf '[load] alive — elapsed=%ds (express=%d, standard=%d)\n' \
-      "$elapsed" "$PID_EXPRESS" "$PID_STANDARD"
+    printf '[load] alive — elapsed=%ds (express=%d, standard=%d, slow=%d)\n' \
+      "$elapsed" "$PID_EXPRESS" "$PID_STANDARD" "${PID_SLOW:-0}"
   done
 ) &
 PID_HEARTBEAT=$!
