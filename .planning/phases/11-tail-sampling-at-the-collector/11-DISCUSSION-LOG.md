@@ -229,3 +229,28 @@ The user explicitly deferred the following to the planner/researcher (no specifi
 - Collector self-metrics dashboard panel for ALL processors (not just tail_sampling) — broader "Collector internals" row; future polish, not Phase 11 load-bearing
 - README anchor IDs for cross-linking from Phase 16 — Phase 11 forward-flags via D-T12 blockquote; planner picks anchor naming at plan time
 - `mise run verify:dashboard-tail-sampling-row` task — option B from D-T16 question; revisit if dashboard drift becomes a real problem
+
+---
+
+## Plan-time amendment (2026-05-03) — Route A confirmation
+
+**Context:** During plan-phase research (`11-RESEARCH.md` §2.3 / §3.1), the gsd-phase-researcher discovered two upstream-vs-CONTEXT.md inconsistencies at collector-contrib v0.151.0:
+
+1. **D-T2 composite envelope COLLAPSES the `policy=` metric label** — `count_traces_sampled` only carries the outer composite policy name, not the three sub-policy names. D-T14's verify task assertion ("the `policy=` label values include all three configured policy names") would FAIL out of the box.
+2. **D-T13 cited three metric names that do not exist at v0.151.0:** `count_spans_dropped`, `late_span_total`, `decision_latency_bucket` are fabrications. Canonical v0.151.0 names: `count_traces_sampled{decision="not_sampled"}`, `sampling_late_span_age` (histogram, seconds), `sampling_decision_timer_latency` (histogram, milliseconds).
+
+**Decision (operator-confirmed at plan-time, 2026-05-03):**
+
+- **Route A — Keep composite + alpha feature gate.** Composite YAML lands per `11-RESEARCH.md` §2.2. Add `--feature-gates=processor.tailsamplingprocessor.recordpolicy` to the `otel-collector` service `command:` array in `docker-compose.yml`. Sub-policy attribution moves to Tempo span attributes (`tailsampling.policy`, `tailsampling.composite_policy`).
+- **Rationale:** preserves D-T2/D-T3/D-T8 production-realism (per-branch rate-limit lesson stays); aligns with CONTEXT.md `<specifics>` first bullet "production-realistic over workshop-minimal".
+- **Cost accepted:** alpha feature-gate fragility (the gate could rename or default-on in v0.152+; planner adds a comment in `docker-compose.yml` flagging the gate as alpha + version-checked). D-T14 verify task becomes two-tier per `11-RESEARCH.md` §3.4 Route A: greps `:8888/metrics` for `composite-policy` AND curls Tempo `:3200/api/search` to assert a kept span carries `tailsampling.composite_policy` with one of the three sub-policy names.
+
+**Cascading amendments applied at plan-time (planner authoritative source: `11-RESEARCH.md`):**
+
+- **D-T13 panel queries** — use the verbatim PromQL in `11-RESEARCH.md` §3.3 (Route A variants). Panel 2 swaps from the non-existent `count_spans_dropped` to `count_traces_sampled{decision=~"not_sampled|dropped"}`. Panel 3 swaps to `sampling_late_span_age_count` + bucket histogram. Panel 4 uses `sampling_decision_timer_latency_milliseconds_bucket` (verify `_milliseconds` suffix at first live boot per RESEARCH §3.2.1).
+- **D-T14 verify task shape** — two-tier per `11-RESEARCH.md` §3.4 Route A.
+- **D-T2/D-T3/D-T8** — unchanged (composite preserved, rate-limits preserved, double-match math preserved).
+- **D-T15 policy names** — unchanged (`keep-errors` / `keep-slow` / `probabilistic-fallback` apply as the composite_sub_policy `name:` values).
+- **D-T16 dashboard JSDoc** — extended to also flag the alpha feature gate dependency.
+- **README §11 (D-T11) narrative** — adds a paragraph explaining the composite-vs-flat trade-off and the recordpolicy alpha gate (workshop-grade caveat).
+
