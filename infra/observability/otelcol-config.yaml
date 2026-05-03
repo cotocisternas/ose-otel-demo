@@ -293,6 +293,12 @@ exporters:
     # WHY: PRW is the canonical "many writers, one Mimir" path. Tempo's metrics_generator
     # (D-06) AND Loki's ruler (D-07) ALSO write to this same /api/v1/push endpoint —
     # three producers, one consumer, single tenant (multitenancy_enabled: false).
+    #
+    # Phase 12 — exemplar forwarding: NO send_exemplars config key required (or valid).
+    # The PRW v1 translator in collector-contrib v0.151.0 forwards exemplars unconditionally
+    # (pkg/translator/prometheusremotewrite/helper.go::getPromExemplars is called for every
+    # histogram data point). The real gate is Mimir's max_global_exemplars_per_user — see
+    # infra/observability/mimir-config.yaml limits block.
     endpoint: http://mimir:9009/api/v1/push
     tls:
       insecure: true
