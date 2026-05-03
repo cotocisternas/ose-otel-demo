@@ -49,6 +49,9 @@ receivers:
   # two-lens story (app-emitted vs exporter-scraped) — preserved verbatim from v1.0.
   prometheus:
     config:
+      global:
+        scrape_interval: 10s   # WHY: default Prometheus scrape interval — no need to change
+        scrape_timeout: 5s    # WHY: default Prometheus scrape timeout — no need
       scrape_configs:
         # WHY: rabbitmq_prometheus plugin exposes /metrics on :15692 (compose port);
         # /metrics/per-object yields per-queue/per-connection/per-channel labels
