@@ -1,0 +1,13 @@
+{
+  "name": "ose-otel-demo-capture",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Workshop screenshot capture pipeline. Drives Grafana headlessly for all step-NN-* captures.",
+  "scripts": {
+    "capture": "node capture-screenshots.mjs"
+  },
+  "dependencies": {
+    "playwright": "1.59.1"
+  }
+}
