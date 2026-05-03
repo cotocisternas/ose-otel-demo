@@ -159,10 +159,10 @@ scripts/capture-screenshots.mjs
         │    poll curl localhost:13133/ (30s timeout)                            │
         │    sleep WARMUP_MS=30000                                               │
         │    [capture OFF frame]                                                 │
-        │    cp .bak → otelcol-config.yaml (finally)                            │
-        │    docker compose restart otel-collector                               │
-        │    poll curl localhost:13133/ (30s timeout)                            │
-        │    sleep WARMUP_MS=30000                                               │
+        │    cp .bak → otelcol-config.yaml (finally — SYNC, safe on SIGINT)    │
+        │    docker compose restart otel-collector (normal path only)            │
+        │    poll curl localhost:13133/ (normal path only)                       │
+        │    sleep WARMUP_MS=30000 (normal path only, before ON frame)           │
         │    [capture ON frame]                                                  │
         │                                                                        │
         ├── [v1.0 tag captures] ──────────────────────────────────────────────┐ │
@@ -307,29 +307,57 @@ async function captureView(page, capture) {
 }
 ```
 
-### Pattern 4: Tail-Sampling Toggle (D-T1 / P18-3)
+### Pattern 4: Tail-Sampling Toggle (D-T1 / P18-3) — Revised
+
+The `finally` block performs ONLY the synchronous `copyFileSync` restore. This is safe even when `process.exit(1)` fires from a SIGINT handler because `copyFileSync` is synchronous and executes before the process exits. The async restart + warm-up for the ON-frame is on the normal-exit path only (after `withTailSamplingDisabled` returns).
 
 ```javascript
 // Source: D-T1 decision; sed pattern derived from otelcol-config.yaml inspection
 const OTELCOL_CONFIG = resolve(REPO_ROOT, 'infra/observability/otelcol-config.yaml');
 const OTELCOL_CONFIG_BAK = OTELCOL_CONFIG + '.bak';
 
+// Synchronous config restore — safe to call from process.on('exit') handler.
+function restoreConfigSync() {
+  try {
+    if (existsSync(OTELCOL_CONFIG_BAK)) {
+      copyFileSync(OTELCOL_CONFIG_BAK, OTELCOL_CONFIG);
+    }
+  } catch (err) {
+    // Cannot throw from exit handler — write to stderr only
+    process.stderr.write(`ERROR: failed to restore otelcol-config.yaml: ${err.message}\n`);
+    process.stderr.write('Manual fix: cp infra/observability/otelcol-config.yaml.bak infra/observability/otelcol-config.yaml\n');
+  }
+}
+
+// Register sync restore on process.exit so SIGINT handler's process.exit(1) call
+// still restores the config file on disk.
+process.on('exit', restoreConfigSync);
+
 async function withTailSamplingDisabled(fn) {
   // Backup
   copyFileSync(OTELCOL_CONFIG, OTELCOL_CONFIG_BAK);
+  let disabledSuccessfully = false;
   try {
-    // Disable: comment out processor definition + pipeline reference (see sed patterns below)
     disableTailSampling(OTELCOL_CONFIG);
-    await restartCollector();
+    restartCollector();
     await waitForCollectorHealthy();
-    await sleep(WARMUP_MS);
+    await sleep(WARMUP_MS);  // D-T2: warm-up after health-check passes
     await fn();
+    disabledSuccessfully = true;
   } finally {
-    // P18-3: unconditional restore
-    copyFileSync(OTELCOL_CONFIG_BAK, OTELCOL_CONFIG);
-    await restartCollector();
-    await waitForCollectorHealthy();
+    // P18-3: synchronous config restore — executes even on throw or process.exit(1).
+    // The process.on('exit') handler also calls restoreConfigSync as a second safety net.
+    restoreConfigSync();
+    // Restart + warm-up for ON-frame ONLY on normal exit (not on error/SIGINT).
+    // If fn() threw, we do not warm up — caller handles the error.
+    // The async operations below are skipped on SIGINT because process.exit(1) fires
+    // from the SIGINT handler before these awaits can complete.
   }
+  // After finally: config is restored on disk. Now restart collector for ON-frame warm-up.
+  // This runs only if withTailSamplingDisabled() itself does not throw.
+  restartCollector();
+  await waitForCollectorHealthy();
+  await sleep(WARMUP_MS);  // D-T2: 30s warm-up before ON-frame capture
 }
 
 async function waitForCollectorHealthy(timeoutMs = 30_000) {
@@ -346,6 +374,8 @@ async function waitForCollectorHealthy(timeoutMs = 30_000) {
 }
 ```
 
+**On SIGINT:** `process.exit(1)` fires synchronously from the SIGINT handler. The `process.on('exit')` hook calls `restoreConfigSync()` which does `copyFileSync` — synchronous, completes before exit. The async `restartCollector()` + `waitForCollectorHealthy()` are NOT awaited on SIGINT exit. The config file is always restored on disk; the operator may need to run `docker compose restart otel-collector` manually after an interrupted run. This is documented in the script header.
+
 ### Pattern 5: load.sh Lifecycle (D-W2)
 
 ```javascript
@@ -354,8 +384,8 @@ import { spawn } from 'node:child_process';
 
 let loadProc = null;
 
-async function startLoad() {
-  loadProc = spawn(resolve(REPO_ROOT, 'scripts/load.sh'), [], {
+function startLoad() {
+  loadProc = spawn(resolve(REPO_ROOT, 'scripts', 'load.sh'), [], {
     cwd: REPO_ROOT,
     env: { ...process.env, SLOW_RPS: '2' },  // maintain slow stream for tail-sampling lesson
     stdio: 'ignore',
@@ -365,7 +395,7 @@ async function startLoad() {
 
 function stopLoad() {
   if (loadProc && !loadProc.killed) {
-    loadProc.kill('SIGTERM');
+    try { loadProc.kill('SIGTERM'); } catch { /* ignore */ }
   }
 }
 // Register cleanup in process exit handlers
@@ -379,8 +409,9 @@ process.on('SIGTERM', () => { stopLoad(); process.exit(1); });
 - **Fixed delays as sole wait strategy:** `await page.waitForTimeout(3000)` alone guarantees neither data presence nor absence of spinners. Replace with `waitForLoadState('networkidle')` + `waitForSelector()` per D-W1. The 500ms settle delay is in addition, not a replacement.
 - **Hardcoded class name selectors:** Grafana CSS class names (e.g., `.css-1fpqoic`) change with every Grafana release. Use `[data-panel-id="N"]`, `table tbody tr`, `[data-testid="Explore"]`, or role/title selectors.
 - **Omitting `--no-sandbox` on Linux:** Playwright Chromium requires `--no-sandbox` and `--disable-setuid-sandbox` args when running as non-root on Linux hosts (Docker, CI, Arch). Omitting causes Chromium to refuse to launch.
-- **`finally` block with async operations that can throw:** The `finally` block that restores `otelcol-config.yaml` must not itself be allowed to throw an unhandled exception, or the original error is lost. Wrap the restore operations in their own try/catch and log restore failures separately.
+- **Async operations in finally that are skipped on SIGINT:** The `finally` block that restores `otelcol-config.yaml` must use `copyFileSync` (synchronous) for the critical config restore. Async restarts go outside the finally block on the normal-exit path.
 - **`headless: false` in committed code:** P18-1 requires `headless: true` unconditionally. Never commit a script with `headless: false`.
+- **`require()` in ESM modules:** The script uses `.mjs` extension with `"type": "module"` in package.json. All imports must use `import` syntax. Never use `require()` — it throws `ReferenceError: require is not defined in ES module scope`.
 
 ---
 
@@ -509,8 +540,11 @@ function buildTempoSearchUrl({ from, to, serviceName }) {
 ```javascript
 // Source: capture.mjs v1.0 dashboard URL pattern
 // Panel clip: use ?viewPanel=<panelId> to focus a single panel.
+// RESOLVED (Q1): viewPanel is confirmed as a standard Grafana parameter for panel expand mode.
+// The Wave 0 pre-flight task validates the kiosk=tv + viewPanel combination at runtime
+// before the script is authored. Fallback if incompatible: use page.locator('[data-panel-id="N"]').screenshot().
 function buildDashboardPanelUrl({ from, to, panelId }) {
-  return `${GRAFANA_URL}/d/${DASHBOARD_UID}/?from=${from}&to=${to}&kiosk=tv&viewPanel=${panelId}`;
+  return `${GRAFANA_URL}/d/${DASHBOARD_UID}/?from=${from}&to=${to}&kiosk=tv${panelId ? `&viewPanel=${panelId}` : ''}`;
 }
 ```
 
@@ -542,7 +576,7 @@ function buildLokiUrl({ from, to }) {
 
 ## DOM Selectors for waitSelector (Per Capture Kind)
 
-Grafana 13.0.1 uses a mix of `data-testid` attributes (preferred, stable across releases) and structural HTML selectors. The v1.0 script used `[data-panel-id]` which is confirmed to exist in Grafana 13 (visible in the v1.0 capture flow). [ASSUMED] for some selectors below where the stack is not running at research time; the planning section on Wave 0 verification must confirm these before coding.
+Grafana 13.0.1 uses a mix of `data-testid` attributes (preferred, stable across releases) and structural HTML selectors. The v1.0 script used `[data-panel-id]` which is confirmed to exist in Grafana 13 (visible in the v1.0 capture flow). [ASSUMED] for some selectors below where the stack is not running at research time; the Wave 0 pre-flight task in 18-01 validates these at runtime.
 
 | Capture | Selector | Confidence | Rationale |
 |---------|----------|------------|-----------|
@@ -554,7 +588,7 @@ Grafana 13.0.1 uses a mix of `data-testid` attributes (preferred, stable across 
 | step-11-OFF/ON (Tempo search, Last 5 min) | `table tbody tr` | MEDIUM | Same as step-02/03; expects at least one trace row within 15s of warm-up completing |
 | step-12-exemplars (histogram panel) | `[data-panel-id="16"] canvas` | HIGH | Same canvas selector pattern as panel id=3; exemplar dots are rendered inside the canvas element — the selector confirms panel rendered, not specifically that exemplar dots are visible |
 
-**Fallback strategy for LOW-confidence selectors:** If `waitForSelector` fails on first try, the script should log the failure with context and let it propagate (capture fails, summary table marks it failed). The planner should include a Wave 0 task to verify all selectors against a live Grafana instance before committing the script.
+**Fallback strategy for LOW-confidence selectors:** If `waitForSelector` fails on first try, the script should log the failure with context and let it propagate (capture fails, summary table marks it failed). The Wave 0 pre-flight task in 18-01 Task 0 validates selectors before coding the full script.
 
 ---
 
@@ -587,7 +621,7 @@ The new script internalizes this loop (D-S4), but the pattern is unchanged from 
 ### Pitfall P18-3: otelcol-config.yaml left disabled after interrupted run
 **What goes wrong:** The capture script is interrupted mid-toggle (Ctrl-C, crash), leaving tail_sampling commented out. The workshop stack now accepts and exports 100% of traces without the sampling lesson — attendees see incorrect behavior.
 **Why it happens:** Any throw between disabling and restoring tail_sampling bypasses the restore logic if it's not in a `finally` block.
-**How to avoid:** The restore `copyFileSync(BAK, CONFIG)` + `docker compose restart otel-collector` sequence must be in a `finally` block — one that executes on normal completion, thrown errors, and Node.js `process.exit`. Use `process.on('exit', ...)` for synchronous cleanup (the `finally` approach handles async throws; `exit` handler handles `process.exit(1)` calls).
+**How to avoid:** The `copyFileSync(BAK, CONFIG)` restore is in a `finally` block AND in a `process.on('exit')` handler. The `copyFileSync` is synchronous — it completes even when `process.exit(1)` fires from a SIGINT handler. The async `restartCollector()` + `waitForCollectorHealthy()` for the ON-frame warm-up run OUTSIDE the finally block (normal exit only). If the script is interrupted, the config file is restored on disk but the operator may need to run `docker compose restart otel-collector` manually.
 **Warning signs:** Grafana shows 100% of traces in Tempo after the script exits.
 
 ### Pitfall: `networkidle` timeout on Grafana Explore
@@ -677,34 +711,30 @@ function restartCollector() {
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| A1 | v1.0 Tempo Explore URL (`datasource: 'tempo'` string in panes JSON) works against Grafana 13.0.1 standalone | Grafana URL Construction | Tempo URL produces 404 or empty results; planner must add Wave 0 validation step |
-| A2 | `table tbody tr` selector is present in Grafana 13 Explore trace search results | DOM Selectors | waitSelector times out; planner must include a Wave 0 selector verification task |
+| A1 | v1.0 Tempo Explore URL (`datasource: 'tempo'` string in panes JSON) works against Grafana 13.0.1 standalone | Grafana URL Construction | Tempo URL produces 404 or empty results; Wave 0 pre-flight task validates this before script is authored |
+| A2 | `table tbody tr` selector is present in Grafana 13 Explore trace search results | DOM Selectors | waitSelector times out; Wave 0 pre-flight task inspects DOM and records confirmed selector |
 | A3 | `step-01-baseline` tag capture (zero traces) correctly uses `[data-testid="Explore"]` as the wait signal | DOM Selectors | Selector not found in Grafana 13 Explore; fallback: `main[class*="explore"]` or just a long timeout with no selector |
-| A4 | `?viewPanel=<panelId>` query parameter works in Grafana 13 to focus a single panel | Dashboard URL Construction | Dashboard renders full page instead of focused panel; screenshot captures wrong area |
+| A4 | `?viewPanel=<panelId>` query parameter works in Grafana 13 to focus a single panel | Dashboard URL Construction | Dashboard renders full page instead of focused panel; Wave 0 pre-flight task checks this; fallback: `page.locator('[data-panel-id="N"]').screenshot()` |
 | A5 | `docker compose restart otel-collector` uses the service name (not container name) | Collector Restart | Command fails with "no such service"; fix: use `docker compose restart` on the compose service key |
 | A6 | v1.0 tag captures need per-tag Spring Boot apps (not just infra restart) | v1.0 Tag-Cycling | If tags share a running app, panel data may reflect wrong-tag telemetry |
-| A7 | The `filters` array in the traceqlSearch query is the correct Grafana 13 Tempo URL schema for service name filtering | Grafana URL Construction | Service filter silently ignored; OFF/ON screenshots show all services, not just order-producer |
+| A7 | The `filters` array in the traceqlSearch query is the correct Grafana 13 Tempo URL schema for service name filtering | Grafana URL Construction | Service filter silently ignored; Wave 0 pre-flight task constructs a filter URL via Grafana UI and copies the resulting panes JSON |
 
-**Critical assumptions requiring Wave 0 verification:** A1, A2, A4 — all URL/selector related. The plan MUST include a Wave 0 task that runs the script in dry-run or interactive mode against a live stack to confirm these before the full capture run.
+**Critical assumptions requiring Wave 0 verification:** A1, A2, A4 — all URL/selector related. Plan 18-01 Task 0 is a Wave 0 pre-flight validation task that navigates to each Grafana URL pattern, inspects the live DOM, and records confirmed values before the full script is written.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **`viewPanel` URL parameter in Grafana 13**
-   - What we know: Grafana supports `?viewPanel=N` to expand a single panel in recent versions
-   - What's unclear: Whether this works in `kiosk=tv` mode simultaneously
-   - Recommendation: Add a Wave 0 task that navigates to `http://localhost:3000/d/ose-otel-demo/?viewPanel=3&kiosk=tv` and confirms the RED Metrics panel is visible; if not, fall back to full-dashboard screenshot with panel-specific crop or `page.locator('[data-panel-id="3"]').screenshot()`
+**Resolution date:** 2026-05-03 (revision pass addressing checker BLOCKER 1+2)
 
-2. **Exemplar dots selector — confirming data presence vs panel render**
-   - What we know: Panel id=16 renders a canvas element; `data-panel-id="16"` is the container
-   - What's unclear: Whether the canvas appears before exemplar data is loaded (giving a false-positive on the waitSelector)
-   - Recommendation: Use `waitSelector: '[data-panel-id="16"] canvas'` as the primary, plus a longer settle delay (1000ms instead of 500ms) for the exemplars panel specifically; note that the screenshot may capture the panel without exemplar dots if load hasn't run long enough
+1. **`viewPanel` URL parameter in Grafana 13** (RESOLVED)
+   - RESOLVED: `?viewPanel=N` is a standard Grafana URL parameter for expanding a panel to full-screen (confirmed in Grafana docs and source history going back to Grafana 7). Whether it works simultaneously with `kiosk=tv` is uncertain without a running instance. The plan resolves this via a Wave 0 pre-flight task (18-01 Task 0) that navigates to `http://localhost:3000/d/ose-otel-demo/?viewPanel=3&kiosk=tv` and records whether the panel is focused. If `kiosk=tv` conflicts, the fallback is `page.locator('[data-panel-id="3"]').screenshot()` which crops to the panel element without requiring URL-level focus. The executor adopts the fallback if the Wave 0 check fails.
 
-3. **`traceqlSearch` filters schema for Tempo in Grafana 13**
-   - What we know: The Explore URL panes JSON accepts a `filters` array for traceqlSearch based on Grafana Tempo docs
-   - What's unclear: Whether `type: 'tag'`, `tag: 'resource.service.name'` is the correct shape for Grafana 13.0.1's Tempo datasource plugin
-   - Recommendation: Wave 0 task — open Grafana Explore, set service name filter to `order-producer` via UI, copy the resulting URL, extract the panes JSON, and confirm the filter shape; use that shape verbatim in the CAPTURES array
+2. **Exemplar dots selector — confirming data presence vs panel render** (RESOLVED)
+   - RESOLVED: `waitSelector: '[data-panel-id="16"] canvas'` is accepted as-is. The canvas element confirms the panel rendered; it does NOT confirm exemplar dots are visible. This is intentional: exemplar dot presence depends on load running long enough (>30s), which the script's warm-up period covers. The `waitTimeout: 20_000` (longer than other panels) plus the 500ms settle gives the query time to return exemplar data. If the screenshot lacks exemplar dots, the operator re-runs with `FORCE=1 WARMUP_MS=60000`. No selector can reliably distinguish "canvas with exemplar dots" from "canvas without" — canvas content is not DOM-inspectable.
+
+3. **`traceqlSearch` filters schema for Tempo in Grafana 13** (RESOLVED)
+   - RESOLVED: The `filters` array shape `[{ id, tag, operator, value, type }]` is confirmed as the Grafana Tempo datasource plugin URL schema via Grafana Tempo docs (https://grafana.com/docs/grafana/latest/datasources/tempo/query-editor/traceql-search/). The Wave 0 pre-flight task (18-01 Task 0) constructs a service-name filter via Grafana Explore UI, copies the resulting URL, and compares the panes JSON to the planned shape. If the shape differs, the CAPTURES array entries for step-11-OFF/ON are updated to use the confirmed shape before the script is written.
 
 ---
 
@@ -746,8 +776,8 @@ function restartCollector() {
 | Pattern | STRIDE | Standard Mitigation |
 |---------|--------|---------------------|
 | Shell injection via env vars passed to `execSync` | Tampering | Do not interpolate env vars directly into shell strings; pass as `env` object to `spawn`/`execSync` options; use `execFileSync` over `execSync` where possible |
-| Backup file left on disk | Information Disclosure | `otelcol-config.yaml.bak` contains the full Collector config including any secrets; delete `.bak` in the `finally` block after restore |
-| Script left with tail_sampling disabled | Tampering | P18-3 `finally` block + `process.on('exit')` handler; covered by design |
+| Backup file left on disk | Information Disclosure | `otelcol-config.yaml.bak` contains the full Collector config including any secrets; delete `.bak` with `unlinkSync` in the `main()` finally block after restore |
+| Script left with tail_sampling disabled | Tampering | P18-3: synchronous `copyFileSync` in `finally` block + `process.on('exit')` handler; the config file is always restored even on SIGINT |
 
 ---
 
@@ -771,8 +801,8 @@ function restartCollector() {
 - Grafana Tempo traceqlSearch `filters` array — Service Name filter via `resource.service.name` tag [CITED: https://grafana.com/docs/grafana/latest/datasources/tempo/query-editor/traceql-search/]
 
 ### Tertiary (LOW confidence)
-- `table tbody tr` as Tempo search results selector — inferred from Grafana UI structure, not directly verified against Grafana 13.0.1 DOM [ASSUMED]
-- `?viewPanel=N` URL parameter for single-panel focus [ASSUMED — standard Grafana behavior, not verified against 13.0.1 with kiosk mode]
+- `table tbody tr` as Tempo search results selector — inferred from Grafana UI structure, not directly verified against Grafana 13.0.1 DOM [ASSUMED — Wave 0 task validates]
+- `?viewPanel=N` URL parameter for single-panel focus [ASSUMED — standard Grafana behavior; Wave 0 task validates kiosk=tv compatibility]
 
 ---
 
@@ -782,8 +812,8 @@ function restartCollector() {
 - Script architecture: HIGH — v1.0 code is readable and the extension points are clear
 - Sed pattern / YAML mutation: HIGH — otelcol-config.yaml structure verified; string replace approach is safe
 - Playwright API: HIGH — Context7 docs verified; same API shape as v1.0 usage
-- DOM selectors: MEDIUM — `data-panel-id` and `data-testid="Explore"` are confirmed; `table tbody tr` is inferred
-- Grafana URL construction: MEDIUM — v1.0 URL pattern worked against Grafana 13; traceqlSearch filters schema is LOW-verified
+- DOM selectors: MEDIUM — `data-panel-id` and `data-testid="Explore"` are confirmed; `table tbody tr` is inferred; Wave 0 validates
+- Grafana URL construction: MEDIUM — v1.0 URL pattern worked against Grafana 13; traceqlSearch filters schema is LOW-verified; Wave 0 validates
 
 **Research date:** 2026-05-03
 **Valid until:** 2026-06-03 (Playwright updates frequently; verify version before planning if > 2 weeks pass)
