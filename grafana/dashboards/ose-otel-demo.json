@@ -226,7 +226,8 @@
           "editorMode": "code",
           "expr": "{service_name=~\"order-.*\"} | trace_id=~`$traceid`",
           "queryType": "range",
-          "refId": "A"
+          "refId": "A",
+          "maxLines": 100
         }
       ]
     },
@@ -377,7 +378,8 @@
               "editorMode": "code",
               "expr": "{service_name=~\"order-.*\"}",
               "queryType": "range",
-              "refId": "A"
+              "refId": "A",
+              "maxLines": 200
             }
           ]
         }

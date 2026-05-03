@@ -559,7 +559,8 @@
             "datasource": {"type": "loki", "uid": "loki"},
             "expr": "{service_name=~\"order-.*\"} | severity_text=\"ERROR\"",
             "queryType": "range",
-            "refId": "A"
+            "refId": "A",
+            "maxLines": 100
           }]
         },
         {
@@ -583,7 +584,8 @@
             "datasource": {"type": "loki", "uid": "loki"},
             "expr": "{service_name=~\"order-.*\"} | trace_id=~`$traceid`",
             "queryType": "range",
-            "refId": "A"
+            "refId": "A",
+            "maxLines": 100
           }]
         }
       ]
