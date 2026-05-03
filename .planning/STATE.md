@@ -4,14 +4,14 @@ milestone: v2.0
 milestone_name: Production Shapes
 status: executing
 stopped_at: Phase 18 context gathered
-last_updated: "2026-05-03T22:45:47.860Z"
-last_activity: 2026-05-03 -- Phase 18 planning complete
+last_updated: "2026-05-03T22:53:31.724Z"
+last_activity: 2026-05-03
 progress:
   total_phases: 9
   completed_phases: 3
   total_plans: 18
-  completed_plans: 15
-  percent: 83
+  completed_plans: 16
+  percent: 89
 ---
 
 # Project State
@@ -22,17 +22,17 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A workshop attendee who already shipped v1.0's manual-SDK demo can run `docker compose up` against a decomposed Tempo/Mimir/Loki/Grafana stack, see Collector-side tail sampling shape what reaches Tempo, click a histogram exemplar to land on the originating trace, watch a JDBC/JPA span tree under a CONSUMER span, follow baggage from an HTTP header through AMQP into a consumer log, and understand exactly which lines of SDK and Collector config made each piece work.
 
-**Current focus:** Phase 12 — exemplars-metrics-to-trace-click-through
+**Current focus:** Phase 18 — automated-screenshot-generation-playwright
 
 ## Current Position
 
-Phase: 18
-Plan: Not started
+Phase: 18 (automated-screenshot-generation-playwright) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-05-03 -- Phase 18 planning complete
+Last activity: 2026-05-03
 
 ```
-Progress: [██████████] 100%
+Progress: [█████████░] 89%
 ```
 
 ## Performance Metrics
@@ -68,6 +68,7 @@ Progress: [██████████] 100%
 | Phase 11-tail-sampling-at-the-collector P05 | 2min | 1 tasks | 1 files |
 | Phase 12-exemplars-metrics-to-trace-click-through P01 | 1min | 2 tasks | 3 files |
 | Phase 12-exemplars-metrics-to-trace-click-through P03 | 4min | 2 tasks | 2 files |
+| Phase 18-automated-screenshot-generation-playwright P01 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -113,6 +114,7 @@ Recent decisions affecting current work:
 - [Phase ?]: Panel id=15 row uses panels: [] — uncollapsed rows have sibling panels at top-level array, not nested inside the row object
 - [Phase ?]: [Phase 12-03]: verify:exemplars queries Mimir /query_exemplars API with 10-minute window; jq asserts trace_id label on first exemplar
 - [Phase 12-04]: EXMP-04 human-verify checkpoint APPROVED — exemplar dot click-through to Tempo trace waterfall confirmed working end-to-end; no manual trace-ID copy-paste required. Services required restart after SDK changes from Plan 01 (spring-boot:run loads classes at JVM startup, not hot-reload across sessions).
+- [Phase ?]: Phase 18-01: P18-3 synchronous copyFileSync in finally + process.on('exit') restoreConfigSync for tail-sampling config restore safety
 
 ### Roadmap Evolution
 
@@ -155,6 +157,6 @@ Items acknowledged and carried forward at milestone close on 2026-05-02:
 
 ## Session Continuity
 
-Last session: 2026-05-03T21:31:41.079Z
+Last session: 2026-05-03T22:53:31.716Z
 Stopped at: Phase 18 context gathered
-Resume file: .planning/phases/18-automated-screenshot-generation-playwright/18-CONTEXT.md
+Resume file: None
