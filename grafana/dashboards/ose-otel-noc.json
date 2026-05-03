@@ -263,7 +263,8 @@
             "stacking": {"mode": "normal", "group": "A"},
             "showPoints": "never"
           },
-          "unit": "ops"
+          "unit": "ops",
+          "min": 0
         },
         "overrides": [
           {"matcher": {"id": "byRegexp", "options": "5.+"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]},
