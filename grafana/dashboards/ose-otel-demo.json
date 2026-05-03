@@ -370,6 +370,164 @@
           ]
         }
       ]
+    },
+    {
+      "collapsed": true,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 21 },
+      "id": 9,
+      "title": "Tail Sampling diagnostics (Phase 11)",
+      "type": "row",
+      "description": "POLICY-NAMES CONTRACT (Phase 11 D-T16): the policy= labels referenced in this row's queries are a contract with infra/observability/otelcol-config.yaml's tail_sampling.policies block. Renaming any policy in the YAML requires updating these queries. Verified at runtime by `mise run verify:tail-sampling` (D-T14). Also depends on the alpha feature gate `processor.tailsamplingprocessor.recordpolicy` enabled on the otel-collector container (Route A) — without the gate, sub-policy attribution collapses to the outer 'composite-policy' name only.",
+      "panels": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 9, "w": 12, "x": 0, "y": 22 },
+          "id": 10,
+          "title": "Sampling decisions (composite envelope — see Tempo for sub-policy)",
+          "type": "timeseries",
+          "description": "Per-policy sampling decisions per second, by outer composite policy + decision. Under Route A the composite envelope collapses sub-policy attribution at the metric layer — see the Tempo `tailsampling.composite_policy` span attribute for per-sub-policy view (verified by `mise run verify:tail-sampling` Tier 2).",
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": { "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10 }
+            }
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+            "tooltip": { "mode": "single" }
+          },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum by (policy, decision) (rate(otelcol_processor_tail_sampling_count_traces_sampled_total[1m]))",
+              "legendFormat": "{{policy}} / {{decision}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 9, "w": 12, "x": 12, "y": 22 },
+          "id": 11,
+          "title": "Per-policy not-sample votes",
+          "type": "timeseries",
+          "description": "Each policy votes sample/not_sampled/dropped per trace; this panel surfaces the not-sampled and dropped votes. Read alongside the decisions panel to see, e.g., probabilistic-fallback's drop-vote rate roughly 4x its sample-vote rate (20% sampling → 80% not-sampled). RESEARCH §3.3 panel 2 — replaces the non-existent `count_spans_dropped` from CONTEXT.md with the canonical per-policy decision='not_sampled' surface.",
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": { "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10 }
+            }
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+            "tooltip": { "mode": "single" }
+          },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "sum by (policy, decision) (rate(otelcol_processor_tail_sampling_count_traces_sampled_total{decision=~\"not_sampled|dropped\"}[1m]))",
+              "legendFormat": "{{policy}} / {{decision}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 9, "w": 8, "x": 0, "y": 31 },
+          "id": 12,
+          "title": "Late-arriving spans (Scenario 1 buffer hits)",
+          "type": "timeseries",
+          "description": "Late span = a span arriving AFTER its trace's sampling decision was made (Scenario 1 of the v0.151.0 README's three late-span scenarios). Low and stable = `decision_wait: 10s` is right-sized. Climbing = traces have spans straggling beyond the window; consider raising decision_wait or enabling decision_cache.sampled_cache_size. Histogram in SECONDS — _count gives event rate; _bucket+histogram_quantile gives lateness distribution. RESEARCH §3.3 panel 3 — replaces the non-existent `late_span_total` from CONTEXT.md with the canonical `sampling_late_span_age` surface.",
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": { "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10 }
+            }
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+            "tooltip": { "mode": "single" }
+          },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "rate(otelcol_processor_tail_sampling_sampling_late_span_age_count[5m])",
+              "legendFormat": "late spans/s",
+              "refId": "A"
+            },
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "histogram_quantile(0.99, sum by (le) (rate(otelcol_processor_tail_sampling_sampling_late_span_age_bucket[5m])))",
+              "legendFormat": "p99 lateness (seconds)",
+              "refId": "B"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 9, "w": 8, "x": 8, "y": 31 },
+          "id": 13,
+          "title": "Sampling decision-loop latency (p50/p95/p99)",
+          "type": "timeseries",
+          "description": "Wall-clock time the Collector spends running the per-trace decision loop for one batch. README quote: 'A latency exceeding 1 second can delay sampling decisions beyond decision_wait, increasing the chance of traces being dropped before sampling.' Workshop p99 should stay well under 10ms. RESEARCH §3.3 panel 4 — uses canonical `sampling_decision_timer_latency` (was incorrectly cited as `decision_latency_bucket` in CONTEXT.md). NOTE: the `_milliseconds` unit suffix may or may not be present per RESEARCH §3.2.1; if panel data is empty, drop the `_milliseconds` infix and reload.",
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": { "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10 }
+            }
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+            "tooltip": { "mode": "single" }
+          },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "histogram_quantile(0.50, sum by (le) (rate(otelcol_processor_tail_sampling_sampling_decision_timer_latency_milliseconds_bucket[5m])))",
+              "legendFormat": "p50 (ms)",
+              "refId": "A"
+            },
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(otelcol_processor_tail_sampling_sampling_decision_timer_latency_milliseconds_bucket[5m])))",
+              "legendFormat": "p95 (ms)",
+              "refId": "B"
+            },
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "histogram_quantile(0.99, sum by (le) (rate(otelcol_processor_tail_sampling_sampling_decision_timer_latency_milliseconds_bucket[5m])))",
+              "legendFormat": "p99 (ms)",
+              "refId": "C"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 9, "w": 8, "x": 16, "y": 31 },
+          "id": 14,
+          "title": "Traces in memory (sanity gauge)",
+          "type": "timeseries",
+          "description": "Active traces buffered for evaluation. Should oscillate around `decision_wait × incoming_rps` ≈ 2000 at workshop default load. Approaching `num_traces: 10000` means the buffer is filling up and `sampling_trace_dropped_too_early` will start ticking — F2-2 canary. RESEARCH §3.3 bonus panel.",
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": { "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10 }
+            }
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+            "tooltip": { "mode": "single" }
+          },
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "otelcol_processor_tail_sampling_sampling_traces_on_memory",
+              "legendFormat": "in-memory traces",
+              "refId": "A"
+            }
+          ]
+        }
+      ]
     }
   ],
   "refresh": "30s",
