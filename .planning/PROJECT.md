@@ -96,10 +96,10 @@ A workshop attendee can clone the repo, run `docker compose up` + `mise run dev`
 - **Tech stack — Build tool**: Maven — chosen for ubiquity in enterprise Spring Boot codebases
 - **Tech stack — AMQP API**: Spring AMQP (`spring-boot-starter-amqp`, `RabbitTemplate`, `@RabbitListener`) — idiomatic Spring path; lower-level `com.rabbitmq:amqp-client` excluded
 - **Tech stack — OTel API**: OpenTelemetry Java SDK directly (manual instrumentation only); no Java agent, no Micrometer bridge
-- **Tech stack — Observability backend**: Grafana `otel-lgtm` single-container distribution (https://github.com/grafana/docker-otel-lgtm); single OTLP endpoint receives traces, metrics, and logs
+- **Tech stack — Observability backend**: ~~Grafana `otel-lgtm` single-container distribution~~ → **decomposed into five separate pinned containers in Phase 10** (otel-collector v0.151.0, tempo v2.10.5, mimir v3.0.6, loki v3.7.1, grafana v13.0.1) wired via docker-compose service-name DNS. The OTLP receiver still terminates at `localhost:4317` (STACK-03 invariant — SDK code unchanged across the migration)
 - **Tech stack — Test framework**: JUnit 5 + Testcontainers (RabbitMQ module); integration tests assert exported telemetry
 - **Tooling**: `mise` for JDK + Maven version management; `mise.toml` is the source of truth
-- **Packaging**: `docker-compose` for infrastructure (RabbitMQ + otel-lgtm) only; apps run on host
+- **Packaging**: `docker-compose` for infrastructure (RabbitMQ + Postgres + Valkey + 5 observability services post-Phase 10) only; apps run on host
 - **Audience constraint**: Workshop attendees with laptop-class hardware; no cloud dependencies; everything runs offline
 - **Output medium**: Public-readable git repository with a step-by-step README and one branch (or tag) per workshop checkpoint
 
@@ -111,7 +111,8 @@ A workshop attendee can clone the repo, run `docker compose up` + `mise run dev`
 |----------|-----------|---------|
 | Use OpenTelemetry SDK manually, not the Java agent | Workshop's pedagogical goal is teaching the SDK explicitly; auto-instrumentation hides the mechanics | ✓ Validated in Phase 2 (manual `OpenTelemetrySdk.builder()` shipped per-service) |
 | Emit all three OTel signals (traces + metrics + logs) | Workshop attendees need to see how each signal is configured/exported through the same SDK | ◆ In progress — traces (Phase 2) + metrics (Phase 4) shipped; logs pending (Phase 5) |
-| Use Grafana `otel-lgtm` single-container backend | One container instead of five separate services (collector, Tempo, Mimir, Loki, Grafana); minimizes ops noise | ✓ Validated in Phase 2 + Phase 4 (traces + metrics flow to otel-lgtm via OTLP) |
+| Use Grafana `otel-lgtm` single-container backend (v1.0 only) | One container instead of five separate services (collector, Tempo, Mimir, Loki, Grafana); minimized ops noise during v1.0 single-signal lessons | ✓ Validated in Phase 2 + Phase 4 (v1.0); ⊘ **superseded in Phase 10** — production-shapes milestone requires per-backend config visibility (tail-sampling, exemplars, Loki rules) impossible with the all-in-one image |
+| Decompose lgtm into five pinned containers (Phase 10) | Production observability is never a single container; tail-sampling/exemplars/recording-rules require per-backend config files attendees can read | ✓ Validated in Phase 10 (PREREQ-01 closed, STACK-01..05 satisfied; SDK code unchanged) |
 | Minimal RabbitMQ topology (one direct exchange + one queue) | Trace propagation lesson is the headline; richer topologies add surface area without adding instructional value | — Pending |
 | Spring AMQP (`RabbitTemplate` / `@RabbitListener`) over the lower-level RabbitMQ Java client | Spring AMQP is what attendees recognize; manual span wrapping + header injection on top of it is the realistic teaching scenario | — Pending |
 | Order processing as the toy domain | Familiar shape (POST /orders → publish → consumer); makes business-logic spans concrete without distracting | — Pending |
@@ -140,4 +141,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-02 — v2.0 Production Shapes milestone opened (continues from Phase 10; v1.0 Workshop archived under tag `v1.0`)*
+*Last updated: 2026-05-03 — Phase 10 (prerequisites & stack decomposition) complete; lgtm replaced by 5 pinned obs services; PREREQ-01 cycle fix landed; PREREQ-02 PNG capture deferred to follow-up*
