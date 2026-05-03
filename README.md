@@ -629,6 +629,98 @@ Run `mise run verify:tail-sampling` any time you want a fast confidence check th
 
 > **CRITICAL: Double-filter trap (F2-3).** Phase 16 will introduce **SDK-side head sampling** at 50% via `Sampler.parentBased(Sampler.traceIdRatioBased(0.5))`. Running Phase 16's head sampling (50%) simultaneously with Phase 11's tail sampling (20% probabilistic fallback) produces an **effective rate of approximately 10%** (50% head × 20% tail) — visibly under-sampled. Workshop attendees who have Phase 11's `step-11-tail-sampling` checkpoint active while activating Phase 16 MUST either (a) set `OTEL_TRACES_SAMPLER=parentbased_always_on` to disable head sampling during tail-sampling demos, or (b) explicitly accept the ~10% effective rate. Phase 16's README §16 callout will back-link to this blockquote anchor. (The four-tier OR-semantics priority chain — `drop > inverted_not_sample > sample > inverted_sample` — described in "What you'll learn" above governs which trace survives this double filter.)
 
+## Step 12: Exemplars — three lines that make histogram charts clickable
+
+### What you'll learn
+
+- An **exemplar** is a single sample observation — a `{trace_id, span_id, value, timestamp}` tuple — attached to a histogram data point by the SDK when a span is active at measurement time. It is the link between a metric and the trace that produced it.
+- The three-layer plumbing: **(1)** `ExemplarFilter.traceBased()` on the SDK's `SdkMeterProvider` tells the SDK when to attach exemplars; **(2)** the OTel Collector's PRW translator forwards exemplars unconditionally to Mimir when the OTLP data points carry them; **(3)** Mimir stores them (requires `limits.max_global_exemplars_per_user > 0` — the default is 0, which silently discards all exemplars); and **(4)** Grafana's `exemplarTraceIdDestinations` provisioning (pre-wired in Phase 10) routes the `trace_id` exemplar label to the Tempo datasource so one click is enough.
+- Both `OtelSdkConfiguration.buildMeterProvider()` methods get `.setExemplarFilter(ExemplarFilter.traceBased())` — the consumer has counter metrics, not a histogram, so counter exemplars go to Mimir but don't show as chart dots. The consumer's counter exemplars exist in Mimir and are queryable via the API — histograms are the natural exemplar visualization surface.
+- `HttpServerSpanFilter.doFilterInternal()` is restructured from try-with-resources to manual scope management so `requestDuration.record()` fires while the SERVER span is still current — if scope closes before `record()`, the SDK sees `SpanContext.invalid()` and attaches no exemplar regardless of filter setting.
+
+### Checkpoint
+
+Workshop is at `step-12-exemplars` — the orchestrator applies this annotated tag atomically with the phase-completion merge per WORK-01 / D-21. `git checkout step-12-exemplars` jumps to this point. The previous tag is `step-11-tail-sampling`; `git diff step-11-tail-sampling..step-12-exemplars` shows the focused diff: two Java files (ExemplarFilter + scope fix), one YAML file (mimir-config.yaml limits block), one JSON file (dashboard exemplar row), one TOML file (verify:exemplars task), and this README section.
+
+### Run
+
+```bash
+mise run preflight
+mise run infra:up
+# Restart Mimir to apply the limits.max_global_exemplars_per_user config:
+docker compose restart mimir
+mise run dev
+# In another terminal — generate enough load for exemplars to appear:
+mise run load
+# Wait ~30 seconds for the PeriodicMetricReader (10s interval) to export metrics:
+sleep 30
+# Verify the exemplar pipeline is active end-to-end:
+mise run verify:exemplars
+# Open Grafana and look at the Exemplars (Phase 12) row:
+mise run ui:grafana
+```
+
+### What to look for
+
+**Exemplar dots on the histogram panel.** Open the `ose-otel-demo` dashboard in Grafana at `:3000`. Look for the "Exemplars (Phase 12)" row — it is open by default. The "HTTP Request Duration (with Exemplars)" panel shows p50/p95/p99 latency lines. After generating load with `mise run load`, small dots or diamonds appear overlaid on the lines — each dot represents one request. Hover over a dot to see the `trace_id` tooltip.
+
+**Click-through to Tempo.** Click any exemplar dot. Grafana reads the `trace_id` label from the exemplar, looks up the `exemplarTraceIdDestinations` configuration in the Prometheus datasource provisioning (pre-wired in Phase 10 D-02 at `grafana/datasources.yaml` lines 50–56), and opens the trace waterfall in Tempo in the same browser tab. No manual trace-ID copy-paste required — this is the EXMP-04 success criterion.
+
+**Verify the pipeline with `mise run verify:exemplars`.** This task queries Mimir's exemplar API directly:
+
+```bash
+# Behind the scenes — what verify:exemplars calls:
+curl -fsS "http://localhost:9009/prometheus/api/v1/query_exemplars?query=http_server_request_duration_seconds_bucket&start=$(date -u -d '10 minutes ago' '+%Y-%m-%dT%H:%M:%SZ')&end=$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+```
+
+A successful response contains `{"status":"success","data":[{"seriesLabels":{...},"exemplars":[{"labels":{"trace_id":"<32hex>","span_id":"<16hex>"},...}]}]}`.
+
+**Annotated config excerpts (the three layers).**
+
+Layer 1 — SDK (`producer-service/src/main/java/com/example/producer/config/OtelSdkConfiguration.java`, same in consumer):
+```java
+return SdkMeterProvider.builder()
+    .setResource(resource)
+    .setExemplarFilter(ExemplarFilter.traceBased())   // Phase 12 — EXMP-01
+    .registerMetricReader(metricReader)
+    .build();
+```
+
+Layer 2 — Mimir (`infra/observability/mimir-config.yaml`):
+```yaml
+limits:
+  max_global_exemplars_per_user: 100000  # WHY: 0 (default) = exemplar ingestion disabled
+```
+The Collector's PRW exporter needs no config change — exemplar forwarding in `collector-contrib v0.151.0` is unconditional (the `pkg/translator/prometheusremotewrite/helper.go::getPromExemplars()` function runs on every histogram data point automatically). Do not add `send_exemplars: true` — this key does not exist in the v0.151.0 config schema and will cause a parse error.
+
+Layer 3 — Grafana datasource (`grafana/datasources.yaml`, pre-wired Phase 10 D-02, no changes in Phase 12):
+```yaml
+- name: Prometheus
+  ...
+  jsonData:
+    exemplarTraceIdDestinations:
+      - name: trace_id
+        datasourceUid: tempo
+        urlDisplayLabel: "Trace: ${__value.raw}"
+```
+
+**Cardinality safety.** Each exemplar carries only `trace_id` (32 hex chars) and `span_id` (16 hex chars) — approximately 60 bytes per exemplar, well under the 128-byte OpenMetrics limit. No business attributes (user IDs, order IDs, request paths) are attached — the SDK's `ExemplarFilter.traceBased()` only stamps the active span context, not the span attributes.
+
+> **Production consideration.** The workshop runs Mimir with `multitenancy_enabled: false` and no auth on `:9009`. In production, the `/prometheus/api/v1/query_exemplars` endpoint should be restricted to authorized internal users — `trace_id` values are internal correlation IDs (not secrets), but an unrestricted endpoint leaks the set of recent traces to any caller.
+
+### Why it matters
+
+Exemplars close the gap between "I see a latency spike on the p99 panel" and "I need to find a trace to investigate." Without exemplars, the workflow is: (1) spot the latency spike in Grafana; (2) guess a time window; (3) go to Tempo Search; (4) filter by service + status + time range; (5) pick a representative trace. With exemplars, step 2–4 collapse to: (1) click the spike point; (2) arrive at the trace that produced it.
+
+The three-layer architecture is also a teaching surface for the OTel data model: the SDK's `ExemplarFilter` injects trace context into metric data points (not into metric names or labels), the Collector passes it through opaquely, and Grafana's datasource config defines the routing from trace context to the trace backend. Each layer has exactly one concern — and Phase 12's diff proves it: one line per layer, zero cross-layer coupling.
+
+**Screenshot placeholder:**
+
+<img src="docs/screenshots/step-12-exemplars.png"
+     alt="Exemplar dots on http.server.request.duration — click any dot to land on the originating trace in Tempo."
+     width="900" />
+<!-- Screenshot captured by Phase 18 Playwright automation -->
+
 ## Concepts & FAQ
 
 The following four sections collect the narrative deep-dives the per-step *Why it matters* paragraphs cross-reference. They preserve a second reading mode: skim the per-step walkthrough top-to-bottom, then dive into the conceptual narrative — or read this section first and use the per-step blocks as worked examples.
