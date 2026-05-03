@@ -26,3 +26,7 @@ Thumbs.db
 # Claude Code local config
 .claude/
 
+# Node (scripts/capture-screenshots.mjs dependencies)
+node_modules/
+package-lock.json
+
