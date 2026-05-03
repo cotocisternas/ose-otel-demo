@@ -4,14 +4,14 @@ milestone: v2.0
 milestone_name: Production Shapes
 status: executing
 stopped_at: Phase 11 context gathered
-last_updated: "2026-05-03T05:28:20.206Z"
+last_updated: "2026-05-03T05:32:58.009Z"
 last_activity: 2026-05-03
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 11
-  completed_plans: 9
-  percent: 82
+  completed_plans: 10
+  percent: 91
 ---
 
 # Project State
@@ -27,12 +27,12 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 ## Current Position
 
 Phase: 11 (tail-sampling-at-the-collector) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-05-03
 
 ```
-Progress: [████████░░] 82%
+Progress: [█████████░] 91%
 ```
 
 ## Performance Metrics
@@ -63,6 +63,7 @@ Progress: [████████░░] 82%
 | (none yet) | | | |
 | Phase 11-tail-sampling-at-the-collector P02 | 3 | 2 tasks | 2 files |
 | Phase 11 P03 | 197 | 2 tasks | 2 files |
+| Phase 11-tail-sampling-at-the-collector P05 | 2min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,8 @@ Recent decisions affecting current work:
 - [Phase 07-07]: REQUIREMENTS.md traceability table normalized — Phase 7 rows changed from `Complete (07-XX, 2026-05-02)` to bare `Complete` to match the `Pending`/`Complete` schema used elsewhere in the table; per-requirement parenthetical metadata preserved verbatim in the bullet bodies above the traceability table (where it's reader-facing, not gate-facing).
 - [v2.0 roadmap v1]: 5 phases (10-14) derived from 35 REQ-IDs; coarse granularity applied. PREREQ-01 (circular-ref fix) bundled into Phase 10 so it is cleared before any phase that touches OtelSdkConfiguration. TSAMP (Phase 11) and HSAMP (Phase 13) are in separate phases — F2-3 double-filter-trap constraint honored. AMQP variants split to Phase 14 (last) so the fully-instrumented stack is in place before topology expansion.
 - [v2.0 roadmap v2]: Revised from 5 to 8 phases (10-17) per WORK-01 pedagogical requirement — one annotated git tag per teaching concept so attendees can `git checkout step-NN-<lesson>` to study a single lesson in isolation. HSAMP+BAG paired in Phase 16 (two sub-lessons in one tag) because both live in `OtelSdkConfiguration` and both register on `SdkTracerProvider` build — pairing justified in SUMMARY.md as "two halves of one teaching arc." Phase 16 README treats them as distinct sub-lessons (16a head sampling, 16b baggage). Double-filter-trap callout (F2-3) is mandatory in Phase 16 README.
+- [Phase 11-05]: Included bonus Panel 5 (traces in memory sanity gauge) in Tail Sampling diagnostics row — provides F2-2 buffer canary without cost; panel IDs run 9-14
+- [Phase 11-05]: D-T16 POLICY-NAMES CONTRACT JSDoc reminder embedded in row description field citing the alpha recordpolicy feature gate as a Route A dependency
 
 ### Pending Todos
 
@@ -137,6 +140,6 @@ Items acknowledged and carried forward at milestone close on 2026-05-02:
 
 ## Session Continuity
 
-Last session: 2026-05-03T05:28:20.201Z
+Last session: 2026-05-03T05:32:23.596Z
 Stopped at: Phase 11 context gathered
 Resume file: None
