@@ -108,7 +108,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 
 **Success Criteria** (what must be TRUE):
   1. Both `OtelSdkConfiguration.buildMeterProvider()` calls include `.setExemplarFilter(ExemplarFilter.traceBased())` — exactly one line per service
-  2. The Collector's `prometheusremotewrite/mimir` exporter block includes `send_exemplars: true`; Grafana `datasources.yaml` includes `exemplarTraceIdDestinations` with the `trace_id` label mapped to the Tempo datasource UID
+  2. `infra/observability/mimir-config.yaml` adds `limits.max_global_exemplars_per_user: 100000` (the real enablement gate — Mimir's default is 0, which silently discards all exemplars); Grafana `datasources.yaml` already includes `exemplarTraceIdDestinations` pre-wired in Phase 10 D-02 — no edits needed; otelcol-config.yaml adds a WHY comment documenting that PRW v1 exemplar forwarding is unconditional (no `send_exemplars` config key exists in v0.151.0)
   3. After generating load, the attendee opens the `http.server.request.duration` histogram panel in the `ose-otel-demo` dashboard, sees exemplar dots or diamonds rendered, clicks one, and lands on the originating trace in Tempo — one click, no manual trace-ID copy-paste required
   4. Exemplar labels on emitted data contain only `trace_id` and `span_id` — no business attributes are attached that could cause cardinality explosion in Mimir
 
@@ -116,7 +116,11 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 
 **Git tag**: `step-12-exemplars`
 
-**Plans**: TBD
+**Plans**: 4 plans across 2 waves
+- [ ] 12-01-PLAN.md — Wave 1: ExemplarFilter.traceBased() in both OtelSdkConfiguration.buildMeterProvider() + HttpServerSpanFilter manual scope fix (D-E1/EXMP-01)
+- [ ] 12-02-PLAN.md — Wave 1: mimir-config.yaml limits.max_global_exemplars_per_user: 100000 + otelcol-config.yaml WHY comment (EXMP-02) — parallel with 12-01
+- [ ] 12-03-PLAN.md — Wave 1: Exemplars open row in ose-otel-demo.json (D-E4/D-E5/D-E6) + verify:exemplars task in mise.toml (D-E7/EXMP-03) — parallel with 12-01 and 12-02
+- [ ] 12-04-PLAN.md — Wave 2: README §12 Phase-11-equivalent narrative (D-E8) + end-to-end human-verify checkpoint (EXMP-04)
 
 ---
 
