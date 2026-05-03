@@ -354,8 +354,8 @@
         "tooltip": {"mode": "multi", "sort": "desc"}
       },
       "targets": [
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(rate(traces_spanmetrics_calls_total{service=\"order-consumer\",span_kind=\"SPAN_KIND_CONSUMER\",status_code=\"STATUS_CODE_UNSET\"}[1m]))", "legendFormat": "OK", "refId": "A"},
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(rate(traces_spanmetrics_calls_total{service=\"order-consumer\",span_kind=\"SPAN_KIND_CONSUMER\",status_code=\"STATUS_CODE_ERROR\"}[1m]))", "legendFormat": "ERROR", "refId": "B"}
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(rate(orders_created_total[5m])) - (sum(rate(traces_spanmetrics_calls_total{service=\"order-consumer\",span_kind=\"SPAN_KIND_CONSUMER\",status_code=\"STATUS_CODE_ERROR\"}[5m])) or vector(0))", "legendFormat": "OK", "refId": "A"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(rate(traces_spanmetrics_calls_total{service=\"order-consumer\",span_kind=\"SPAN_KIND_CONSUMER\",status_code=\"STATUS_CODE_ERROR\"}[5m]))", "legendFormat": "ERROR", "refId": "B"}
       ]
     },
     {
