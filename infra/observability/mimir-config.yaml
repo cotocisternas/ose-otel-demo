@@ -67,3 +67,10 @@ ruler_storage:
 
 usage_stats:
   enabled: false              # WHY: workshop-only; opt out of analytics
+
+limits:
+  max_global_exemplars_per_user: 100000  # WHY: 0 (default) = exemplar ingestion disabled;
+                                          # 100000 is the Grafana-recommended starting value
+                                          # (grafana.com/docs/mimir/latest/manage/use-exemplars/store-exemplars/).
+                                          # Phase 12 — EXMP-02: enables the storage side of the exemplar pipeline.
+                                          # Without this, Mimir silently discards all ingested exemplars with no errors.
