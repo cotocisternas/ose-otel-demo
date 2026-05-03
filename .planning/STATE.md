@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 Phase: 18
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-05-03
+Last activity: 2026-05-03 - Completed quick task 260503-iw0: Add Grafana annotation when otel-collector tail-sampling buffer saturates at num_traces cap
 
 ```
 Progress: [██████████] 100%
@@ -129,6 +129,7 @@ None yet.
 | 260502-ld1 | Fix `scripts/load.sh` — add `--no-tui` and finite `-z` duration; oha TUI was corrupting parallel children | 2026-05-02 | 1874d1d | Verified | [260502-ld1-fix-load-sh-oha-no-tui](./quick/260502-ld1-fix-load-sh-oha-no-tui/) |
 | 260502-ld2 | Add burst mode to `scripts/load.sh` (`BURST_RPS` + 4 knobs); produces dashboard ramp-up/plateau/drain shape on demand | 2026-05-02 | 10c3bc6 | Verified | [260502-ld2-load-sh-burst-mode](./quick/260502-ld2-load-sh-burst-mode/) |
 | 260502-fast | Tighten Prometheus `global.scrape_interval` to 10s for workshop demo resolution | 2026-05-02 | f9fef3b | Verified | — |
+| 260503-iw0 | Add Grafana annotation when otel-collector tail-sampling buffer saturates at `num_traces` cap | 2026-05-03 | 3daf8ed | Verified | [260503-iw0-add-grafana-annotation-when-otel-collect](./quick/260503-iw0-add-grafana-annotation-when-otel-collect/) |
 
 ## Deferred Items
 
