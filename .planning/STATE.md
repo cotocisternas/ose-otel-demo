@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Production Shapes
 status: executing
-stopped_at: Completed 18-02-PLAN.md
-last_updated: "2026-05-03T22:57:26.485Z"
+stopped_at: Completed 18-03-PLAN.md
+last_updated: "2026-05-03T23:21:00Z"
 last_activity: 2026-05-03
 progress:
   total_phases: 9
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 18
-  completed_plans: 17
-  percent: 94
+  completed_plans: 18
+  percent: 100
 ---
 
 # Project State
@@ -22,17 +22,17 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A workshop attendee who already shipped v1.0's manual-SDK demo can run `docker compose up` against a decomposed Tempo/Mimir/Loki/Grafana stack, see Collector-side tail sampling shape what reaches Tempo, click a histogram exemplar to land on the originating trace, watch a JDBC/JPA span tree under a CONSUMER span, follow baggage from an HTTP header through AMQP into a consumer log, and understand exactly which lines of SDK and Collector config made each piece work.
 
-**Current focus:** Phase 18 — automated-screenshot-generation-playwright
+**Current focus:** Phase 18 — automated-screenshot-generation-playwright (COMPLETE)
 
 ## Current Position
 
-Phase: 18 (automated-screenshot-generation-playwright) — EXECUTING
-Plan: 3 of 3
-Status: Ready to execute
+Phase: 18 (automated-screenshot-generation-playwright) — COMPLETE
+Plan: 3 of 3 (all complete)
+Status: Phase complete, tag step-18-screenshots applied
 Last activity: 2026-05-03
 
 ```
-Progress: [█████████░] 94%
+Progress: [██████████] 100%
 ```
 
 ## Performance Metrics
@@ -70,6 +70,7 @@ Progress: [█████████░] 94%
 | Phase 12-exemplars-metrics-to-trace-click-through P03 | 4min | 2 tasks | 2 files |
 | Phase 18-automated-screenshot-generation-playwright P01 | 2min | 2 tasks | 2 files |
 | Phase 18-automated-screenshot-generation-playwright P02 | 3min | 2 tasks | 5 files |
+| Phase 18-automated-screenshot-generation-playwright P03 | 6min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -118,6 +119,8 @@ Recent decisions affecting current work:
 - [Phase ?]: Phase 18-01: P18-3 synchronous copyFileSync in finally + process.on('exit') restoreConfigSync for tail-sampling config restore safety
 - [Phase ?]: scripts/screenshots/ deleted; v1.0 bash driver superseded by 18-01 capture-screenshots.mjs
 - [Phase ?]: PREREQ-02 README note removed — step-04-metrics.png now produced by new Playwright script
+- [Phase 18-03]: 5 Rule 1 bugs fixed in capture-screenshots.mjs for Grafana 13 / Tempo 2.10.x: viewPanel canvas selector, nativeSearch queryType, ARIA gridcell selector, explicit Run query click, 15-min time range
+- [Phase 18-03]: Annotated tag step-18-screenshots applied on main — all v2.0 teaching PNGs shipped (WORK-01)
 
 ### Roadmap Evolution
 
@@ -160,6 +163,6 @@ Items acknowledged and carried forward at milestone close on 2026-05-02:
 
 ## Session Continuity
 
-Last session: 2026-05-03T22:57:26.479Z
-Stopped at: Completed 18-02-PLAN.md
+Last session: 2026-05-03T23:21:00Z
+Stopped at: Completed 18-03-PLAN.md (Phase 18 complete)
 Resume file: None

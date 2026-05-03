@@ -264,7 +264,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 **Plans**: 3 plans across 2 waves
 - [x] 18-01-PLAN.md — Wave 1: Write scripts/capture-screenshots.mjs (unified Playwright capture script) + scripts/package.json (Playwright 1.59.1); all logic in script per D-S1/D-S2/D-S3/D-S4 (SCAP-01/02/03)
 - [x] 18-02-PLAN.md — Wave 1: Delete scripts/screenshots/; update mise.toml (delete docs:screenshots, add screenshots one-liner per D-S5); update README.md (step-04 TODO → image embed, remove PREREQ-02 pending note per D-I3) — parallel with 18-01
-- [ ] 18-03-PLAN.md — Wave 2: Install Playwright + run mise run screenshots (v2.0 captures); human-verify PNG visual quality; commit + apply step-18-screenshots tag (WORK-01)
+- [x] 18-03-PLAN.md — Wave 2: Install Playwright + run mise run screenshots (v2.0 captures); human-verify PNG visual quality; commit + apply step-18-screenshots tag (WORK-01)
 
 ---
 
@@ -287,7 +287,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 | 15. Outbound HTTP-Client Spans | v2.0 | 0/? | Not started | - | step-15-http-client-spans |
 | 16. Head Sampling + W3C Baggage | v2.0 | 0/? | Not started | - | step-16-sampling-baggage |
 | 17. AMQP Topic + DLX Variants | v2.0 | 0/? | Not started | - | step-17-amqp-topology |
-| 18. Automated Screenshot Generation (Playwright) | v2.0 | 0/3 | Not started | - | step-18-screenshots |
+| 18. Automated Screenshot Generation (Playwright) | v2.0 | 3/3 | Shipped | 2026-05-03 | step-18-screenshots |
 
 ## Backlog
 
