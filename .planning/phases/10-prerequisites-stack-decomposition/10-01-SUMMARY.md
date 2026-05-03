@@ -107,6 +107,21 @@ None — no new network endpoints, auth paths, file access patterns, or schema c
 - Wave 0 gate satisfied: Wave 1 infrastructure decomposition plans (10-02 through 10-05) can proceed
 - Downstream plans that touch OtelSdkConfiguration should be aware: the `private OpenTelemetry openTelemetry` non-@Autowired field now exists in both files (can be used for future @PreDestroy / phase-internal use without going through Spring's bean graph)
 
+## Self-Check: PASSED
+
+| Check | Result |
+|-------|--------|
+| 10-01-CYCLE-DIAGNOSIS.md exists | FOUND |
+| 10-01-SUMMARY.md exists | FOUND |
+| producer OtelSdkConfiguration.java exists | FOUND |
+| consumer OtelSdkConfiguration.java exists | FOUND |
+| Commit a6c6b6c (Task 1) | FOUND |
+| Commit 03bafa5 (Task 2) | FOUND |
+| Commit 3674b01 (Task 3) | FOUND |
+| Producer `this.openTelemetry = sdk` | FOUND |
+| Consumer `this.openTelemetry = sdk` | FOUND |
+| PREREQ-01 closure section in diagnosis doc | FOUND |
+
 ---
 *Phase: 10-prerequisites-stack-decomposition*
 *Completed: 2026-05-02*
