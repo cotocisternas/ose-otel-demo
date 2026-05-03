@@ -4,8 +4,8 @@ milestone: v2.0
 milestone_name: Production Shapes
 status: executing
 stopped_at: Phase 10 context gathered
-last_updated: "2026-05-03T00:15:54.272Z"
-last_activity: 2026-05-03 -- Phase 10 planning complete
+last_updated: "2026-05-03T00:30:26.935Z"
+last_activity: 2026-05-03 -- Phase 10 execution started
 progress:
   total_phases: 8
   completed_phases: 0
@@ -22,14 +22,14 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A workshop attendee who already shipped v1.0's manual-SDK demo can run `docker compose up` against a decomposed Tempo/Mimir/Loki/Grafana stack, see Collector-side tail sampling shape what reaches Tempo, click a histogram exemplar to land on the originating trace, watch a JDBC/JPA span tree under a CONSUMER span, follow baggage from an HTTP header through AMQP into a consumer log, and understand exactly which lines of SDK and Collector config made each piece work.
 
-**Current focus:** Phase 10 — Prerequisites & Stack Decomposition (roadmap defined; ready for planning)
+**Current focus:** Phase 10 — prerequisites-stack-decomposition
 
 ## Current Position
 
-Phase: Phase 10 — Prerequisites & Stack Decomposition
-Plan: —
-Status: Ready to execute
-Last activity: 2026-05-03 -- Phase 10 planning complete
+Phase: 10 (prerequisites-stack-decomposition) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 10
+Last activity: 2026-05-03 -- Phase 10 execution started
 
 ```
 Progress: [░░░░░░░░░░░░░░░░░░░░] 0% (0/8 phases)
