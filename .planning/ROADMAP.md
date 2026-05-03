@@ -86,7 +86,13 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 
 **Git tag**: `step-11-tail-sampling`
 
-**Plans**: TBD
+**Plans**: 6 plans across 4 waves
+- [ ] 11-01-PLAN.md — Wave 0: capture step-11-tail-sampling-OFF.png on main HEAD pre-Phase-11 (D-T9 manual one-shot; sequencing constraint per <specifics> bullet 4)
+- [ ] 11-02-PLAN.md — Wave 1: insert tail_sampling composite block in otelcol-config.yaml (D-T1/D-T2/D-T3/D-T4 + TSAMP-01/02 + line-180 fix); add --feature-gates=processor.tailsamplingprocessor.recordpolicy to docker-compose.yml otel-collector command (Route A)
+- [ ] 11-03-PLAN.md — Wave 1: WIDGET-SLOW SKU branch in OrderService.place() (D-T5/D-T6); SLOW_RPS=2 fourth oha stream in scripts/load.sh (D-T7) — parallel with 11-02 (zero file overlap)
+- [ ] 11-04-PLAN.md — Wave 2: mise verify:tail-sampling two-tier task (D-T14 Route A) — depends on 11-02 + 11-03
+- [ ] 11-05-PLAN.md — Wave 2: collapsed Tail Sampling diagnostics row in ose-otel-demo.json (D-T13/D-T16) — depends on 11-02; parallel with 11-04
+- [ ] 11-06-PLAN.md — Wave 3: README §11 Phase-10-equivalent narrative (D-T11) + F2-3 double-filter callout (D-T12) + step-11-tail-sampling-ON.png capture (D-T9/D-T10) + histogram-suffix verification micro-task (RESEARCH §3.2.1)
 
 ---
 
