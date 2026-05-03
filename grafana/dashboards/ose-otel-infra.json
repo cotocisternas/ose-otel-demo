@@ -101,7 +101,7 @@
         "overrides": []
       },
       "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "graphMode": "none", "colorMode": "value", "orientation": "auto", "textMode": "auto", "justifyMode": "auto"},
-      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "count(group by (service_name) (target_info{service_name=~\"order-.*\"}))", "refId": "A"}]
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "count(group by (job) (target_info{job=~\"ose-otel-demo/order-.*\"}))", "refId": "A"}]
     },
     {
       "type": "row",

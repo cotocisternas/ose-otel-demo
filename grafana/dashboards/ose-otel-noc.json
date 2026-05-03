@@ -233,7 +233,7 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "count(group by (service_name) (target_info{service_namespace=\"ose-otel-demo\",service_name=~\"order-.*\"}))",
+        "expr": "count(group by (job) (target_info{job=~\"ose-otel-demo/order-.*\"}))",
         "refId": "A"
       }]
     },
