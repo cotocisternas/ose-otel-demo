@@ -24,6 +24,7 @@ import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.logs.SdkLoggerProvider;
 import io.opentelemetry.sdk.logs.export.BatchLogRecordProcessor;
 import io.opentelemetry.sdk.logs.export.LogRecordExporter;
+import io.opentelemetry.sdk.metrics.ExemplarFilter;
 import io.opentelemetry.sdk.metrics.SdkMeterProvider;
 import io.opentelemetry.sdk.metrics.export.PeriodicMetricReader;
 import io.opentelemetry.sdk.resources.Resource;
@@ -501,6 +502,7 @@ public class OtelSdkConfiguration {
         // for production is a real-world concern outside the SDK lesson.
         return SdkMeterProvider.builder()
             .setResource(resource)
+            .setExemplarFilter(ExemplarFilter.traceBased())   // Phase 12 — EXMP-01: attach trace_id/span_id to histogram data points when a span is active at record() time
             .registerMetricReader(metricReader)
             .build();
     }
