@@ -8,15 +8,15 @@
 
 ### Key Deliverables (per phase)
 
-| # | Phase | Tag | Headline |
-|---|---|---|---|
-| 1 | Baseline & Scaffold | `step-01-baseline` | Working two-service Spring Boot + RabbitMQ app on host JVM with **zero** OTel libraries; foundation pitfalls neutralised (BOM ordering, ports, mise/IDE) |
-| 2 | Manual SDK Bootstrap & First Traces | `step-02-traces` | `OpenTelemetrySdk` wired per-service; traces emitted; producer + consumer in **separate** trace IDs (intentional pre-Phase-3 broken state) |
-| 3 | AMQP Context Propagation | `step-03-context-propagation` | **Headline lesson** — `TracingMessagePostProcessor` (inject) + `TracingMessageListenerAdvice` (extract) join the two services into one distributed trace; deterministic 10% failure path added |
-| 4 | Metrics | `step-04-metrics` | `SdkMeterProvider` as a sibling pipeline next to the tracer; `orders.created` Counter, HTTP server-duration Histogram (seconds, not millis), `orders.queue.depth.estimate` ObservableGauge → Mimir on 10s interval |
-| 5 | Logs Correlation | `step-05-logs` | `SdkLoggerProvider` + Logback `OpenTelemetryAppender` + MDC injector; logs in Loki carry `trace_id`/`span_id` structured metadata; click-through datalink to Tempo |
-| 6 | Verification Tests | `step-06-tests` | Cross-service Testcontainers `RabbitMQContainer` + `InMemorySpanExporter` + `SimpleSpanProcessor` deterministically prove the three-signal chain in CI |
-| 7 | Polish & Differentiators | *no tag (D-09)* | Pre-built Grafana dashboard (`ose-otel-demo` UID), `scripts/load.sh` workshop load generator, 6 step-paired screenshots, full README walkthrough |
+| # | Phase                               | Tag                           | Headline                                                                                                                                                                                                           |
+|---|-------------------------------------|-------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1 | Baseline & Scaffold                 | `step-01-baseline`            | Working two-service Spring Boot + RabbitMQ app on host JVM with **zero** OTel libraries; foundation pitfalls neutralised (BOM ordering, ports, mise/IDE)                                                           |
+| 2 | Manual SDK Bootstrap & First Traces | `step-02-traces`              | `OpenTelemetrySdk` wired per-service; traces emitted; producer + consumer in **separate** trace IDs (intentional pre-Phase-3 broken state)                                                                         |
+| 3 | AMQP Context Propagation            | `step-03-context-propagation` | **Headline lesson** — `TracingMessagePostProcessor` (inject) + `TracingMessageListenerAdvice` (extract) join the two services into one distributed trace; deterministic 10% failure path added                     |
+| 4 | Metrics                             | `step-04-metrics`             | `SdkMeterProvider` as a sibling pipeline next to the tracer; `orders.created` Counter, HTTP server-duration Histogram (seconds, not millis), `orders.queue.depth.estimate` ObservableGauge → Mimir on 10s interval |
+| 5 | Logs Correlation                    | `step-05-logs`                | `SdkLoggerProvider` + Logback `OpenTelemetryAppender` + MDC injector; logs in Loki carry `trace_id`/`span_id` structured metadata; click-through datalink to Tempo                                                 |
+| 6 | Verification Tests                  | `step-06-tests`               | Cross-service Testcontainers `RabbitMQContainer` + `InMemorySpanExporter` + `SimpleSpanProcessor` deterministically prove the three-signal chain in CI                                                             |
+| 7 | Polish & Differentiators            | *no tag (D-09)*               | Pre-built Grafana dashboard (`ose-otel-demo` UID), `scripts/load.sh` workshop load generator, 6 step-paired screenshots, full README walkthrough                                                                   |
 
 ### Workshop Polish & Quick Tasks (post-Phase-7, on `main` past `step-06-tests`)
 
