@@ -454,6 +454,99 @@ Production observability is **never** a single source. Application code reports 
 
 > **Production callout: do NOT reuse the application's database user for postgres_exporter in production.** This workshop wires `postgres-exporter` with `DATA_SOURCE_NAME=postgresql://orders:orders@postgres:5432/orders` to keep the compose file minimal. In a real deployment, create a dedicated read-only role and grant `pg_monitor`. The boundary lesson — exporter as a separate principal with the minimum privilege required — is what survives translation to production.
 
+## Step 10: Stack Decomposition — from one container to five
+
+### What you'll learn
+
+- A **production observability** stack is not a single container — it's five separate services (Collector, Tempo, Mimir, Loki, Grafana) wired together by explicit data pipelines, each with its own version, config, volume, and admin port.
+- Decomposing the all-in-one `grafana/otel-lgtm:0.26.0` into the five components changes **zero Java lines**: the OTLP endpoint stays at `http://localhost:4317`, the SDK code is agnostic to whether the receiver lives inside `lgtm` or inside a freshly-decomposed Collector.
+- How `multitenancy_enabled: false` (Mimir 3.x) replaces the older Cortex-era `auth_enabled: false`, and why running Mimir without an `X-Scope-OrgID` header is a workshop-only pattern that production deployments must NOT inherit.
+- Two reproducibility guardrails — `mise run verify:images` (every image pinned to an exact patch tag) and `mise run verify:datasources` (Grafana provisioned UIDs match the dashboard contract) — that catch drift before attendees see blank panels.
+- Why `tempo-wal` is a separate named volume (so `metrics_generator` state survives `infra:down`/`infra:up`) and why service-graph stays empty for ~1-5 min after `infra:reset` — that's expected, not a bug.
+
+### Checkpoint
+
+Workshop is at `step-10-collector-decompose` — the orchestrator applies this annotated tag atomically with the phase-completion merge per WORK-01 / D-21. `git checkout step-10-collector-decompose` jumps to this point.
+
+### Run
+
+```bash
+mise run preflight                # confirm all 14 host ports free before infra:up
+mise run infra:reset              # wipe volumes — clean slate (use infra:down/up instead to preserve tempo-wal)
+mise run infra:up                 # docker compose up -d --wait — 10 services healthy
+mise run verify:images            # all images pinned to exact patch tags (no :latest, no major-only)
+mise run verify:datasources       # Grafana datasource UIDs (loki / prometheus / tempo) match dashboard contract
+mise run dev                      # producer + consumer in foreground
+mise run demo:order               # POST /orders → 3-signal flow through the new stack
+sleep 15                          # let BatchSpanProcessor / PeriodicMetricReader / BatchLogRecordProcessor flush
+```
+
+### What to look for
+
+**Compose service count, before vs after:**
+
+|              | v1.0 (before) | v2.0 (after Step 10) |
+|--------------|---------------|----------------------|
+| Services     | 6             | 10                   |
+| Observability containers | 1 (`lgtm`) | 5 (`otel-collector`, `tempo`, `mimir`, `loki`, `grafana`) |
+| Named volumes | 1 (`lgtm-data`) | 5 (`tempo-data`, `tempo-wal`, `mimir-data`, `loki-data`, `grafana-data`) |
+
+**Host port map** (run `mise run preflight` to confirm all 14 are free before `infra:up`):
+
+| Port  | Service           | Why exposed |
+|-------|-------------------|-------------|
+| 3000  | Grafana           | Dashboard UI (anonymous Admin — workshop only) |
+| 4317  | otel-collector    | OTLP gRPC ingest — UNCHANGED from v1.0 (STACK-03 invariant) |
+| 4318  | otel-collector    | OTLP HTTP ingest — UNCHANGED from v1.0 |
+| 13133 | otel-collector    | `health_check` extension (Collector liveness) |
+| 8888  | otel-collector    | Collector self-metrics (Prometheus format) |
+| 8889  | otel-collector    | `prometheus` exporter scrape target (Phase 11 use) |
+| 3200  | tempo             | Tempo HTTP API (trace search, TraceQL) |
+| 9009  | mimir             | Mimir HTTP API (PromQL + remote_write target) |
+| 3100  | loki              | Loki HTTP API (LogQL + OTLP `/otlp` ingest) |
+| 5672  | rabbitmq          | AMQP |
+| 15672 | rabbitmq          | Management UI (guest/guest) |
+| 15692 | rabbitmq          | `rabbitmq_prometheus` plugin `/metrics` |
+| 6379  | valkey            | Redis-compatible cache |
+| 5432  | postgres          | Postgres (`orders` DB / `orders` user) |
+
+**Three "look behind the curtain" debug commands** the decomposed stack makes possible — each backend's HTTP API was hidden inside `lgtm`; now `curl` reaches them directly:
+
+```bash
+# 1. Search Tempo for traces from the producer over the last hour:
+curl -s 'http://localhost:3200/api/search?tags=service.name%3Dorder-producer&limit=20' | jq
+
+# 2. Query Mimir for the workshop's app-emitted counter:
+curl -s 'http://localhost:9009/prometheus/api/v1/query?query=orders_created_total' | jq
+
+# 3. Query Loki for log lines from the consumer in the last 5 minutes:
+curl -sG 'http://localhost:3100/loki/api/v1/query_range' \
+  --data-urlencode 'query={service_name="order-consumer"}' \
+  --data-urlencode 'limit=10' | jq
+```
+
+### Why it matters
+
+The pedagogical headline of Step 10 is: **a production observability stack is five separate services with explicit pipelines, and replacing the all-in-one container changes ZERO Java lines.** Confirm the second clause yourself: `git diff step-09-* step-10-collector-decompose -- producer-service/src/main/java consumer-service/src/main/java` shows only the PREREQ-01 cycle fix in `OtelSdkConfiguration.java` (a 4-line addition that mirrors the LOG-03 inline-assign pattern v1.0 already established for the Logback appender). The OTLP endpoint stays at `http://localhost:4317`. The SDK code is agnostic to whether the receiver lives inside `lgtm` or inside a freshly-decomposed Collector — that decoupling **is** the lesson.
+
+The all-in-one `lgtm` container hides each backend's HTTP API; the decomposed stack lets you `curl` straight into Tempo, Mimir, and Loki and develop OTel-ecosystem fluency. Phase 11 (tail sampling) and Phase 13 (Loki recording rules) build on this surface — both modify a specific backend's config in isolation, which would be impossible without the decomposition.
+
+> **Workshop guardrails introduced in Step 10:**
+>
+> - `mise run verify:images` — fast-fails if `docker-compose.yml` contains a floating image tag (`:latest`, major-only, major.minor only). Reproducibility across cohorts is a workshop invariant (X-3 / D-14).
+> - `mise run verify:datasources` — fast-fails if Grafana's provisioned datasource UIDs drift from the dashboard contract (`prometheus`, `tempo`, `loki`). D-01 says "the dashboard is the artifact, the UIDs are the contract — preserve the contract on infra changes." When Phase 11+ touches datasources, this task catches drift before attendees see blank panels.
+
+> **Workshop-vs-production callouts** (each of these is workshop-only and would be unacceptable in a production deployment):
+>
+> - `GF_AUTH_ANONYMOUS_ENABLED=true` on the Grafana service — production requires real authentication.
+> - `tls.insecure: true` in the Collector's exporters — production terminates TLS at backend ingress and inside backends.
+> - `multitenancy_enabled: false` in `mimir-config.yaml` — production deployments inject real `X-Scope-OrgID` per tenant. Note: this is the **correct** Mimir 3.x YAML key; the older Cortex-era `auth_enabled` is rejected by Mimir 3.0.6's parser.
+> - All 14 host ports exposed for debugging — production typically locks the Collector behind a network policy and only exposes Grafana.
+
+> **A note on `infra:reset` vs `infra:down`/`up`:** Step 10 introduces a separate `tempo-wal` named volume specifically so Tempo's `metrics_generator` state survives container restarts. After `mise run infra:down` and `infra:up`, the service-graph panel re-renders immediately. After `mise run infra:reset` (which also wipes the volumes), the service-graph stays empty for ~1-5 minutes while traces re-prime the metric windows — that's expected; just keep load running.
+
+**Verification screenshot:** `docs/screenshots/step-04-metrics.png` is the post-decomposition Grafana metrics-panel capture (PREREQ-02 closure) — the dashboard JSON itself is unchanged since v1.0 Phase 7; the migration is invisible to the dashboard artifact.
+
 ## Concepts & FAQ
 
 The following four sections collect the narrative deep-dives the per-step *Why it matters* paragraphs cross-reference. They preserve a second reading mode: skim the per-step walkthrough top-to-bottom, then dive into the conceptual narrative — or read this section first and use the per-step blocks as worked examples.
