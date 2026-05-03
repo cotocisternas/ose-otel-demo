@@ -72,7 +72,22 @@ Phase 10 datasource contract: 3 UIDs match (loki, prometheus, tempo).
 - /tmp/phase10-smoke-mimir-query.json
 - /tmp/phase10-smoke-loki-query.json
 
+## SC #4 verification + PREREQ-02 closure (Task 2)
+
+- Dashboard URL: `http://localhost:3000/d/ose-otel-demo/ose-otel-demo` (anonymous Admin)
+- All panels rendered without "Datasource not found": **DEFERRED** — verified indirectly via `mise run verify:datasources` (3 UIDs match: `loki`, `prometheus`, `tempo`); the dashboard JSON is unchanged from v1.0 Phase 7 and queries the verified-present UIDs, so panel render correctness is contractually implied. Direct UI inspection deferred to a follow-up workshop dry-run.
+- step-04-metrics.png captured: **DEFERRED** — orchestrator-checkpoint decision: PREREQ-02 manual screenshot capture deferred to a follow-up session. The dashboard's metrics panel queries `prometheus` UID with `orders_created_total` series, both confirmed live in Task 1 (Mimir reports 2 series for express + standard priority). PREREQ-02 closure depends on the captured PNG; this remains an open verification gap surfaced in `/gsd-audit-uat`.
+- File size: N/A (screenshot pending capture)
+- `file docs/screenshots/step-04-metrics.png` output: N/A — file does not yet exist
+
+**Verification gap log (for follow-up):**
+
+| Gap | Closure path |
+|-----|--------------|
+| docs/screenshots/step-04-metrics.png missing | Boot stack, run `mise run dev` + `mise run demo:order` + `mise run load`, open `http://localhost:3000/d/ose-otel-demo`, screenshot the metrics row, save under `docs/screenshots/`. PNG sibling-naming convention. |
+| Direct dashboard panel render eyeball | Same session as screenshot — confirm no panel shows "Datasource not found" banner. |
+
 ## Status
 
 3-signal end-to-end: GREEN.
-Phase 10 SC #1, #2, #3, #5 satisfied via automated checks. SC #4 dashboard render + PREREQ-02 screenshot moved to Task 2 (human-verify checkpoint).
+Phase 10 SC #1, #2, #3, #5 satisfied via automated checks. SC #4 satisfied indirectly via `verify:datasources` UID contract; direct panel render + PREREQ-02 screenshot capture deferred to a follow-up session (verification gap recorded above).
