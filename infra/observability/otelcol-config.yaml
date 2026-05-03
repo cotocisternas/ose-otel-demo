@@ -1,0 +1,188 @@
+# OpenTelemetry Collector Contrib v0.151.0 — workshop demo configuration.
+#
+# THIS FILE IS THE WORKSHOP'S TEXTBOOK FOR THE COLLECTOR.
+# Every block below carries an inline `# WHY:` comment explaining what each
+# key does and why we chose this value. Read it top-to-bottom in your editor.
+#
+# WHY this file exists: the v1.0 demo used grafana/otel-lgtm's BUNDLED Collector;
+# Phase 10 decomposes that single image into five separate containers. The
+# Collector is now the SINGLE INGRESS for the three OTel signals — receiving
+# OTLP from the apps and routing each signal to its dedicated backend (Tempo,
+# Mimir, Loki). It also runs the prometheus scrape jobs that v1.0's
+# `grafana/prometheus.yaml` used to feed lgtm's bundled Prometheus (D-05 — the
+# Collector becomes "the single mouth feeding the backends").
+#
+# WHY pinned image: collector-contrib v0.151.0 (Apr 2026). Version-pinning is the
+# Phase 10 STACK-02 invariant; `mise run verify:images` enforces no floating tags.
+#
+# Live-verified key shapes (vs older docs):
+#   - exporter type `otlp_http` (WITH underscore) — `otlphttp` works but emits
+#     a deprecation warning at startup (RESEARCH §F1-4 reversed).
+#   - NO `loki:` exporter component in v0.151.0; logs ship via `otlp_http/loki`
+#     to Loki's `/otlp` endpoint (RESEARCH §F1-4 reversed; Loki 3.7.1 OTLP-native).
+#   - Mimir uses `prometheusremotewrite` — the canonical "many writers, one Mimir"
+#     path. Tempo's metrics_generator (Phase 10 D-06) AND Loki's ruler (Phase 10 D-07)
+#     ALSO write to the same `/api/v1/push` endpoint — three producers, one consumer,
+#     single tenant (`multitenancy_enabled: false` in mimir-config.yaml).
+
+# ──────────────────────────────────────────────────────────────────
+# Receivers — what comes IN to the Collector
+# ──────────────────────────────────────────────────────────────────
+receivers:
+  otlp:
+    # WHY: STACK-03 invariant — `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317`
+    # in mise.toml (and the DEFAULT_OTLP_ENDPOINT in both OtelSdkConfiguration files)
+    # MUST keep working unchanged. The Collector exposes BOTH gRPC :4317 and HTTP :4318
+    # on the host (D-10) so attendees can flip between them via OTEL_EXPORTER_OTLP_PROTOCOL.
+    protocols:
+      grpc:
+        # WHY: 0.0.0.0 so docker-compose host port mapping reaches us. NOT 127.0.0.1.
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+  # D-05 MIGRATION: scrape jobs that previously lived in grafana/prometheus.yaml,
+  # mounted into lgtm's bundled Prometheus, now run inside this Collector. The
+  # Collector forwards them to Mimir via prometheusremotewrite/mimir below —
+  # same write path as OTLP→PRW translation, same Mimir tenant, same query layer.
+  # Static-label `source: infra-exporter` is the disambiguator for the workshop's
+  # two-lens story (app-emitted vs exporter-scraped) — preserved verbatim from v1.0.
+  prometheus:
+    config:
+      scrape_configs:
+        # WHY: rabbitmq_prometheus plugin exposes /metrics on :15692 (compose port);
+        # /metrics/per-object yields per-queue/per-connection/per-channel labels
+        # (preserved verbatim from grafana/prometheus.yaml).
+        - job_name: rabbitmq
+          metrics_path: /metrics/per-object
+          static_configs:
+            - targets: ['rabbitmq:15692']
+              labels:
+                source: infra-exporter
+
+        # WHY: redis_exporter sidecar (Step 9 quick-260502-j00) — Valkey metrics
+        # at :9121 (preserved verbatim from grafana/prometheus.yaml).
+        - job_name: redis_exporter
+          static_configs:
+            - targets: ['redis-exporter:9121']
+              labels:
+                source: infra-exporter
+
+        # WHY: postgres_exporter sidecar (Step 9 quick-260502-j00) — Postgres metrics
+        # at :9187 (preserved verbatim from grafana/prometheus.yaml).
+        - job_name: postgres_exporter
+          static_configs:
+            - targets: ['postgres-exporter:9187']
+              labels:
+                source: infra-exporter
+
+# ──────────────────────────────────────────────────────────────────
+# Processors — what happens between RECEIVE and EXPORT
+# ──────────────────────────────────────────────────────────────────
+processors:
+  memory_limiter:
+    # WHY: workshop-grade safety valve — stop accepting new spans/metrics/logs
+    # when the Collector heap exceeds the soft limit. Not production-tuned;
+    # production deployments would profile actual load and tune `limit_mib`
+    # to ~80% of container memory. Phase 11 may revisit when tail_sampling
+    # buffers entire traces in memory.
+    check_interval: 1s
+    limit_percentage: 75
+    spike_limit_percentage: 15
+
+  batch:
+    # WHY: production-shape batching pipeline. timeout=5s + send_batch_size=512
+    # are the canonical workshop defaults — small enough that attendees see
+    # data within ~5-10s of POSTing, large enough to avoid pummeling the backends.
+    timeout: 5s
+    send_batch_size: 512
+
+# ──────────────────────────────────────────────────────────────────
+# Exporters — what goes OUT to which backend
+# ──────────────────────────────────────────────────────────────────
+exporters:
+  otlp_http/tempo:
+    # WHY: Tempo accepts OTLP HTTP on its distributor's :4318 endpoint inside the
+    # compose network. http://tempo:4318 is the Docker service-name URL (D-06 spirit:
+    # use service names, never localhost from inside containers).
+    # NOTE: instance name is `otlp_http/tempo` (underscore — the canonical name in
+    # v0.151.0). `otlphttp/tempo` works but emits a deprecation warning at startup.
+    endpoint: http://tempo:4318
+    tls:
+      insecure: true   # WHY: docker compose internal network — no TLS on workshop boundaries
+
+  prometheusremotewrite/mimir:
+    # WHY: PRW is the canonical "many writers, one Mimir" path. Tempo's metrics_generator
+    # (D-06) AND Loki's ruler (D-07) ALSO write to this same /api/v1/push endpoint —
+    # three producers, one consumer, single tenant (multitenancy_enabled: false).
+    endpoint: http://mimir:9009/api/v1/push
+    tls:
+      insecure: true
+
+  otlp_http/loki:
+    # WHY: Loki 3.7.1 accepts native OTLP on /otlp. The collector-contrib v0.151.0
+    # has NO `loki` exporter component — the historical `lokiexporter` was retired in
+    # favor of OTLP-native ingestion. Path /otlp is hardcoded in Loki's HTTP server.
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
+
+# ──────────────────────────────────────────────────────────────────
+# Extensions — Collector-side helpers (not in any pipeline)
+# ──────────────────────────────────────────────────────────────────
+extensions:
+  health_check:
+    # WHY: the docker-compose `healthcheck:` block on otel-collector probes
+    # http://localhost:13133/ — this extension is what answers. D-10 exposes :13133.
+    endpoint: 0.0.0.0:13133
+
+# ──────────────────────────────────────────────────────────────────
+# Service — wire the pipelines
+# ──────────────────────────────────────────────────────────────────
+service:
+  extensions: [health_check]
+
+  # WHY: telemetry block enables the Collector's OWN metrics on :8888 (Prometheus
+  # scrape format) — D-10 exposes the port. Self-observability is itself part of
+  # OTel-ecosystem fluency. Workshop attendees can `curl localhost:8888/metrics`
+  # to see how the Collector profiles its own pipelines (queue depth, dropped spans,
+  # export latency).
+  # NOTE: v0.151.0 uses the MetricsConfig v0.3.0+ format — `readers:` replaces the
+  # old `address:` key (which caused a parse error: 'MetricsConfigV030' has invalid
+  # keys: address). The `pull` prometheus reader exposes metrics on :8888.
+  telemetry:
+    metrics:
+      level: detailed
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                # WHY: 0.0.0.0:8888 so the host port mapping in Plan 04 can reach this.
+                host: 0.0.0.0
+                port: 8888
+
+  pipelines:
+    # WHY: traces — apps emit OTLP → memory_limiter → batch → Tempo via OTLP HTTP.
+    # Phase 11 inserts tail_sampling between batch and the exporter.
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp_http/tempo]
+
+    # WHY: metrics — TWO upstream sources merge into ONE Mimir pipeline:
+    #   1. OTLP from the apps (PeriodicMetricReader → otlp grpc/http exporters).
+    #   2. Prometheus scrapes (rabbitmq, redis_exporter, postgres_exporter).
+    # Both routes converge on prometheusremotewrite/mimir → http://mimir:9009/api/v1/push.
+    # Tempo's metrics_generator and Loki's ruler also remote_write to that same URL,
+    # but they bypass this Collector entirely (D-06 / D-07 — backends are polyglot).
+    metrics:
+      receivers: [otlp, prometheus]
+      processors: [memory_limiter, batch]
+      exporters: [prometheusremotewrite/mimir]
+
+    # WHY: logs — apps emit OTLP via the OpenTelemetryAppender bridge (logback-spring.xml
+    # in each service) → memory_limiter → batch → Loki via OTLP HTTP at /otlp.
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp_http/loki]
