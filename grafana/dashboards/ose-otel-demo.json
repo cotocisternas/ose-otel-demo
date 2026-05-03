@@ -21,7 +21,7 @@
         "enable": true,
         "iconColor": "red",
         "name": "Traces dropped before sampling decision",
-        "expr": "rate(otelcol_processor_tail_sampling_sampling_trace_dropped_too_early_total[1m]) > 0",
+        "expr": "rate(otelcol_processor_tail_sampling_sampling_trace_dropped_too_early_total[5m]) > 0",
         "titleFormat": "traces dropped too early",
         "textFormat": "The tail_sampling buffer is full — traces are being evicted before decision_wait expires, meaning sampling decisions are being lost. This is real data loss, not GC retention."
       }
@@ -413,7 +413,7 @@
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum by (policy, decision) (rate(otelcol_processor_tail_sampling_count_traces_sampled_total[1m]))",
+              "expr": "sum by (policy, decision) (rate(otelcol_processor_tail_sampling_count_traces_sampled_total[5m]))",
               "legendFormat": "{{policy}} / {{decision}}",
               "refId": "A"
             }
@@ -439,7 +439,7 @@
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "sum by (policy, decision) (rate(otelcol_processor_tail_sampling_count_traces_sampled_total{decision=~\"not_sampled|dropped\"}[1m]))",
+              "expr": "sum by (policy, decision) (rate(otelcol_processor_tail_sampling_count_traces_sampled_total{decision=~\"not_sampled|dropped\"}[5m]))",
               "legendFormat": "{{policy}} / {{decision}}",
               "refId": "A"
             }
@@ -536,7 +536,7 @@
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "rate(otelcol_processor_tail_sampling_sampling_trace_dropped_too_early_total[1m])",
+              "expr": "rate(otelcol_processor_tail_sampling_sampling_trace_dropped_too_early_total[5m])",
               "legendFormat": "dropped too early /s",
               "refId": "A"
             }
