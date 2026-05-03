@@ -1,0 +1,124 @@
+# Grafana 13.0.1 datasource provisioning manifest — workshop demo.
+#
+# THIS FILE IS THE WORKSHOP'S TEXTBOOK FOR DATASOURCES.
+# Every block below carries an inline `# WHY:` comment.
+#
+# WHY this file exists: the v1.0 demo used grafana/otel-lgtm's BUNDLED datasource
+# provisioning. Phase 10 replaces lgtm with a standalone grafana/grafana:13.0.1 —
+# we now own the datasource manifest. UIDs are copied VERBATIM from the inspected
+# lgtm container so the existing `ose-otel-demo` dashboard JSON renders without
+# a single panel saying "Datasource not found" (STACK-04 / D-01).
+#
+# Inspection command (research date 2026-05-02):
+#   docker run --rm grafana/otel-lgtm:0.26.0 \
+#     cat /otel-lgtm/grafana/conf/provisioning/datasources/grafana-datasources.yaml
+#
+# CRITICAL TRAP — the metric backend's UID is `prometheus` (NOT `mimir`!).
+# The lgtm container kept the historical Prometheus UID on its bundled Mimir for
+# dashboard backwards-compat. The v1.0 ose-otel-demo.json hardcodes `"uid": "prometheus"`
+# in every panel that queries metrics — renaming to `mimir` would break every panel.
+# D-01 says: keep the contract. The teaching message: "the dashboard is the artifact,
+# the UIDs are the contract — preserve the contract on infra changes."
+#
+# D-02 — ALL cross-signal datalinks land in THIS file in THIS phase. Phase 12 only
+# flips on the SDK side of `ExemplarFilter.traceBased()` and the Collector's
+# `send_exemplars: true` (which is already set in tempo-config.yaml's metrics_generator
+# but not yet in otelcol-config.yaml's exporter — Phase 12 will add that line). The
+# `exemplarTraceIdDestinations` placeholder below is what makes that one-click
+# trace jump light up the moment Phase 12's two SDK lines land — no datasource edit.
+#
+# Mount path inside grafana/grafana:13.0.1 (live-verified):
+#   /etc/grafana/provisioning/datasources/datasources.yaml
+# (Plan 04 docker-compose bind-mounts this file there.)
+#
+# Schema reference: https://grafana.com/docs/grafana/v13.0/administration/provisioning/#data-sources
+
+apiVersion: 1
+
+datasources:
+  # ─────────────────────────── Mimir (UID = "prometheus" — see header trap warning above) ────────
+  - name: Mimir
+    type: prometheus
+    uid: prometheus              # ← LOAD-BEARING D-01: matches dashboard JSON's hardcoded uid
+    url: http://mimir:9009/prometheus    # WHY: Mimir exposes the Prometheus query API at /prometheus
+                                          # (parallel to /api/v1/push for writes — same single-binary process).
+    editable: true               # WHY: workshop attendees can tweak in the UI without container restart
+    jsonData:
+      timeInterval: 10s          # WHY: matches the 10s scrape_interval inherited from infra-exporter jobs
+                                 # (D-05 — Collector's `prometheus` receiver does the scraping; default
+                                 # interval there is 60s but the dashboard panels read fine at 10s).
+      # D-02 — exemplar placeholder (Phase 12 turns SDK side ON via ExemplarFilter.traceBased()).
+      # The destination UID points at the Tempo datasource below — single click on a histogram
+      # exemplar lands on the trace, no manual trace-ID copy-paste.
+      exemplarTraceIdDestinations:
+        - name: trace_id         # WHY: SDK + Collector emit exemplars carrying the {trace_id} label
+          datasourceUid: tempo
+          urlDisplayLabel: "Trace: ${__value.raw}"
+
+  # ─────────────────────────── Tempo (UID = "tempo") ────────
+  - name: Tempo
+    type: tempo
+    uid: tempo
+    url: http://tempo:3200
+    editable: true
+    jsonData:
+      # D-02 — Tempo span → Loki query. Reproduces lgtm's bundled tracesToLogsV2 verbatim.
+      # Click any span in Tempo, click "Logs for this span", land in Loki with the right
+      # tags + trace_id filter prefilled. The query string substitutes {service.name=...}
+      # and the active trace's trace_id at click time.
+      tracesToLogsV2:
+        customQuery: true
+        datasourceUid: loki
+        query: '{${__tags}} | trace_id = "${__trace.traceId}"'
+        tags:
+          - key: service.name
+            value: service_name      # WHY: Tempo span attribute → Loki label name
+        # Optional fields documented in Grafana 13 datasource provisioning schema:
+        # spanStartTimeShift / spanEndTimeShift / filterByTraceID / mappedTags
+        # — omitted here to match the lgtm-bundled minimal shape (D-01 verbatim).
+
+      # D-02 — Tempo span → Mimir query (NEW for v2.0; not in lgtm's bundled).
+      # Click a span, jump to a PromQL chart of request rate from the same service.
+      tracesToMetrics:
+        datasourceUid: prometheus     # WHY: the Mimir datasource (uid="prometheus" per above)
+        tags:
+          - key: service.name
+            value: service             # WHY: traces_spanmetrics_calls_total is labeled `service`
+        queries:
+          - name: "Request rate"
+            query: 'sum(rate(traces_spanmetrics_calls_total{$$__tags}[5m]))'
+                                       # WHY: traces_spanmetrics_calls_total is the RED-rate series
+                                       # produced by Tempo's metrics_generator (tempo-config.yaml).
+
+      # D-02 — service-graph queries Mimir for the precomputed edge metrics
+      # (also produced by Tempo's metrics_generator → Mimir PRW path).
+      serviceMap:
+        datasourceUid: prometheus
+
+      nodeGraph:
+        enabled: true             # WHY: enables the Tempo-native node-graph visualization
+
+      lokiSearch:
+        datasourceUid: loki       # WHY: enables the "Logs for this trace" panel inside the trace view
+
+      search:
+        hide: false               # WHY: keeps Tempo's native search UI visible (default)
+
+  # ─────────────────────────── Loki (UID = "loki") ────────
+  - name: Loki
+    type: loki
+    uid: loki
+    url: http://loki:3100
+    editable: true
+    jsonData:
+      # D-02 — Loki log → Tempo trace. Reproduces lgtm's bundled derivedFields verbatim.
+      # Loki extracts trace_id from log labels (Phase 5 LOG-03 stamps it via OpenTelemetryAppender)
+      # and renders it as a clickable button that jumps to the Tempo trace view.
+      derivedFields:
+        - name: trace_id
+          matcherType: label              # WHY: trace_id is a Loki LABEL (set by OpenTelemetryAppender),
+                                          # not a regex extraction over the log line body.
+          matcherRegex: trace_id          # WHY: the label NAME to match
+          url: "${__value.raw}"           # WHY: ${__value.raw} = the trace_id label value at click time
+          datasourceUid: tempo            # WHY: jumps into the Tempo datasource above
+          urlDisplayLabel: "Trace: ${__value.raw}"
