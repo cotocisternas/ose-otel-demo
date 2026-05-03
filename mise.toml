@@ -54,7 +54,7 @@ echo "--- Docker ---"
 docker info > /dev/null 2>&1 || { echo "ERROR: Docker not running"; exit 1; }
 echo "OK"
 echo
-echo "--- Port availability (D-11: 14 ports — 5 v1.0 + 1 v1.0 oversight (15692) + 8 v2.0 additions) ---"
+echo "--- Port availability (D-11: 16 ports — 5 v1.0 + 1 v1.0 oversight (15692) + 8 v2.0 additions + 2 app ports (IN-03)) ---"
 # Five v1.0 ports preserved verbatim: 3000 (Grafana), 4317/4318 (OTLP gRPC/HTTP at the
 # Collector ingress), 5672/15672 (RabbitMQ AMQP + management UI). 15692 (RabbitMQ
 # prometheus plugin) was port-mapped in compose but absent from v1.0 preflight —
@@ -62,7 +62,11 @@ echo "--- Port availability (D-11: 14 ports — 5 v1.0 + 1 v1.0 oversight (15692
 #   6379  (Valkey)              5432 (Postgres)        — were missing too (preflight oversight)
 #   3200  (Tempo HTTP API)      9009 (Mimir HTTP API)  3100 (Loki HTTP API)
 #   13133 (Collector health)    8888 (Collector self-metrics)  8889 (Collector prometheus_exporter)
-for port in 3000 4317 4318 5672 15672 15692 6379 5432 3200 9009 3100 13133 8888 8889; do
+# IN-03: app ports 8080/8081 (producer + consumer Tomcat) — listed in README's
+# "Required free ports" table but previously absent from preflight, so a
+# pre-existing dev server on 8080 produced a confusing "Tomcat: port in use"
+# error at `mise run dev:producer` time instead of a clean preflight failure.
+for port in 3000 4317 4318 5672 15672 15692 6379 5432 3200 9009 3100 13133 8888 8889 8080 8081; do
   # WR-04: ss -tln is Linux-only; on macOS the command silently fails (output
   # suppressed by 2>/dev/null) and grep returns false, so every port falsely
   # reports "free". The lsof fallback works on both macOS and Linux and is the
