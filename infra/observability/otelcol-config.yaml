@@ -76,6 +76,20 @@ receivers:
               labels:
                 source: infra-exporter
 
+        # WHY (IN-06): scrape the Collector's own self-metrics so they land in Mimir
+        # alongside app + infra-exporter series. The telemetry.metrics block below
+        # already EXPOSES the Prometheus endpoint on :8888; this job is what
+        # actually INGESTS them into Mimir so they appear in Grafana dashboards
+        # (rather than being curl-only). 'localhost' here resolves inside the
+        # collector container — the receiver and the scrape target are the same
+        # process. Static label `source: infra-exporter` matches the workshop's
+        # two-lens story (sibling to rabbitmq / redis_exporter / postgres_exporter).
+        - job_name: otelcol
+          static_configs:
+            - targets: ['localhost:8888']
+              labels:
+                source: infra-exporter
+
 # ──────────────────────────────────────────────────────────────────
 # Processors — what happens between RECEIVE and EXPORT
 # ──────────────────────────────────────────────────────────────────
