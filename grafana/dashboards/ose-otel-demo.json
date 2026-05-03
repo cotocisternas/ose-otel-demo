@@ -20,10 +20,10 @@
         },
         "enable": true,
         "iconColor": "red",
-        "name": "Tail-sampling buffer saturated",
-        "expr": "otelcol_processor_tail_sampling_sampling_traces_on_memory >= 10000",
-        "titleFormat": "buffer saturated",
-        "textFormat": "num_traces hit cap (10000) — traces older than the eviction window are being dropped without reaching the composite policy. Threshold mirrors infra/observability/otelcol-config.yaml tail_sampling.num_traces; update both in lockstep if the cap changes."
+        "name": "Traces dropped before sampling decision",
+        "expr": "rate(otelcol_processor_tail_sampling_sampling_trace_dropped_too_early_total[1m]) > 0",
+        "titleFormat": "traces dropped too early",
+        "textFormat": "The tail_sampling buffer is full — traces are being evicted before decision_wait expires, meaning sampling decisions are being lost. This is real data loss, not GC retention."
       }
     ]
   },
@@ -519,13 +519,14 @@
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "gridPos": { "h": 9, "w": 8, "x": 16, "y": 31 },
           "id": 14,
-          "title": "Traces in memory (sanity gauge)",
+          "title": "Traces dropped before decision (buffer pressure)",
           "type": "timeseries",
-          "description": "Active traces buffered for evaluation. Should oscillate around `decision_wait × incoming_rps` ≈ 2000 at workshop default load. Approaching `num_traces: 10000` means the buffer is filling up and `sampling_trace_dropped_too_early` will start ticking — F2-2 canary. RESEARCH §3.3 bonus panel.",
+          "description": "Rate of traces evicted from the tail_sampling buffer BEFORE decision_wait expired — real data loss from buffer pressure. When this is > 0, the composite policy never got to evaluate those traces. Zero is healthy. Sustained > 0 means num_traces (currently 10000) is too small for the incoming trace rate or decision_wait (currently 10s) is too long. The old metric (sampling_traces_on_memory) included decided traces in GC retention and was misleading — it showed the hashmap size, not pending work.",
           "fieldConfig": {
             "defaults": {
-              "color": { "mode": "palette-classic" },
-              "custom": { "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10 }
+              "color": { "mode": "fixed", "fixedColor": "red" },
+              "custom": { "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 2, "fillOpacity": 30 },
+              "unit": "ops"
             }
           },
           "options": {
@@ -535,8 +536,8 @@
           "targets": [
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
-              "expr": "otelcol_processor_tail_sampling_sampling_traces_on_memory",
-              "legendFormat": "in-memory traces",
+              "expr": "rate(otelcol_processor_tail_sampling_sampling_trace_dropped_too_early_total[1m])",
+              "legendFormat": "dropped too early /s",
               "refId": "A"
             }
           ]
