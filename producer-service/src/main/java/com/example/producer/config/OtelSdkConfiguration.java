@@ -32,7 +32,6 @@ import io.opentelemetry.sdk.trace.samplers.Sampler;
 import io.opentelemetry.semconv.ServiceAttributes;
 import io.opentelemetry.semconv.incubating.DeploymentIncubatingAttributes;
 
-import jakarta.annotation.PreDestroy;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -114,26 +113,41 @@ public class OtelSdkConfiguration {
     /**
      * The fully-built OpenTelemetry SDK as a Spring bean.
      *
-     * destroyMethod="close" is load-bearing: when Spring shuts the context down
-     * (Ctrl-C on `mise run dev:producer`), Spring calls openTelemetry.close(),
-     * which calls shutdown().join(10s), which cascades to the SdkTracerProvider,
-     * SdkMeterProvider, AND SdkLoggerProvider — each calls shutdown() on its
-     * respective Batch{Span,Metric,LogRecord}Processor (the metric pipeline's
-     * PeriodicMetricReader has its own shutdown path), which forces a final
-     * flush of any items still in flight in each pipeline. Without this binding,
-     * the last 5 seconds of spans (BatchSpanProcessor's 5s default) AND the
-     * last 1 second of log records (BatchLogRecordProcessor's 1s default —
-     * RESEARCH Finding #4) AND the last collection cycle of metrics
-     * (PeriodicMetricReader's 10s interval, METRIC-01) would be silently
-     * dropped on graceful shutdown — a textbook OTel pitfall, multiplied by
-     * three signals.
+     * <p><b>Shutdown is delegated to the {@link CloseableOpenTelemetrySdk} bean below
+     * (WR-01 fix).</b> The shutdown sequence — install(noop) BEFORE sdk.close() — must
+     * happen in a single call stack to guarantee that no log event racing the shutdown
+     * hits a closed exporter. Spring's previous shape — `destroyMethod="close"` on
+     * this bean plus a `@PreDestroy` on the @Configuration — could not provide that
+     * guarantee because Spring destroys beans in reverse-creation order and the
+     * @Configuration bean (created first) is destroyed AFTER its @Bean factory
+     * outputs (created later) — install(noop) would have run AFTER sdk.close(),
+     * defeating the protection. The holder bean below depends on this bean (so it is
+     * created later) and therefore destroyed first; its close() runs install(noop)
+     * then sdk.close() in one call stack.
+     *
+     * <p>{@code destroyMethod = ""} disables Spring's normal `close()` autodetection
+     * on this bean — the holder owns the lifecycle. {@link OpenTelemetrySdk#close()}
+     * is idempotent so a double-close from misconfiguration would be safe, but we
+     * disable autodetection for clarity.
+     *
+     * <p>{@link CloseableOpenTelemetrySdk#close()} cascades through {@link OpenTelemetrySdk#close()}
+     * to {@link SdkTracerProvider#shutdown()}, {@link SdkMeterProvider#shutdown()}, AND
+     * {@link SdkLoggerProvider#shutdown()} — each calls shutdown() on its respective
+     * Batch{Span,Metric,LogRecord}Processor (the metric pipeline's
+     * PeriodicMetricReader has its own shutdown path), which forces a final flush of
+     * any items still in flight in each pipeline. Without this binding, the last 5
+     * seconds of spans (BatchSpanProcessor's 5s default) AND the last 1 second of log
+     * records (BatchLogRecordProcessor's 1s default — RESEARCH Finding #4) AND the
+     * last collection cycle of metrics (PeriodicMetricReader's 10s interval,
+     * METRIC-01) would be silently dropped on graceful shutdown — a textbook OTel
+     * pitfall, multiplied by three signals.
      *
      * Note: we call .build(), NOT .buildAndRegisterGlobal(). The demo
      * injects OpenTelemetry / Tracer as Spring beans (see the @Bean
      * Tracer below); GlobalOpenTelemetry is never read. Skipping global
      * registration also keeps Phase 6 test isolation simple.
      */
-    @Bean(destroyMethod = "close")
+    @Bean(destroyMethod = "")
     OpenTelemetry openTelemetry() {
         // ----- Resource: identifies this service in Tempo, Mimir, Loki -----
         //
@@ -278,31 +292,60 @@ public class OtelSdkConfiguration {
     }
 
     /**
-     * Shutdown hook: clear the OpenTelemetryAppender's reference to the SDK
-     * before Spring closes it (D-08 carryforward — bookend to the inline
-     * install() on line 224).
+     * Lifecycle holder that owns the SDK shutdown sequence (WR-01 fix — D-08
+     * carryforward — bookend to the inline install() on line 275).
      *
-     * <p>Why: {@code OpenTelemetryAppender.install(sdk)} writes to global
-     * Logback state — the appender holds a strong reference to the SDK. The
-     * SDK bean's {@code destroyMethod="close"} closes the SDK during Spring
-     * shutdown, but it does NOT clear the appender's reference. Any log
-     * event that races the shutdown (Spring shutdown is asynchronous; AMQP
-     * listeners, thread pools, and `@PreDestroy` hooks can still emit logs
-     * while the SDK is closing) would then hit a closed exporter and either
-     * silently drop or surface a "exporter is closed" error.
+     * <p>Spring destroys beans in reverse-creation order. This bean takes the
+     * {@link OpenTelemetry} bean as a constructor parameter, so it is created
+     * AFTER the SDK and therefore destroyed BEFORE it. Its {@code close()} runs
+     * {@code OpenTelemetryAppender.install(OpenTelemetry.noop())} FIRST, then
+     * delegates to {@code sdk.close()} — both calls in a single, ordered call stack.
      *
-     * <p>{@code install(OpenTelemetry.noop())} swaps the appender's reference
-     * for a no-op SDK that accepts log events and discards them — the
-     * idempotent uninstall path documented on the {@code openTelemetry()}
-     * @Bean above. {@code @PreDestroy} runs BEFORE the SDK bean's
-     * {@code close()} (Spring destroys beans in reverse-creation order, but
-     * the @PreDestroy on this @Configuration class runs as part of THIS
-     * bean's destruction — which is fine because we depend on no SDK
-     * reference here, just the static install() call).
+     * <p>The previous shape — {@code @PreDestroy} on the @Configuration class
+     * plus {@code destroyMethod="close"} on the SDK bean — looked correct but
+     * inverted the guarantee: the @Configuration bean is created FIRST (Spring
+     * instantiates the @Configuration bean before invoking its @Bean factory
+     * methods), so it is destroyed LAST. install(noop) would have run AFTER
+     * sdk.close(), leaving any log event emitted between those two steps to
+     * hit a closed exporter. WR-01 documented and fixes this.
      */
-    @PreDestroy
-    void uninstallLogbackAppender() {
-        OpenTelemetryAppender.install(OpenTelemetry.noop());
+    @Bean(destroyMethod = "close")
+    CloseableOpenTelemetrySdk openTelemetryShutdownGuard(OpenTelemetry openTelemetry) {
+        return new CloseableOpenTelemetrySdk((OpenTelemetrySdk) openTelemetry);
+    }
+
+    /**
+     * AutoCloseable wrapper around {@link OpenTelemetrySdk} whose {@link #close()}
+     * runs {@code OpenTelemetryAppender.install(OpenTelemetry.noop())} BEFORE
+     * delegating to {@code sdk.close()} — guaranteeing the install(noop) precedes
+     * the SDK shutdown in a single call stack (WR-01).
+     *
+     * <p>Why a wrapper rather than a {@code @PreDestroy} on this @Configuration:
+     * Spring destroys beans in reverse-creation order. The @Configuration bean is
+     * created first (instantiated before its @Bean factories run) and therefore
+     * destroyed last — a {@code @PreDestroy} method on it would run AFTER the SDK
+     * bean's own destroy method, defeating the protective swap. The wrapper, taking
+     * the SDK as a constructor parameter, is created AFTER and destroyed BEFORE,
+     * which is the ordering we need.
+     */
+    static final class CloseableOpenTelemetrySdk implements AutoCloseable {
+
+        private final OpenTelemetrySdk sdk;
+
+        CloseableOpenTelemetrySdk(OpenTelemetrySdk sdk) {
+            this.sdk = sdk;
+        }
+
+        @Override
+        public void close() {
+            // Step 1: swap the appender's reference for noop BEFORE the SDK closes.
+            // Any log event emitted between this call and sdk.close() (AMQP
+            // listeners, thread pools, other @PreDestroy hooks) is safely discarded
+            // by the noop SDK rather than hitting a closed exporter.
+            OpenTelemetryAppender.install(OpenTelemetry.noop());
+            // Step 2: shut the SDK down (forces final flush of spans, metrics, logs).
+            sdk.close();
+        }
     }
 
     /**
