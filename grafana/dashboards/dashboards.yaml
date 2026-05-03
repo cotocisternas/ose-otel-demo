@@ -5,14 +5,23 @@
 #
 # Schema: https://grafana.com/docs/grafana/latest/administration/provisioning/#dashboards
 #
-# Mount point: this file lives next to ose-otel-demo.json under
-# ./grafana/dashboards/ on the host. The lgtm service in docker-compose.yml
-# bind-mounts that directory read-only over
-# /otel-lgtm/grafana/conf/provisioning/dashboards inside the container, where
-# the bundled Grafana auto-loads any provisioning manifest it finds.
+# Mount points (Phase 10 / RESEARCH §Pitfall 8 — standalone Grafana 13 paths
+# differ from lgtm's internal layout):
 #
-# The `options.path` field below points at the SAME in-container directory so
-# Grafana scans it for JSON dashboards.
+#   THIS file (dashboards.yaml) is bind-mounted at
+#     /etc/grafana/provisioning/dashboards/dashboards.yaml
+#   inside the standalone grafana/grafana:13.0.1 container.
+#
+#   The dashboard JSON files (ose-otel-demo.json, ose-otel-infra.json,
+#   ose-otel-noc.json) are bind-mounted from ./grafana/dashboards onto
+#     /var/lib/grafana/dashboards/
+#   and the `options.path` field below points at THAT directory so Grafana
+#   scans it for the JSON files.
+#
+# The dashboard JSONs themselves are UNTOUCHED across the v1.0 → v2.0 stack
+# migration: their hardcoded `"uid": "prometheus"`, `"uid": "tempo"`,
+# `"uid": "loki"` references resolve against grafana/datasources.yaml's
+# verbatim-from-lgtm UIDs (D-01).
 apiVersion: 1
 
 providers:
@@ -25,5 +34,8 @@ providers:
     updateIntervalSeconds: 10
     allowUiUpdates: false
     options:
-      path: /otel-lgtm/grafana/conf/provisioning/dashboards
+      # WHY: Phase 10 — standalone grafana/grafana:13.0.1 reads dashboard JSONs
+      # from /var/lib/grafana/dashboards. The v1.0 lgtm-internal path
+      # /otel-lgtm/grafana/conf/provisioning/dashboards no longer exists.
+      path: /var/lib/grafana/dashboards
       foldersFromFilesStructure: false
