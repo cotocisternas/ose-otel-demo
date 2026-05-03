@@ -54,8 +54,15 @@ echo "--- Docker ---"
 docker info > /dev/null 2>&1 || { echo "ERROR: Docker not running"; exit 1; }
 echo "OK"
 echo
-echo "--- Port availability (3000, 4317, 4318, 5672, 15672) ---"
-for port in 3000 4317 4318 5672 15672; do
+echo "--- Port availability (D-11: 14 ports — 5 v1.0 + 1 v1.0 oversight (15692) + 8 v2.0 additions) ---"
+# Five v1.0 ports preserved verbatim: 3000 (Grafana), 4317/4318 (OTLP gRPC/HTTP at the
+# Collector ingress), 5672/15672 (RabbitMQ AMQP + management UI). 15692 (RabbitMQ
+# prometheus plugin) was port-mapped in compose but absent from v1.0 preflight —
+# Phase 10 corrects that oversight here. Eight new ports per D-10:
+#   6379  (Valkey)              5432 (Postgres)        — were missing too (preflight oversight)
+#   3200  (Tempo HTTP API)      9009 (Mimir HTTP API)  3100 (Loki HTTP API)
+#   13133 (Collector health)    8888 (Collector self-metrics)  8889 (Collector prometheus_exporter)
+for port in 3000 4317 4318 5672 15672 15692 6379 5432 3200 9009 3100 13133 8888 8889; do
   if ss -tln 2>/dev/null | grep -q ":${port} "; then
     echo "ERROR: Port ${port} is in use. Run: lsof -i:${port} to find the process."
     exit 1
@@ -296,3 +303,130 @@ run = "xdg-open http://localhost:3000 2>/dev/null || open http://localhost:3000"
 [tasks."ui:rabbitmq"]
 description = "Open RabbitMQ Management UI in the default browser"
 run = "xdg-open http://localhost:15672 2>/dev/null || open http://localhost:15672"
+
+# ──────────────────────────────────────────────────────────────────
+# Phase 10 — verify:datasources (D-03)
+# ──────────────────────────────────────────────────────────────────
+[tasks."verify:datasources"]
+description = "Phase 10 invariant: Grafana provisioned datasource UIDs match the dashboard JSON contract"
+run = """
+set -e
+
+# WHY: ose-otel-demo.json hardcodes uid='tempo', 'prometheus', 'loki' (NOT 'mimir' — D-01).
+# This task fast-fails if any drift, BEFORE attendees see blank dashboards.
+# Mirrors the verify:bom task pattern (Phase 2 invariant): compute expected, compute
+# actual via curl + jq, diff, non-zero exit on drift.
+#
+# RETRY LOOP (6 attempts × 5s sleep → up to 30s total):
+# RESEARCH cautioned that Mimir cold-start can be 10-25s on slower workshop laptops,
+# and Grafana datasource provisioning races behind backend readiness. A single curl
+# right after `docker compose up --wait` can hit Grafana before its provisioning
+# pass finishes. The retry loop tolerates that startup race without forcing every
+# caller (Plan 05 smoke, README Step 10 attendee invocation, CI) to wrap the call.
+
+EXPECTED='loki
+prometheus
+tempo'
+
+# Bounded retry: try 6 times, sleep 5s between attempts (up to 30s tolerance).
+# WHY 6×5: Mimir cold-start 10-25s + Grafana provisioning lag → 30s upper bound
+# is comfortable on slower laptops without making a healthy stack feel sluggish.
+ATTEMPTS=6
+SLEEP_SECS=5
+LAST_ERR=""
+for i in $(seq 1 $ATTEMPTS); do
+  # Hit Grafana's HTTP API (no auth needed — anonymous Admin enabled in compose env).
+  ACTUAL=$(curl -fsS http://localhost:3000/api/datasources 2>&1) || {
+    LAST_ERR="curl failed: $ACTUAL"
+    [ "$i" -lt "$ATTEMPTS" ] && { echo "verify:datasources: attempt $i/$ATTEMPTS — Grafana not ready yet ($LAST_ERR); retrying in ${SLEEP_SECS}s..."; sleep $SLEEP_SECS; continue; }
+    echo "ERROR: verify:datasources timed out after $((ATTEMPTS * SLEEP_SECS))s — Grafana not reachable on :3000."
+    echo "Last error: $LAST_ERR"
+    echo "Run: mise run infra:up"
+    exit 1
+  }
+
+  # Validate the JSON shape contains at least one entry with a uid; if Grafana
+  # is up but provisioning hasn't completed, the array will be empty.
+  if ! printf '%s\n' "$ACTUAL" | jq -e 'type == "array" and length > 0' >/dev/null 2>&1; then
+    LAST_ERR="Grafana returned empty datasource array (provisioning still in progress?)"
+    [ "$i" -lt "$ATTEMPTS" ] && { echo "verify:datasources: attempt $i/$ATTEMPTS — $LAST_ERR; retrying in ${SLEEP_SECS}s..."; sleep $SLEEP_SECS; continue; }
+    echo "ERROR: verify:datasources timed out after $((ATTEMPTS * SLEEP_SECS))s — $LAST_ERR"
+    exit 1
+  fi
+
+  # We have a non-empty array; break and run the contract diff below.
+  break
+done
+
+# Extract just the uid field from each entry, sort, dedupe.
+ACTUAL_UIDS=$(printf '%s\n' "$ACTUAL" | jq -r '.[].uid' | sort -u)
+
+# Compare expected vs actual — diff returns non-zero on any drift.
+if ! diff <(printf '%s\n' "$EXPECTED") <(printf '%s\n' "$ACTUAL_UIDS") > /tmp/ds-diff 2>&1; then
+  echo "ERROR: Grafana datasource UIDs drifted from the dashboard contract."
+  echo "Expected (3 UIDs):"
+  printf '  %s\n' "$EXPECTED"
+  echo "Actual (provisioned by grafana/datasources.yaml):"
+  printf '  %s\n' "$ACTUAL_UIDS"
+  echo
+  echo "Diff:"
+  cat /tmp/ds-diff
+  echo
+  echo "If you renamed a datasource, the ose-otel-demo dashboard JSON must be updated to match (NOT recommended — keep the contract)."
+  exit 1
+fi
+
+echo "Phase 10 datasource contract: 3 UIDs match (loki, prometheus, tempo)."
+"""
+
+# ──────────────────────────────────────────────────────────────────
+# Phase 10 — verify:images (D-14 / X-3 — STACK-02 floating-tag guardrail)
+# ──────────────────────────────────────────────────────────────────
+[tasks."verify:images"]
+description = "Phase 10 invariant: every docker-compose image: tag is a fully-qualified patch version (no floating tags)"
+run = """
+set -e
+
+# WHY: workshop reproducibility (X-3 / D-14). Floating tags break clones across cohorts.
+# Floating patterns to reject:
+#   - :latest                              (unconditional)
+#   - :NN              (e.g., :17 :3)      (major-only)
+#   - :NN.NN           (e.g., :3.7 :2.10)  (major.minor only — no patch)
+#   - no tag at all    (e.g., 'image: rabbitmq')
+#
+# Acceptable patterns:
+#   - :NN.NN.NN        (e.g., :3.7.1 :13.0.1)
+#   - :NN.NN-suffix    (e.g., :4.3-management-alpine — has a flavor suffix; not floating)
+#   - :NN.NN.NN-suffix (e.g., :17-alpine)
+#   - vX.Y.Z           (e.g., v1.83.0 — Prometheus-style v-prefix)
+
+# Extract image: lines, ignore comments.
+LINES=$(grep -E '^[[:space:]]*image:' docker-compose.yml | grep -v '^[[:space:]]*#')
+
+# Floating-tag regex:
+#   - no colon at all (no tag)
+#   - :latest
+#   - :digit-only at end of line
+#   - :digit.digit (without trailing .digit) at end of line
+FLOATING=$(printf '%s\n' "$LINES" | grep -E '(image:[[:space:]]*[^:[:space:]]+[[:space:]]*$|:latest[[:space:]]*$|:[0-9]+[[:space:]]*$|:[0-9]+\\.[0-9]+[[:space:]]*$)' || true)
+
+if [ -n "$FLOATING" ]; then
+  echo "ERROR: Phase 10 invariant violated — docker-compose.yml contains floating image tags:"
+  printf '%s\n' "$FLOATING"
+  echo
+  echo "Pin every image to an exact patch version. Examples:"
+  echo "  rabbitmq:4.3-management-alpine     # OK (flavor suffix is not floating)"
+  echo "  grafana/grafana:13.0.1             # OK (full patch version)"
+  echo "  grafana/grafana:13.0               # WRONG (minor only — floating)"
+  echo "  grafana/grafana:latest             # WRONG (latest — floating)"
+  exit 1
+fi
+
+# Also confirm we have at least 5 image: lines (the v2.0 5-container minimum).
+COUNT=$(printf '%s\n' "$LINES" | wc -l)
+if [ "$COUNT" -lt 5 ]; then
+  echo "WARNING: only $COUNT image: lines found — v2.0 expects at least 5 observability containers."
+fi
+
+echo "Phase 10 image-pin contract: $COUNT image:s, all pinned to exact patch versions."
+"""
