@@ -562,3 +562,39 @@ fi
 echo "verify:tail-sampling tier-2: all three sub-policy values returned non-empty Tempo /api/search hits."
 echo "verify:tail-sampling: GREEN — composite + sub-policy contracts intact."
 """
+
+# Phase 12 — verify:exemplars (D-E7)
+# ──────────────────────────────────────────────────────────────────
+[tasks."verify:exemplars"]
+description = "Phase 12 invariant: Mimir stores at least one exemplar with trace_id for http_server_request_duration_seconds_bucket — proves SDK ExemplarFilter + Mimir limits config are both active."
+run = """
+set -e
+
+# Query the last 10 minutes of exemplars from Mimir's Prometheus-compatible API.
+# Prerequisites: mise run load (generate traffic), wait ~30s for metrics export, then run this task.
+START=$(date -u -d '10 minutes ago' '+%Y-%m-%dT%H:%M:%SZ')
+END=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+
+echo "verify:exemplars: querying Mimir exemplar API for http_server_request_duration_seconds_bucket..."
+RESULT=$(curl -fsS "http://localhost:9009/prometheus/api/v1/query_exemplars?query=http_server_request_duration_seconds_bucket&start=${START}&end=${END}")
+
+# Assert: .data array non-empty AND first series has exemplars AND first exemplar has a trace_id label.
+# An empty .data array means the exemplar pipeline is not yet active (check all three layers).
+if ! printf '%s' "$RESULT" | jq -e '.data | length > 0 and (.[0].exemplars | length > 0) and (.[0].exemplars[0].labels.trace_id != null)' >/dev/null 2>&1; then
+  echo "ERROR: verify:exemplars — no exemplars with trace_id found in Mimir for the last 10 minutes"
+  echo "Diagnose in order:"
+  echo "  1. SDK layer: grep 'setExemplarFilter' producer-service/src/main/java/com/example/producer/config/OtelSdkConfiguration.java"
+  echo "     Expected: .setExemplarFilter(ExemplarFilter.traceBased())"
+  echo "  2. Scope fix: grep -c 'try (Scope' producer-service/src/main/java/com/example/producer/config/HttpServerSpanFilter.java"
+  echo "     Expected: 0 (must use manual scope, not try-with-resources)"
+  echo "  3. Mimir limits: grep 'max_global_exemplars_per_user' infra/observability/mimir-config.yaml"
+  echo "     Expected: max_global_exemplars_per_user: 100000"
+  echo "  4. Mimir restart: docker compose restart mimir && sleep 10"
+  echo "  5. Generate load: mise run load && sleep 30 && mise run verify:exemplars"
+  echo "Mimir API response: $RESULT"
+  exit 1
+fi
+
+echo "verify:exemplars: GREEN — exemplars with trace_id are present in Mimir. Click any dot on the"
+echo "  'HTTP Request Duration (with Exemplars)' panel in the ose-otel-demo dashboard to navigate to Tempo."
+"""
