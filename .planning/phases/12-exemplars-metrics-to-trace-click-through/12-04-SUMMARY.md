@@ -32,7 +32,7 @@ requirements-completed:
 metrics:
   duration: "5min"
   completed: "2026-05-03T20:34:16Z"
-  tasks_completed: 2
+  tasks_completed: 3
   files_modified: 1
 ---
 
@@ -45,7 +45,7 @@ metrics:
 - **Duration:** ~5 min
 - **Started:** 2026-05-03T20:28:45Z
 - **Completed:** 2026-05-03T20:34:16Z
-- **Tasks:** 2 (1 smoke test, 1 README write)
+- **Tasks:** 3 (1 smoke test, 1 README write, 1 human-verify checkpoint approved)
 - **Files modified:** 1 (README.md)
 
 ## Accomplishments
@@ -62,8 +62,9 @@ metrics:
 
 1. **Task 1: Restart infra and run end-to-end smoke test** — no file commit (infrastructure verification only; services restarted in-process)
 2. **Task 2: Write README §12 section** - `922ac85` (feat)
+3. **Task 3: Human-verify checkpoint** — EXMP-04 approved: exemplar dot click-through to Tempo confirmed
 
-**Plan metadata:** _(docs commit — to follow)_
+**Plan metadata:** `0153d8f` (docs: complete plan — pre-checkpoint), final commit below (post-checkpoint)
 
 ## Files Created/Modified
 
@@ -106,10 +107,17 @@ metrics:
 
 T-12-07 mitigated: README §12 "What to look for" section includes a `> Production consideration.` callout noting that `/prometheus/api/v1/query_exemplars` endpoint should be restricted to authorized internal users in production. This surfaces the ASVS L1 access control concern to workshop attendees.
 
+## Human Verification (Task 3 — checkpoint:human-verify)
+
+**EXMP-04 APPROVED.** User confirmed:
+- Exemplar dots visible on the "HTTP Request Duration (with Exemplars)" histogram panel in the ose-otel-demo dashboard
+- Clicking an exemplar dot navigates directly to the originating trace in Tempo
+- No manual trace-ID copy-paste required — one-click metric-to-trace click-through works end-to-end
+
 ## Next Phase Readiness
 
-- Phase 12 is complete. All four plans (01-04) have been committed.
-- End-to-end exemplar pipeline is verified GREEN.
+- Phase 12 is complete. All four plans (01-04) have been committed and the human-verify checkpoint is approved.
+- End-to-end exemplar pipeline is verified GREEN (automated + human).
 - Git tag `step-12-exemplars` is ready to be applied per WORK-01 / D-21 (orchestrator-owned gate).
 - Phase 13 (log-based-metrics-loki-recording-rules) can proceed — no blockers from Phase 12.
 

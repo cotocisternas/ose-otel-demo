@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: Production Shapes
 status: verifying
 stopped_at: Phase 12 context gathered
-last_updated: "2026-05-03T20:35:58.476Z"
+last_updated: "2026-05-03T20:58:14.832Z"
 last_activity: 2026-05-03
 progress:
   total_phases: 9
@@ -111,6 +111,7 @@ Recent decisions affecting current work:
 - [Phase 12-01]: scope.close() placed as last statement in HttpServerSpanFilter.doFilterInternal() finally block (after requestDuration.record() and span.end()) — D-E1/F3-1 mitigation: ExemplarFilter.traceBased() requires an active span context to attach trace_id/span_id to histogram data points
 - [Phase ?]: Panel id=15 row uses panels: [] — uncollapsed rows have sibling panels at top-level array, not nested inside the row object
 - [Phase ?]: [Phase 12-03]: verify:exemplars queries Mimir /query_exemplars API with 10-minute window; jq asserts trace_id label on first exemplar
+- [Phase 12-04]: EXMP-04 human-verify checkpoint APPROVED — exemplar dot click-through to Tempo trace waterfall confirmed working end-to-end; no manual trace-ID copy-paste required. Services required restart after SDK changes from Plan 01 (spring-boot:run loads classes at JVM startup, not hot-reload across sessions).
 
 ### Roadmap Evolution
 
@@ -153,6 +154,6 @@ Items acknowledged and carried forward at milestone close on 2026-05-02:
 
 ## Session Continuity
 
-Last session: 2026-05-03T20:35:58.468Z
+Last session: 2026-05-03T20:58:14.825Z
 Stopped at: Phase 12 context gathered
 Resume file: None
