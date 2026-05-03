@@ -62,7 +62,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 - [x] 10-01-PLAN.md — PREREQ-01: diagnose + fix BeanCurrentlyInCreationException cycle in both OtelSdkConfiguration.java files (D-12 inline-assign)
 - [x] 10-02-PLAN.md — Author 5 backend YAML configs under infra/observability/ (otelcol, tempo, mimir, loki, .gitkeep) — verbatim live-verified shapes, multitenancy_enabled, otlp_http
 - [x] 10-03-PLAN.md — Author grafana/datasources.yaml (verbatim lgtm UIDs prometheus/tempo/loki + D-02 cross-signal datalinks); update grafana/dashboards/dashboards.yaml options.path (Pitfall 8)
-- [ ] 10-04-PLAN.md — Rewrite docker-compose.yml (drop lgtm, add 5 obs services, 5 named volumes, healthchecks, depends_on); delete grafana/prometheus.yaml; extend mise.toml (preflight + verify:datasources + verify:images)
+- [x] 10-04-PLAN.md — Rewrite docker-compose.yml (drop lgtm, add 5 obs services, 5 named volumes, healthchecks, depends_on); delete grafana/prometheus.yaml; extend mise.toml (preflight + verify:datasources + verify:images)
 - [ ] 10-05-PLAN.md — End-to-end smoke (5 SCs); human-verify dashboard + capture step-04-metrics.png (PREREQ-02 / D-13); README Step 10
 
 ---
