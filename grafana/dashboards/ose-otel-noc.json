@@ -71,8 +71,8 @@
     {
       "type": "stat",
       "id": 101,
-      "title": "Message error rate (5m)",
-      "description": "End-to-end messaging error rate (5m): ERROR vs total across BOTH producer-publish (PRODUCER-kind) and consumer-process (CONSUMER-kind) spans, summed across both services. NOC framing: 'message' = one AMQP envelope crossing the broker boundary, counted once on publish and once on process. A failure on either side counts. With the demo's 1-in-10 deterministic consumer failure and zero publish failures, expect ~5% at steady state (10% of consumer halves = half of all message-spans). Diverges from the consumer-side stat in 301 by exactly the producer's success volume.",
+      "title": "Order error rate (5m)",
+      "description": "Percentage of orders that fail during consumer processing. Numerator: consumer CONSUMER-kind error spans from Tempo spanmetrics (100% retained by tail sampling keep-errors policy — accurate absolute count). Denominator: orders_created_total (app-emitted counter, not affected by tail sampling). With the demo's 1-in-10 deterministic consumer failure, expect ~10% at steady state. The previous query used spanmetrics for BOTH numerator and denominator, which was inflated ~4x because tail sampling drops ~80% of OK spans but keeps 100% of errors.",
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "gridPos": {"h": 5, "w": 4, "x": 4, "y": 0},
       "fieldConfig": {
@@ -80,8 +80,8 @@
           "color": {"mode": "thresholds"},
           "thresholds": {"mode": "absolute", "steps": [
             {"color": "green", "value": null},
-            {"color": "yellow", "value": 5},
-            {"color": "red", "value": 15}
+            {"color": "yellow", "value": 12},
+            {"color": "red", "value": 20}
           ]},
           "unit": "percent",
           "decimals": 1
@@ -98,7 +98,7 @@
       },
       "targets": [{
         "datasource": {"type": "prometheus", "uid": "prometheus"},
-        "expr": "100 * (sum(rate(traces_spanmetrics_calls_total{service=~\"order-(producer|consumer)\",span_kind=~\"SPAN_KIND_(PRODUCER|CONSUMER)\",status_code=\"STATUS_CODE_ERROR\"}[5m])) or vector(0)) / clamp_min(sum(rate(traces_spanmetrics_calls_total{service=~\"order-(producer|consumer)\",span_kind=~\"SPAN_KIND_(PRODUCER|CONSUMER)\"}[5m])), 1)",
+        "expr": "100 * (sum(rate(traces_spanmetrics_calls_total{service=\"order-consumer\",span_kind=\"SPAN_KIND_CONSUMER\",status_code=\"STATUS_CODE_ERROR\"}[5m])) or vector(0)) / clamp_min(sum(rate(orders_created_total[5m])), 1)",
         "refId": "A"
       }]
     },
