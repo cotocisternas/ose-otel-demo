@@ -500,7 +500,7 @@ sleep 15                          # let BatchSpanProcessor / PeriodicMetricReade
 | 4318  | otel-collector    | OTLP HTTP ingest — UNCHANGED from v1.0 |
 | 13133 | otel-collector    | `health_check` extension (Collector liveness) |
 | 8888  | otel-collector    | Collector self-metrics (Prometheus format) |
-| 8889  | otel-collector    | `prometheus` exporter scrape target (Phase 11 use) |
+| 8889  | otel-collector    | `prometheus` exporter scrape target (Phase 11 only — not active in Phase 10; `curl localhost:8889/metrics` returns connection refused until Phase 11 wires the pipeline) |
 | 3200  | tempo             | Tempo HTTP API (trace search, TraceQL) |
 | 9009  | mimir             | Mimir HTTP API (PromQL + remote_write target) |
 | 3100  | loki              | Loki HTTP API (LogQL + OTLP `/otlp` ingest) |

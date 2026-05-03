@@ -114,7 +114,12 @@ services:
       - "4318:4318"      # OTLP HTTP ingest (debug: curl localhost:4318/v1/traces)
       - "13133:13133"    # health_check extension (debug: curl localhost:13133/)
       - "8888:8888"      # Collector self-metrics (debug: curl localhost:8888/metrics)
-      - "8889:8889"      # prometheus_exporter receiver (Phase 11 use)
+      - "8889:8889"      # PLACEHOLDER (WR-03): no listener wired in otelcol-config.yaml
+                         #   until Phase 11 adds the prometheusexporter pipeline. The
+                         #   port mapping is reserved here so the README port table and
+                         #   preflight contract stay stable across the Phase 10 → 11
+                         #   transition; `curl localhost:8889/metrics` returns connection
+                         #   refused in Phase 10 — that is expected.
     healthcheck:
       # WHY: otel/opentelemetry-collector-contrib:0.151.0 is a distroless image —
       # no wget, curl, or shell available inside the container. Docker HEALTHCHECK
