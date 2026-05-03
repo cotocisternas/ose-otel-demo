@@ -82,11 +82,11 @@ echo "Pre-flight: ALL GREEN. Run: mise run infra:up"
 # Infrastructure (docker-compose)
 # ──────────────────────────────────────────────────────────────────
 [tasks."infra:up"]
-description = "Start RabbitMQ + grafana/otel-lgtm in docker-compose"
+description = "Start all infra containers (RabbitMQ, Valkey, Postgres, OTel stack)"
 run = "docker compose up -d --wait"
 
 [tasks."infra:down"]
-description = "Stop infra (preserves Grafana state via lgtm-data volume)"
+description = "Stop infra (preserves Grafana state via grafana-data volume)"
 run = "docker compose down"
 
 [tasks."infra:reset"]
