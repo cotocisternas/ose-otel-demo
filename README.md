@@ -1,12 +1,12 @@
 # OSE OTel Demo
 
-A workshop-grade demo that teaches engineers how to instrument a Spring Boot 3.4.13 / Java 17 application using the OpenTelemetry Java SDK directly — manual instrumentation, no `-javaagent` and no Micrometer bridge. The demo covers two of the most common service-to-service shapes (synchronous HTTP and asynchronous RabbitMQ producer/consumer) and emits all three OpenTelemetry signals — traces, metrics, and logs — to Grafana's `otel-lgtm` all-in-one backend.
+A workshop-grade demo that teaches engineers how to instrument a Spring Boot 3.4.13 / Java 17 application using the OpenTelemetry Java SDK directly — manual instrumentation, no `-javaagent` and no Micrometer bridge. The demo covers two of the most common service-to-service shapes (synchronous HTTP and asynchronous RabbitMQ producer/consumer) and emits all three OpenTelemetry signals — traces, metrics, and logs — to a five-component Grafana observability stack (`otel-collector`, `tempo`, `mimir`, `loki`, `grafana`). Phase 10 decomposed the v1.0 single-container `grafana/otel-lgtm` into these five containers; the SDK side is unchanged (STACK-03 invariant).
 
 The workshop progresses through six annotated git tags: `step-01-baseline` → `step-02-traces` → `step-03-context-propagation` → `step-04-metrics` → `step-05-logs` → `step-06-tests`. You can `git checkout` any tag to time-travel through the workshop. The current `main` branch as of `step-01-baseline` shows the **uninstrumented baseline** — both Spring Boot apps run end-to-end with `POST /orders` flowing through RabbitMQ, but with **zero OpenTelemetry libraries on the classpath**. Phase 2 onward adds the SDK.
 
 ## Prerequisites
 
-You will run two Spring Boot apps on your laptop's JVM and two infrastructure containers (RabbitMQ + grafana/otel-lgtm) via Docker. Before starting, verify your environment with `mise run preflight`.
+You will run two Spring Boot apps on your laptop's JVM and the infrastructure containers (RabbitMQ, Valkey, Postgres, two Prometheus exporters, plus the five-container observability stack — 10 containers total) via Docker. Before starting, verify your environment with `mise run preflight`.
 
 ### Required tools
 
@@ -55,7 +55,7 @@ mise run preflight  # validates everything before you start
 ### First run
 
 ```sh
-mise run infra:up   # starts RabbitMQ + grafana/otel-lgtm
+mise run infra:up   # starts RabbitMQ + Valkey + Postgres + observability stack (10 containers)
 mise run dev        # starts producer + consumer in parallel
 # in a second terminal:
 mise run demo:order # POSTs a sample order; expect 202
@@ -90,7 +90,7 @@ What a working two-service Spring Boot + RabbitMQ application looks like with **
 
 ```sh
 mise run preflight   # Docker up, ports free, JDK 17, Maven 3.9 active
-mise run infra:up    # starts RabbitMQ + grafana/otel-lgtm
+mise run infra:up    # starts RabbitMQ + Valkey + Postgres + observability stack (10 containers)
 mise run dev         # starts producer + consumer in parallel
 mise run demo:order  # POSTs a sample order; expect 202
 mise run load        # OPTIONAL — continuous load (~1 req/sec, 50/50 priorities)
