@@ -113,9 +113,17 @@ public class OtelSdkConfiguration {
      * the @Configuration would request the bean it itself produces. Sibling
      * @Beans on this class ({@link #tracer(OpenTelemetry)}, {@link #meter(OpenTelemetry)})
      * reach the SDK via factory parameter injection (resolved by Spring's bean graph),
-     * not via this field. This field is held only for future @PreDestroy / phase-internal
-     * use; it is NOT consumed elsewhere on this class today.
+     * not via this field. The shutdown sequence does NOT use this field either —
+     * the {@link CloseableOpenTelemetrySdk} holder bean (WR-01 fix) takes the
+     * SDK as a constructor parameter directly.
+     *
+     * <p>This field is currently held only for forward-looking phase-internal use
+     * (e.g., a future @EventListener that needs the SDK without going through Spring
+     * autowiring). The {@link SuppressWarnings} on {@code "unused"} (IN-04) is
+     * deliberate — it keeps IDEs from flagging the field while preserving the
+     * intent visibility of this comment for future maintainers.
      */
+    @SuppressWarnings("unused")
     private OpenTelemetry openTelemetry;
 
     /**
