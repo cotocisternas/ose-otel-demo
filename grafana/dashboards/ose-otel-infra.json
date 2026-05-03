@@ -267,7 +267,7 @@
             "overrides": []
           },
           "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
-          "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (state) (db_client_connection_count{service_name=\"order-consumer\"})", "legendFormat": "{{state}}", "refId": "A"}]
+          "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (state) (db_client_connection_count{job=\"ose-otel-demo/order-consumer\"})", "legendFormat": "{{state}}", "refId": "A"}]
         },
         {
           "type": "timeseries",
@@ -296,9 +296,9 @@
           },
           "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
           "targets": [
-            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_tup_inserted{datname=\"orders\"}[5m])", "legendFormat": "inserts/s", "refId": "A"},
-            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_tup_updated{datname=\"orders\"}[5m])", "legendFormat": "updates/s", "refId": "B"},
-            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_tup_fetched{datname=\"orders\"}[5m])", "legendFormat": "fetched/s", "refId": "C"}
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_tup_inserted_total{datname=\"orders\"}[5m])", "legendFormat": "inserts/s", "refId": "A"},
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_tup_updated_total{datname=\"orders\"}[5m])", "legendFormat": "updates/s", "refId": "B"},
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_tup_fetched_total{datname=\"orders\"}[5m])", "legendFormat": "fetched/s", "refId": "C"}
           ]
         },
         {
@@ -314,9 +314,9 @@
           },
           "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": []}, "tooltip": {"mode": "multi", "sort": "none"}},
           "targets": [
-            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_xact_commit{datname=\"orders\"}[5m])", "legendFormat": "commits/s", "refId": "A"},
-            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_xact_rollback{datname=\"orders\"}[5m])", "legendFormat": "rollbacks/s", "refId": "B"},
-            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_deadlocks{datname=\"orders\"}[5m])", "legendFormat": "deadlocks/s", "refId": "C"}
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_xact_commit_total{datname=\"orders\"}[5m])", "legendFormat": "commits/s", "refId": "A"},
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_xact_rollback_total{datname=\"orders\"}[5m])", "legendFormat": "rollbacks/s", "refId": "B"},
+            {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "rate(pg_stat_database_deadlocks_total{datname=\"orders\"}[5m])", "legendFormat": "deadlocks/s", "refId": "C"}
           ]
         },
         {
