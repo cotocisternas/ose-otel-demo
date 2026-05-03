@@ -219,13 +219,7 @@ mise run load              # in another terminal — populates per-priority pane
 - **Attribute-key contrast** — `order.priority` is a string-literal `AttributeKey<String>` because it is NOT in the OTel semconv catalog (a *business* attribute), while `http.request.method` and `http.response.status_code` come from `HttpAttributes.HTTP_REQUEST_METHOD` and `HttpAttributes.HTTP_RESPONSE_STATUS_CODE` (semconv constants from `io.opentelemetry.semconv:1.40.0`).
 - **Same Resource attributes on every metric data point** — `service.name`, `service.namespace`, `service.instance.id`, `deployment.environment.name` (Phase 4 D-05 — Resource built once and shared between tracer + meter pipelines for cross-signal correlation in Grafana).
 
-<!-- TODO(DOC-04 v1.x): docs/screenshots/step-04-metrics.png — Mimir RED metrics panel.
-     Capture deferred per Phase 7 wave-4 SUMMARY (07-04); referenced here as a placeholder
-     so the screenshot embed can be re-introduced without re-touching the surrounding prose.
-     Until then, the dashboard URL below carries the visual: open the auto-provisioned
-     "OSE OTel Demo — Three Signals" dashboard at http://localhost:3000/d/ose-otel-demo with
-     `mise run load` running in another terminal — the per-priority `orders_created_total`
-     panel and the `http_server_request_duration_seconds` p50/p95/p99 panel populate live. -->
+![Step 4 — RED Metrics panel in Grafana (orders_created_total + http_server_request_duration)](docs/screenshots/step-04-metrics.png)
 
 ### Why it matters
 
@@ -544,8 +538,6 @@ The all-in-one `lgtm` container hides each backend's HTTP API; the decomposed st
 > - All 14 host ports exposed for debugging — production typically locks the Collector behind a network policy and only exposes Grafana.
 
 > **A note on `infra:reset` vs `infra:down`/`up`:** Step 10 introduces a separate `tempo-wal` named volume specifically so Tempo's `metrics_generator` state survives container restarts. After `mise run infra:down` and `infra:up`, the service-graph panel re-renders immediately. After `mise run infra:reset` (which also wipes the volumes), the service-graph stays empty for ~1-5 minutes while traces re-prime the metric windows — that's expected; just keep load running.
-
-**Verification screenshot pending** (PREREQ-02 / DOC-04 deferred — see TODO at Step 4). When captured, `docs/screenshots/step-04-metrics.png` will show the post-decomposition Grafana metrics-panel — the dashboard JSON itself is unchanged since v1.0 Phase 7, so the migration is invisible to the dashboard artifact.
 
 ## Step 11: Tail Sampling at the Collector — what survives the Tempo write path
 
