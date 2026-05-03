@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Production Shapes
 status: executing
-stopped_at: Phase 12 context gathered
-last_updated: "2026-05-03T19:59:10.746Z"
-last_activity: 2026-05-03 -- Phase 12 planning complete
+stopped_at: Completed Phase 12 Plan 01
+last_updated: "2026-05-03T20:20:37.965Z"
+last_activity: 2026-05-03
 progress:
   total_phases: 9
   completed_phases: 2
   total_plans: 15
-  completed_plans: 11
-  percent: 73
+  completed_plans: 12
+  percent: 80
 ---
 
 # Project State
@@ -22,17 +22,17 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A workshop attendee who already shipped v1.0's manual-SDK demo can run `docker compose up` against a decomposed Tempo/Mimir/Loki/Grafana stack, see Collector-side tail sampling shape what reaches Tempo, click a histogram exemplar to land on the originating trace, watch a JDBC/JPA span tree under a CONSUMER span, follow baggage from an HTTP header through AMQP into a consumer log, and understand exactly which lines of SDK and Collector config made each piece work.
 
-**Current focus:** Phase 11 — tail-sampling-at-the-collector
+**Current focus:** Phase 12 — exemplars-metrics-to-trace-click-through
 
 ## Current Position
 
-Phase: 18
-Plan: Not started
+Phase: 12 (exemplars-metrics-to-trace-click-through) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-05-03 -- Phase 12 planning complete
+Last activity: 2026-05-03
 
 ```
-Progress: [██████████] 100%
+Progress: [████████░░] 80%
 ```
 
 ## Performance Metrics
@@ -65,6 +65,7 @@ Progress: [██████████] 100%
 | Phase 11-tail-sampling-at-the-collector P02 | 3 | 2 tasks | 2 files |
 | Phase 11 P03 | 197 | 2 tasks | 2 files |
 | Phase 11-tail-sampling-at-the-collector P05 | 2min | 1 tasks | 1 files |
+| Phase 12-exemplars-metrics-to-trace-click-through P01 | 1min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -105,6 +106,8 @@ Recent decisions affecting current work:
 - [v2.0 roadmap v2]: Revised from 5 to 8 phases (10-17) per WORK-01 pedagogical requirement — one annotated git tag per teaching concept so attendees can `git checkout step-NN-<lesson>` to study a single lesson in isolation. HSAMP+BAG paired in Phase 16 (two sub-lessons in one tag) because both live in `OtelSdkConfiguration` and both register on `SdkTracerProvider` build — pairing justified in SUMMARY.md as "two halves of one teaching arc." Phase 16 README treats them as distinct sub-lessons (16a head sampling, 16b baggage). Double-filter-trap callout (F2-3) is mandatory in Phase 16 README.
 - [Phase 11-05]: Included bonus Panel 5 (traces in memory sanity gauge) in Tail Sampling diagnostics row — provides F2-2 buffer canary without cost; panel IDs run 9-14
 - [Phase 11-05]: D-T16 POLICY-NAMES CONTRACT JSDoc reminder embedded in row description field citing the alpha recordpolicy feature gate as a Route A dependency
+- [Phase 12-01]: ExemplarFilter.traceBased() inserted between .setResource() and .registerMetricReader() in buildMeterProvider() — filter must precede reader registration; correct insertion point for EXMP-01 in both services
+- [Phase 12-01]: scope.close() placed as last statement in HttpServerSpanFilter.doFilterInternal() finally block (after requestDuration.record() and span.end()) — D-E1/F3-1 mitigation: ExemplarFilter.traceBased() requires an active span context to attach trace_id/span_id to histogram data points
 
 ### Roadmap Evolution
 
@@ -147,6 +150,6 @@ Items acknowledged and carried forward at milestone close on 2026-05-02:
 
 ## Session Continuity
 
-Last session: 2026-05-03T19:10:19.617Z
+Last session: 2026-05-03T20:20:37.959Z
 Stopped at: Phase 12 context gathered
-Resume file: .planning/phases/12-exemplars-metrics-to-trace-click-through/12-CONTEXT.md
+Resume file: None

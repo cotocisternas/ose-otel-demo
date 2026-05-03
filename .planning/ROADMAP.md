@@ -117,7 +117,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 **Git tag**: `step-12-exemplars`
 
 **Plans**: 4 plans across 2 waves
-- [ ] 12-01-PLAN.md — Wave 1: ExemplarFilter.traceBased() in both OtelSdkConfiguration.buildMeterProvider() + HttpServerSpanFilter manual scope fix (D-E1/EXMP-01)
+- [x] 12-01-PLAN.md — Wave 1: ExemplarFilter.traceBased() in both OtelSdkConfiguration.buildMeterProvider() + HttpServerSpanFilter manual scope fix (D-E1/EXMP-01)
 - [ ] 12-02-PLAN.md — Wave 1: mimir-config.yaml limits.max_global_exemplars_per_user: 100000 + otelcol-config.yaml WHY comment (EXMP-02) — parallel with 12-01
 - [ ] 12-03-PLAN.md — Wave 1: Exemplars open row in ose-otel-demo.json (D-E4/D-E5/D-E6) + verify:exemplars task in mise.toml (D-E7/EXMP-03) — parallel with 12-01 and 12-02
 - [ ] 12-04-PLAN.md — Wave 2: README §12 Phase-11-equivalent narrative (D-E8) + end-to-end human-verify checkpoint (EXMP-04)
