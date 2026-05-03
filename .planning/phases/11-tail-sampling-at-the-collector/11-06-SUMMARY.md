@@ -111,7 +111,8 @@ live :8888 exposition and dashboard PromQL. Case 1: no dashboard correction need
 
 ## Known Stubs
 
-- `docs/screenshots/step-11-tail-sampling-ON.png` — PENDING operator capture. The README `<table>` references this file; until it is captured and committed, the ON cell of the paired-screenshot table shows a broken image. Phase 11 is not fully ship-ready until Task 3 resolves.
+- `docs/screenshots/step-11-tail-sampling-ON.png` — **Deferred by operator decision.** The README `<table>` references this file; until it is captured and committed, the ON cell of the paired-screenshot table shows a broken image. Follow-up: run `mise run load SLOW_RPS=2` for 5+ min, open Tempo Search (Service Name=order-producer, Last 5 min), capture screenshot, `git add docs/screenshots/step-11-tail-sampling-ON.png && git commit -m "docs(11): add tail-sampling ON screenshot"`.
+- `docs/screenshots/step-11-tail-sampling-OFF.png` — **Also deferred.** Pre-tail-sampling baseline screenshot. To capture: `git checkout step-10-collector-decompose -- infra/observability/otelcol-config.yaml && docker compose restart otel-collector && mise run load && capture → git checkout HEAD -- infra/observability/otelcol-config.yaml`.
 
 ## Threat Flags
 
@@ -128,8 +129,8 @@ None during Tasks 1 and 2. Task 3 is an expected operator-gate checkpoint (check
 ## Next Phase Readiness
 
 - Tasks 1 and 2 complete; all automated work for plan 11-06 done.
-- **BLOCKED on Task 3:** Operator must capture `docs/screenshots/step-11-tail-sampling-ON.png` (see checkpoint message below for exact steps), commit it, and reply "approved."
-- After Task 3 resolves: Phase 11 is ship-ready. Orchestrator applies `step-11-tail-sampling` annotated tag per WORK-01 / D-21 pattern.
+- **Task 3 screenshot deferred by operator decision:** Both `step-11-tail-sampling-ON.png` and `step-11-tail-sampling-OFF.png` will be added in a follow-up commit. The README §11 paired-screenshot table will show broken images until then. This is accepted known debt.
+- Phase 11 automated work is complete; proceeding to phase-level verification and completion.
 - Phase 12 (exemplars + metrics trace click-through) can begin once Phase 11 ships.
 
 ## Self-Check
@@ -138,7 +139,7 @@ None during Tasks 1 and 2. Task 3 is an expected operator-gate checkpoint (check
 - [x] Task 2 commit `c949225` exists: `git log --oneline | grep c949225` → present
 - [x] README §11 verification: `bash -c '... && echo "task2 ok"'` → PASS
 - [x] Histogram log: `grep -E "SKIP|VERIFIED" /tmp/11-06-task1.log` → VERIFIED
-- [ ] Task 3: `docs/screenshots/step-11-tail-sampling-ON.png` — PENDING operator
+- [~] Task 3: screenshots deferred by operator — known debt, follow-up commit required
 
 ---
 *Phase: 11-tail-sampling-at-the-collector*
