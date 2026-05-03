@@ -41,7 +41,7 @@ Each requirement is user-centric (workshop attendee can observe / verify it), at
 > One SDK line per service + Collector + Grafana provisioning. Depends on STACK; pairs with v1.0's `http.server.request.duration` histogram.
 
 - [x] **EXMP-01**: Both `producer-service` and `consumer-service` `OtelSdkConfiguration.buildMeterProvider()` calls add `.setExemplarFilter(ExemplarFilter.traceBased())` (the OTel-spec recommended default; one line per service)
-- [ ] **EXMP-02**: Mimir is configured with `limits.max_global_exemplars_per_user: 100000` to enable exemplar ingestion (the PRW exporter forwards exemplars unconditionally in collector-contrib v0.151.0 — no Collector config key needed)
+- [x] **EXMP-02**: Mimir is configured with `limits.max_global_exemplars_per_user: 100000` to enable exemplar ingestion (the PRW exporter forwards exemplars unconditionally in collector-contrib v0.151.0 — no Collector config key needed)
 - [ ] **EXMP-03**: `grafana/datasources.yaml` includes `exemplarTraceIdDestinations` mapping a `trace_id` label to the Tempo datasource UID — the YAML key matches the Grafana 13.0.1 schema verified at planning time
 - [ ] **EXMP-04**: Workshop attendee opens the `http.server.request.duration` histogram panel in the `ose-otel-demo` dashboard, sees exemplar dots/diamonds rendered on the histogram, clicks one, and lands on the originating trace in Tempo (one click — no manual trace ID copy-paste)
 
