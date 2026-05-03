@@ -418,12 +418,12 @@ prometheusremotewrite/mimir:
 
 Current panel ID ceiling is 14 (Phase 11, "Traces dropped before decision"). The new row uses ID 15, panel IDs 16+.
 
-The Tail Sampling collapsed row is at `gridPos.y = 21` (header) with panels at y=22..40. The new Exemplars row goes at y=41 (after the collapsed tail-sampling row):
+The Tail Sampling collapsed row is at `gridPos.y = 21` (header) with panels at y=22..40. The new Exemplars row goes at y=40 (after the collapsed tail-sampling row — PATTERNS.md codebase-verified):
 
 ```json
 {
   "collapsed": false,
-  "gridPos": { "h": 1, "w": 24, "x": 0, "y": 41 },
+  "gridPos": { "h": 1, "w": 24, "x": 0, "y": 40 },
   "id": 15,
   "title": "Exemplars (Phase 12)",
   "type": "row",
@@ -431,12 +431,12 @@ The Tail Sampling collapsed row is at `gridPos.y = 21` (header) with panels at y
 }
 ```
 
-The histogram panel (ID 16) sits inside the row panels array at y=42, w=24 (full width, to maximize exemplar dot visibility):
+The histogram panel (ID 16) sits inside the row panels array at y=41, w=24 (full width, to maximize exemplar dot visibility):
 
 ```json
 {
   "datasource": { "type": "prometheus", "uid": "prometheus" },
-  "gridPos": { "h": 9, "w": 24, "x": 0, "y": 42 },
+  "gridPos": { "h": 9, "w": 24, "x": 0, "y": 41 },
   "id": 16,
   "title": "HTTP Request Duration (with Exemplars)",
   "type": "timeseries",
@@ -496,17 +496,13 @@ echo "verify:exemplars: exemplars with trace_id present in Mimir."
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does adding `limits:` to mimir-config.yaml require a Mimir container restart, or is it hot-reloaded?**
-   - What we know: Mimir supports runtime config reloading for some settings via `/-/reload`, but `limits.*` config changes typically require restart for the ingester to apply the new limit.
-   - What's unclear: Whether `max_global_exemplars_per_user` is a hot-reloadable limit or requires container restart.
-   - Recommendation: Plan for `docker compose restart mimir` as part of the task. The `verify:exemplars` task will serve as the acceptance gate.
+   - RESOLVED: `docker compose restart mimir` required — hot-reload is not sufficient for ingester limits. Plan 12-04 Task 1 handles the restart as part of the end-to-end smoke test.
 
 2. **Does the F3-1 scope fix change the catch-block behavior for `STATUS_CODE` on error path?**
-   - What we know: Current code sets `HTTP_RESPONSE_STATUS_CODE` inside the try block (line 174), not the catch block. In the manual-scope restructure, the attribute-set stays in the try block.
-   - What's unclear: Whether the response status is correctly available when an exception is thrown vs when the chain returns normally.
-   - Recommendation: In the restructured code, `span.setAttribute(HTTP_RESPONSE_STATUS_CODE, response.getStatus())` must remain in the try block (after `chain.doFilter`) as before. The histogram in the finally block reads `response.getStatus()` directly (not from the span), so it is unaffected by exception timing.
+   - RESOLVED: Catch-block behavior is unchanged. `span.setAttribute(HTTP_RESPONSE_STATUS_CODE, response.getStatus())` stays in the try block (after `chain.doFilter`). The histogram in the finally block reads `response.getStatus()` directly (not from the span), so it is unaffected by exception timing. Plan 12-01 Task 2 preserves this structure exactly.
 
 ---
 
