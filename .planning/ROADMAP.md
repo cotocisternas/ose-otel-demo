@@ -27,7 +27,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 ### 🚧 v2.0 Production Shapes (Phases 10–17)
 
 - [x] **Phase 10: Prerequisites & Stack Decomposition** - Fix the OtelSdkConfiguration circular-ref carryover, replace the all-in-one otel-lgtm container with five separate production-shaped services, and restore all existing dashboards (completed 2026-05-03)
-- [ ] **Phase 11: Tail Sampling at the Collector** - Configure the standalone Collector's tail_sampling processor to demonstrate intelligent, trace-complete sampling decisions impossible at the SDK level
+- [x] **Phase 11: Tail Sampling at the Collector** - Configure the standalone Collector's tail_sampling processor to demonstrate intelligent, trace-complete sampling decisions impossible at the SDK level (completed 2026-05-03)
 - [ ] **Phase 12: Exemplars: Metrics to Trace Click-Through** - Wire ExemplarFilter on the SDK, send_exemplars on the Collector, and exemplarTraceIdDestinations on Grafana so one histogram click lands on the originating trace
 - [ ] **Phase 13: Log-Based Metrics (Loki Recording Rules)** - Enable the Loki ruler and define a recording rule that derives an error-rate metric from log patterns, then visualize it alongside the SDK-emitted counter
 - [ ] **Phase 14: JDBC/JPA Database Spans** - Extend the consumer service with full Spring Data JPA instrumentation — transaction-parent span wrapping JPA repository child spans — using the complete stable db.* semconv attribute set
@@ -92,7 +92,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 - [x] 11-03-PLAN.md — Wave 1: WIDGET-SLOW SKU branch in OrderService.place() (D-T5/D-T6); SLOW_RPS=2 fourth oha stream in scripts/load.sh (D-T7) — parallel with 11-02 (zero file overlap)
 - [x] 11-04-PLAN.md — Wave 2: mise verify:tail-sampling two-tier task (D-T14 Route A) — depends on 11-02 + 11-03
 - [x] 11-05-PLAN.md — Wave 2: collapsed Tail Sampling diagnostics row in ose-otel-demo.json (D-T13/D-T16) — depends on 11-02; parallel with 11-04
-- [ ] 11-06-PLAN.md — Wave 3: README §11 Phase-10-equivalent narrative (D-T11) + F2-3 double-filter callout (D-T12) + histogram-suffix verification micro-task (RESEARCH §3.2.1); screenshot captures (D-T9/D-T10) deferred to Phase 18 Playwright script
+- [x] 11-06-PLAN.md — Wave 3: README §11 Phase-10-equivalent narrative (D-T11) + F2-3 double-filter callout (D-T12) + histogram-suffix verification micro-task (RESEARCH §3.2.1); screenshot captures (D-T9/D-T10) deferred to Phase 18 Playwright script
 
 ---
 
