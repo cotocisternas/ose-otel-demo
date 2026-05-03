@@ -543,6 +543,58 @@
           ]
         }
       ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 40 },
+      "id": 15,
+      "title": "Exemplars (Phase 12)",
+      "type": "row",
+      "description": "Phase 12 — ExemplarFilter.traceBased() on both SdkMeterProviders attaches trace_id/span_id to histogram data points when a span is active at record() time. Grafana requests exemplar data from Mimir when panel query targets include exemplar: true. Click any exemplar dot to navigate to the originating trace in Tempo.",
+      "panels": []
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 41 },
+      "id": 16,
+      "title": "HTTP Request Duration (with Exemplars)",
+      "type": "timeseries",
+      "description": "p50/p95/p99 latency percentiles for the producer service's HTTP server. Exemplar dots appear when load is running and the ExemplarFilter.traceBased() pipeline is active — click any dot to open the originating trace in Tempo. Both producer and consumer OtelSdkConfiguration.buildMeterProvider() calls have .setExemplarFilter(ExemplarFilter.traceBased()) (EXMP-01).",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10 },
+          "unit": "s"
+        }
+      },
+      "options": {
+        "exemplarLabel": "trace_id",
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p50",
+          "refId": "A",
+          "exemplar": true
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p95",
+          "refId": "B",
+          "exemplar": true
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p99",
+          "refId": "C",
+          "exemplar": true
+        }
+      ]
     }
   ],
   "refresh": "30s",
