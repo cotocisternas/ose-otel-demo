@@ -342,7 +342,8 @@
             "stacking": {"mode": "normal", "group": "A"},
             "showPoints": "never"
           },
-          "unit": "ops"
+          "unit": "ops",
+          "min": 0
         },
         "overrides": [
           {"matcher": {"id": "byName", "options": "OK"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "green"}}]},
