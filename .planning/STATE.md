@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Production Shapes
 status: executing
-stopped_at: Phase 11 context gathered
-last_updated: "2026-05-03T05:32:58.009Z"
+stopped_at: context exhaustion at 78% (2026-05-03)
+last_updated: "2026-05-03T05:34:40.119Z"
 last_activity: 2026-05-03
 progress:
   total_phases: 8
@@ -105,6 +105,10 @@ Recent decisions affecting current work:
 - [Phase 11-05]: Included bonus Panel 5 (traces in memory sanity gauge) in Tail Sampling diagnostics row — provides F2-2 buffer canary without cost; panel IDs run 9-14
 - [Phase 11-05]: D-T16 POLICY-NAMES CONTRACT JSDoc reminder embedded in row description field citing the alpha recordpolicy feature gate as a Route A dependency
 
+### Roadmap Evolution
+
+- Phase 18 added: Automated Screenshot Generation (Playwright) — defers all manual `docs/screenshots/` captures (tail-sampling OFF/ON pair, JPA waterfall, head-sampling count) to a single Playwright script so no workshop phase is blocked by manual operator screenshot steps
+
 ### Pending Todos
 
 None yet.
@@ -140,6 +144,6 @@ Items acknowledged and carried forward at milestone close on 2026-05-02:
 
 ## Session Continuity
 
-Last session: 2026-05-03T05:32:23.596Z
-Stopped at: Phase 11 context gathered
+Last session: 2026-05-03T05:34:40.117Z
+Stopped at: context exhaustion at 78% (2026-05-03)
 Resume file: None
