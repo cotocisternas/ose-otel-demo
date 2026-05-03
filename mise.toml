@@ -513,32 +513,52 @@ done
 echo "verify:tail-sampling tier-1: composite-policy registered and emitting (self-metrics)."
 
 # --- Tier 2: Tempo span attribute (recordpolicy feature gate) ---
-# Search Tempo for any span carrying the tailsampling.composite_policy
-# attribute set to one of the three expected sub-policy names. The
+# Search Tempo for spans carrying the tailsampling.composite_policy
+# attribute set to EACH of the three expected sub-policy names. The
 # recordpolicy feature gate must be enabled on the otel-collector container
-# (--feature-gates=processor.tailsamplingprocessor.recordpolicy in compose).
-TEMPO_SEARCH='http://localhost:3200/api/search?tags=tailsampling.composite_policy'
-TEMPO_OUT=$(curl -fsS "$TEMPO_SEARCH" 2>&1) || {
-  echo "ERROR: verify:tail-sampling tier-2 — Tempo /api/search failed: $TEMPO_OUT"
-  exit 1
-}
-
+# (--feature-gates=processor.tailsamplingprocessor.recordpolicy in compose),
+# and the transform/copy_recordpolicy processor in otelcol-config.yaml must
+# copy the scope attribute onto each span — without that copy the attribute
+# lives on the InstrumentationScope where Tempo's tags= search cannot see it
+# (see .planning/debug/resolved/tail-sampling-recordpolicy.md).
+#
+# Tempo's legacy /api/search?tags= takes logfmt key=value pairs. Sending
+# bare-key (no value) returns 0 hits silently — that was the original bug.
+# We issue ONE query per expected sub-policy and require non-empty .traces[]
+# from each so a single missing sub-policy fails fast with a precise message.
 MISSING=""
 for sub in $EXPECTED_SUBS; do
-  if ! printf '%s' "$TEMPO_OUT" | grep -F "$sub" >/dev/null 2>&1; then
+  TEMPO_SEARCH="http://localhost:3200/api/search?tags=tailsampling.composite_policy=${sub}&limit=1"
+  TEMPO_OUT=$(curl -fsS "$TEMPO_SEARCH" 2>&1) || {
+    echo "ERROR: verify:tail-sampling tier-2 — Tempo /api/search failed for sub-policy '${sub}': $TEMPO_OUT"
+    exit 1
+  }
+  # A successful match returns {"traces":[{...,"traceID":"..."},...],...}.
+  # An empty {"traces":[],"metrics":{...}} response carries no "traceID"
+  # substring, so a literal grep for "traceID" is a precise non-empty test
+  # (no regex required — keeps the TOML triple-quoted string free of
+  # backslash-escape gotchas).
+  if ! printf '%s' "$TEMPO_OUT" | grep -F '"traceID"' >/dev/null 2>&1; then
     MISSING="$MISSING $sub"
   fi
 done
 
 if [ -n "$MISSING" ]; then
-  echo "ERROR: verify:tail-sampling tier-2 — sub-policy names missing from Tempo span attributes:$MISSING"
-  echo "Either the recordpolicy feature gate isn't enabled on the otel-collector"
-  echo "container, OR the policy names in otelcol-config.yaml drifted from this task."
-  echo "Tempo response (first 500 chars):"
+  echo "ERROR: verify:tail-sampling tier-2 — sub-policy values missing from Tempo span attributes:$MISSING"
+  echo "Likely causes (in order of probability):"
+  echo "  1. transform/copy_recordpolicy processor missing or mis-wired in"
+  echo "     infra/observability/otelcol-config.yaml (it must sit AFTER"
+  echo "     tail_sampling and BEFORE batch in service.pipelines.traces)."
+  echo "  2. recordpolicy feature gate not enabled on the otel-collector"
+  echo "     container (check docker-compose.yml --feature-gates flag)."
+  echo "  3. Sub-policy names in otelcol-config.yaml drifted from EXPECTED_SUBS."
+  echo '  4. No traffic of that shape reached the Collector during the wait'
+  echo '     window — re-run mise run load SLOW_RPS=2 and try again.'
+  echo "Last Tempo response (first 500 chars):"
   printf '%s' "$TEMPO_OUT" | head -c 500
   exit 1
 fi
 
-echo "verify:tail-sampling tier-2: all three sub-policy names present on Tempo spans."
+echo "verify:tail-sampling tier-2: all three sub-policy values returned non-empty Tempo /api/search hits."
 echo "verify:tail-sampling: GREEN — composite + sub-policy contracts intact."
 """

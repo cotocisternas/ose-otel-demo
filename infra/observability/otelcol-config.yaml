@@ -229,6 +229,49 @@ processors:
             - policy: probabilistic-fallback
               percent: 4
 
+  # ──────────────────────────────────────────────────────────────────
+  # transform/copy_recordpolicy — Phase 11 fix for the
+  # `tail-sampling-recordpolicy` debug session (resolved 2026-05-03).
+  # ──────────────────────────────────────────────────────────────────
+  #
+  # WHY this processor exists: the alpha `processor.tailsamplingprocessor.recordpolicy`
+  # feature gate (enabled in docker-compose.yml) instructs the tail_sampling
+  # processor to stamp `tailsampling.policy` and `tailsampling.composite_policy`
+  # onto each kept ScopeSpans batch — but it places them on the **InstrumentationScope**
+  # (`ss.Scope().Attributes().PutStr(...)` in
+  # processor/tailsamplingprocessor/internal/sampling/util.go:99 at v0.151.0),
+  # NOT on the spans nor on the resource. Tempo 2.10.5 ingests scope attributes
+  # under `scope=instrumentation` but its search APIs (`/api/search?tags=...`,
+  # TraceQL `span.*`/`resource.*`/`.*`) only filter span+resource scopes — so the
+  # attribute is unreachable from the workshop's verify task and dashboard
+  # TraceQL filters.
+  #
+  # WHY this is the canonical fix (Route 1 from `.planning/debug/resolved/
+  # tail-sampling-recordpolicy.md`): copy the scope attribute onto every span
+  # in the batch so that the README §11 narrative ("the attribute appears on
+  # each kept span"), the dashboard's per-trace click-through, and
+  # `mise run verify:tail-sampling` Tier 2 are all simultaneously honest. The
+  # `where ... != nil` guard prevents the OTTL set() from writing nil-string
+  # span attributes when the gate is disabled or the trace path bypassed
+  # composite (defensive — keeps the pipeline benign if the gate ever defaults
+  # back to false in v0.152+).
+  #
+  # WHY pipeline placement (after tail_sampling, before batch): tail_sampling
+  # is the writer of the scope attribute; batch is the last touch before the
+  # otlp_http/tempo exporter. Inserting between them lets the transform see the
+  # already-decided ScopeSpans (only kept traces flow past tail_sampling) and
+  # the copy lands before any batching coalesces scopes from different
+  # decisions.
+  transform/copy_recordpolicy:
+    error_mode: ignore   # WHY: never fail the pipeline if a span is missing
+                         #   the scope attribute (e.g. cached_decision path,
+                         #   or attendee disables the gate temporarily).
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["tailsampling.composite_policy"], instrumentation_scope.attributes["tailsampling.composite_policy"]) where instrumentation_scope.attributes["tailsampling.composite_policy"] != nil
+          - set(attributes["tailsampling.policy"], instrumentation_scope.attributes["tailsampling.policy"]) where instrumentation_scope.attributes["tailsampling.policy"] != nil
+
 # ──────────────────────────────────────────────────────────────────
 # Exporters — what goes OUT to which backend
 # ──────────────────────────────────────────────────────────────────
@@ -294,16 +337,26 @@ service:
                 port: 8888
 
   pipelines:
-    # WHY: traces — apps emit OTLP → memory_limiter → tail_sampling → batch → Tempo
-    # via OTLP HTTP. tail_sampling is placed BEFORE batch (canonical OTel order:
-    # see https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.151.0/processor/tailsamplingprocessor/README.md
-    # — "This processor … reassembles spans into new batches, causing them to lose
-    # their original context"). Running batch AFTER tail_sampling means the batch
-    # processor only ever sees KEPT traces (~30% of incoming volume at workshop
-    # load), so batches are smaller and arrive at Tempo more efficiently.
+    # WHY: traces — apps emit OTLP → memory_limiter → tail_sampling →
+    # transform/copy_recordpolicy → batch → Tempo via OTLP HTTP.
+    #
+    # tail_sampling is placed BEFORE batch (canonical OTel order: see
+    # https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/v0.151.0/processor/tailsamplingprocessor/README.md
+    # — "This processor … reassembles spans into new batches, causing them
+    # to lose their original context"). Running batch AFTER tail_sampling
+    # means the batch processor only ever sees KEPT traces (~30% of
+    # incoming volume at workshop load), so batches are smaller and arrive
+    # at Tempo more efficiently.
+    #
+    # transform/copy_recordpolicy is placed BETWEEN tail_sampling and
+    # batch — see the WHY block on the processor itself for the upstream-
+    # architecture rationale. Short version: the recordpolicy gate stamps
+    # tailsampling.* keys onto the InstrumentationScope, this transform
+    # copies them onto each span so Tempo's span-scope search APIs can
+    # find them (Phase 11 `tail-sampling-recordpolicy` debug session).
     traces:
       receivers: [otlp]
-      processors: [memory_limiter, tail_sampling, batch]
+      processors: [memory_limiter, tail_sampling, transform/copy_recordpolicy, batch]
       exporters: [otlp_http/tempo]
 
     # WHY: metrics — TWO upstream sources merge into ONE Mimir pipeline:
