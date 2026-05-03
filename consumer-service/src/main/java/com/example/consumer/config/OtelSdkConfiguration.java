@@ -105,6 +105,21 @@ public class OtelSdkConfiguration {
     private static final String DEFAULT_OTLP_ENDPOINT = "http://localhost:4317";
 
     /**
+     * Self-reference to the SDK this @Configuration produces — assigned inline
+     * inside {@link #openTelemetry()} BEFORE {@code return sdk}. PREREQ-01 / D-12
+     * (mirror of the LOG-03 inline-assign pattern at line ~255 for
+     * {@code OpenTelemetryAppender.install(sdk)}).
+     *
+     * <p><b>NOT @Autowired.</b> Spring would otherwise build a self-cycle —
+     * the @Configuration would request the bean it itself produces. Sibling
+     * @Beans on this class ({@link #tracer(OpenTelemetry)}, {@link #meter(OpenTelemetry)})
+     * reach the SDK via factory parameter injection (resolved by Spring's bean graph),
+     * not via this field. This field is held only for future @PreDestroy / phase-internal
+     * use; it is NOT consumed elsewhere on this class today.
+     */
+    private OpenTelemetry openTelemetry;
+
+    /**
      * The fully-built OpenTelemetry SDK as a Spring bean.
      *
      * destroyMethod="close" is load-bearing: when Spring shuts the context down
@@ -194,6 +209,19 @@ public class OtelSdkConfiguration {
             .setLoggerProvider(loggerProvider)
             .setPropagators(propagators)
             .build();
+
+        // ----- PREREQ-01 / D-12: capture the SDK reference into the @Configuration's
+        // own non-@Autowired instance field BEFORE install() / return.
+        //
+        // Mirrors the LOG-03 inline-assign shape immediately below (the appender install
+        // is itself the v1.0 precedent for "do it inline in the @Bean factory rather
+        // than via @PostConstruct or @Autowired-on-this-class to avoid a Spring
+        // self-cycle"). Sibling @Bean factories on this class
+        // ({@code tracer(OpenTelemetry)}, {@code meter(OpenTelemetry)})
+        // take their OpenTelemetry via parameter injection — Spring resolves them
+        // through the bean graph. This field exists for any future this-class-internal
+        // use that doesn't go through Spring.
+        this.openTelemetry = sdk;
 
         // ----- LOG-03 / PITFALL #5: install the OpenTelemetryAppender HERE -----
         //
