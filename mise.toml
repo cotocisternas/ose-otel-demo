@@ -395,10 +395,18 @@ set -e
 #   - no tag at all    (e.g., 'image: rabbitmq')
 #
 # Acceptable patterns:
-#   - :NN.NN.NN        (e.g., :3.7.1 :13.0.1)
-#   - :NN.NN-suffix    (e.g., :4.3-management-alpine — has a flavor suffix; not floating)
-#   - :NN.NN.NN-suffix (e.g., :17-alpine)
-#   - vX.Y.Z           (e.g., v1.83.0 — Prometheus-style v-prefix)
+#   - :NN.NN.NN          (e.g., :3.7.1 :13.0.1)
+#   - :NN.NN.NN-suffix   (e.g., :3.7.1-alpine)   # full patch + flavor — not floating
+#   - :NN.NN-suffix      (e.g., :4.3-management-alpine)  # WARNING: minor-only + flavor;
+#                                                        # currently accepted because no
+#                                                        # rabbitmq 4.3.x patch + flavor combo
+#                                                        # is pinned in the demo. Extending the
+#                                                        # floating regex to catch this would
+#                                                        # require pinning rabbitmq first.
+#   - vX.Y.Z             (e.g., v1.83.0 — Prometheus-style v-prefix)
+#
+# Floating patterns rejected by the regex below (WR-02 extended NN-suffix detection):
+#   - :NN-suffix         (e.g., :17-alpine)       # major-only + flavor = still floating
 
 # Extract image: lines, ignore comments.
 LINES=$(grep -E '^[[:space:]]*image:' docker-compose.yml | grep -v '^[[:space:]]*#')
@@ -408,7 +416,8 @@ LINES=$(grep -E '^[[:space:]]*image:' docker-compose.yml | grep -v '^[[:space:]]
 #   - :latest
 #   - :digit-only at end of line
 #   - :digit.digit (without trailing .digit) at end of line
-FLOATING=$(printf '%s\n' "$LINES" | grep -E '(image:[[:space:]]*[^:[:space:]]+[[:space:]]*$|:latest[[:space:]]*$|:[0-9]+[[:space:]]*$|:[0-9]+\\.[0-9]+[[:space:]]*$)' || true)
+#   - :digit-suffix at end of line (e.g., :17-alpine — major-only + flavor; WR-02 extension)
+FLOATING=$(printf '%s\n' "$LINES" | grep -E '(image:[[:space:]]*[^:[:space:]]+[[:space:]]*$|:latest[[:space:]]*$|:[0-9]+[[:space:]]*$|:[0-9]+\\.[0-9]+[[:space:]]*$|:[0-9]+-[^[:space:]]+[[:space:]]*$)' || true)
 
 if [ -n "$FLOATING" ]; then
   echo "ERROR: Phase 10 invariant violated — docker-compose.yml contains floating image tags:"

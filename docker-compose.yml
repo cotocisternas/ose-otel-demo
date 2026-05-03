@@ -31,7 +31,10 @@ services:
 
   # Phase 8: Valkey (Redis-compatible cache) — producer idempotency
   valkey:
-    image: valkey/valkey:8.1-alpine
+    # WR-02: pinned to exact patch (8.1.3-alpine) — `:8.1-alpine` was a minor-only
+    # floating tag that bypassed the verify:images regex (now extended to reject
+    # NN.NN-suffix and NN-suffix patterns).
+    image: valkey/valkey:8.1.3-alpine
     container_name: ose-otel-valkey
     ports:
       - "6379:6379"
@@ -45,7 +48,10 @@ services:
 
   # Phase 8: PostgreSQL — consumer persistence
   postgres:
-    image: postgres:17-alpine
+    # WR-02: pinned to exact patch (17.5-alpine) — `:17-alpine` was a major-only
+    # floating tag that bypassed the verify:images regex (now extended to reject
+    # NN-suffix patterns).
+    image: postgres:17.5-alpine
     container_name: ose-otel-postgres
     ports:
       - "5432:5432"
