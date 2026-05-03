@@ -214,9 +214,9 @@ public class HttpServerSpanFilter extends OncePerRequestFilter {
                 HttpAttributes.HTTP_REQUEST_METHOD, method,
                 HttpAttributes.HTTP_RESPONSE_STATUS_CODE, (long) response.getStatus()));
 
-            span.end();
             // close scope AFTER record() so ExemplarFilter.traceBased() sees active span
             scope.close();
+            span.end();
         }
     }
 }

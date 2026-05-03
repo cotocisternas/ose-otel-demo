@@ -572,11 +572,12 @@ set -e
 
 # Query the last 10 minutes of exemplars from Mimir's Prometheus-compatible API.
 # Prerequisites: mise run load (generate traffic), wait ~30s for metrics export, then run this task.
-START=$(date -u -d '10 minutes ago' '+%Y-%m-%dT%H:%M:%SZ')
-END=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+# Uses epoch arithmetic (POSIX-portable) instead of GNU-only date -d.
+EPOCH_NOW=$(date +%s)
+EPOCH_START=$((EPOCH_NOW - 600))
 
 echo "verify:exemplars: querying Mimir exemplar API for http_server_request_duration_seconds_bucket..."
-RESULT=$(curl -fsS "http://localhost:9009/prometheus/api/v1/query_exemplars?query=http_server_request_duration_seconds_bucket&start=${START}&end=${END}")
+RESULT=$(curl -fsS "http://localhost:9009/prometheus/api/v1/query_exemplars?query=http_server_request_duration_seconds_bucket&start=${EPOCH_START}&end=${EPOCH_NOW}")
 
 # Assert: .data array non-empty AND first series has exemplars AND first exemplar has a trace_id label.
 # An empty .data array means the exemplar pipeline is not yet active (check all three layers).
