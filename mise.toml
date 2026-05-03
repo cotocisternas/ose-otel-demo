@@ -63,7 +63,12 @@ echo "--- Port availability (D-11: 14 ports — 5 v1.0 + 1 v1.0 oversight (15692
 #   3200  (Tempo HTTP API)      9009 (Mimir HTTP API)  3100 (Loki HTTP API)
 #   13133 (Collector health)    8888 (Collector self-metrics)  8889 (Collector prometheus_exporter)
 for port in 3000 4317 4318 5672 15672 15692 6379 5432 3200 9009 3100 13133 8888 8889; do
-  if ss -tln 2>/dev/null | grep -q ":${port} "; then
+  # WR-04: ss -tln is Linux-only; on macOS the command silently fails (output
+  # suppressed by 2>/dev/null) and grep returns false, so every port falsely
+  # reports "free". The lsof fallback works on both macOS and Linux and is the
+  # diagnostic tool we already cite in the error message below.
+  if ss -tln 2>/dev/null | grep -q ":${port} " || \
+     lsof -iTCP:"${port}" -sTCP:LISTEN -n -P 2>/dev/null | grep -q LISTEN; then
     echo "ERROR: Port ${port} is in use. Run: lsof -i:${port} to find the process."
     exit 1
   fi
