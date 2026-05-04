@@ -23,7 +23,7 @@
         "name": "Traces dropped before sampling decision",
         "expr": "rate(otelcol_processor_tail_sampling_sampling_trace_dropped_too_early_total[5m]) > 0",
         "titleFormat": "traces dropped too early",
-        "textFormat": "The tail_sampling buffer is full — traces are being evicted before decision_wait expires, meaning sampling decisions are being lost. This is real data loss, not GC retention."
+        "textFormat": "The tail_sampling buffer is full \u2014 traces are being evicted before decision_wait expires, meaning sampling decisions are being lost. This is real data loss, not GC retention."
       }
     ]
   },
@@ -118,7 +118,7 @@
       },
       "id": 3,
       "title": "RED Metrics",
-      "description": "Rate / Errors / Duration on a single time axis. Order rate from the app counter; HTTP duration quantiles from Tempo metrics-generator spanmetrics on producer SERVER spans (NOT the app's http.server.request.duration histogram — its default buckets are too coarse to be useful); queue depth from RabbitMQ broker (authoritative).",
+      "description": "Rate / Errors / Duration on a single time axis. Order rate from the app counter; HTTP duration quantiles from Tempo metrics-generator spanmetrics on producer SERVER spans (NOT the app's http.server.request.duration histogram \u2014 its default buckets are too coarse to be useful); queue depth from RabbitMQ broker (authoritative).",
       "type": "timeseries",
       "fieldConfig": {
         "defaults": {
@@ -387,32 +387,61 @@
     },
     {
       "collapsed": true,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 21 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 21
+      },
       "id": 9,
       "title": "Tail Sampling diagnostics (Phase 11)",
       "type": "row",
-      "description": "POLICY-NAMES CONTRACT (Phase 11 D-T16): the policy= labels referenced in this row's queries are a contract with infra/observability/otelcol-config.yaml's tail_sampling.policies block. Renaming any policy in the YAML requires updating these queries. Verified at runtime by `mise run verify:tail-sampling` (D-T14). Also depends on the alpha feature gate `processor.tailsamplingprocessor.recordpolicy` enabled on the otel-collector container (Route A) — without the gate, sub-policy attribution collapses to the outer 'composite-policy' name only.",
+      "description": "POLICY-NAMES CONTRACT (Phase 11 D-T16): the policy= labels referenced in this row's queries are a contract with infra/observability/otelcol-config.yaml's tail_sampling.policies block. Renaming any policy in the YAML requires updating these queries. Verified at runtime by `mise run verify:tail-sampling` (D-T14). Also depends on the alpha feature gate `processor.tailsamplingprocessor.recordpolicy` enabled on the otel-collector container (Route A) \u2014 without the gate, sub-policy attribution collapses to the outer 'composite-policy' name only.",
       "panels": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 9, "w": 12, "x": 0, "y": 22 },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 22
+          },
           "id": 10,
-          "title": "Sampling decisions (composite envelope — see Tempo for sub-policy)",
+          "title": "Sampling decisions (composite envelope \u2014 see Tempo for sub-policy)",
           "type": "timeseries",
-          "description": "Per-policy sampling decisions per second, by outer composite policy + decision. Under Route A the composite envelope collapses sub-policy attribution at the metric layer — see the Tempo `tailsampling.composite_policy` span attribute for per-sub-policy view (verified by `mise run verify:tail-sampling` Tier 2).",
+          "description": "Per-policy sampling decisions per second, by outer composite policy + decision. Under Route A the composite envelope collapses sub-policy attribution at the metric layer \u2014 see the Tempo `tailsampling.composite_policy` span attribute for per-sub-policy view (verified by `mise run verify:tail-sampling` Tier 2).",
           "fieldConfig": {
             "defaults": {
-              "color": { "mode": "palette-classic" },
-              "custom": { "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10 }
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "fillOpacity": 10
+              }
             }
           },
           "options": {
-            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
-            "tooltip": { "mode": "single" }
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single"
+            }
           },
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "sum by (policy, decision) (rate(otelcol_processor_tail_sampling_count_traces_sampled_total[5m]))",
               "legendFormat": "{{policy}} / {{decision}}",
               "refId": "A"
@@ -420,25 +449,49 @@
           ]
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 9, "w": 12, "x": 12, "y": 22 },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 22
+          },
           "id": 11,
           "title": "Per-policy not-sample votes",
           "type": "timeseries",
-          "description": "Each policy votes sample/not_sampled/dropped per trace; this panel surfaces the not-sampled and dropped votes. Read alongside the decisions panel to see, e.g., probabilistic-fallback's drop-vote rate roughly 4x its sample-vote rate (20% sampling → 80% not-sampled). RESEARCH §3.3 panel 2 — replaces the non-existent `count_spans_dropped` from CONTEXT.md with the canonical per-policy decision='not_sampled' surface.",
+          "description": "Each policy votes sample/not_sampled/dropped per trace; this panel surfaces the not-sampled and dropped votes. Read alongside the decisions panel to see, e.g., probabilistic-fallback's drop-vote rate roughly 4x its sample-vote rate (20% sampling \u2192 80% not-sampled). RESEARCH \u00a73.3 panel 2 \u2014 replaces the non-existent `count_spans_dropped` from CONTEXT.md with the canonical per-policy decision='not_sampled' surface.",
           "fieldConfig": {
             "defaults": {
-              "color": { "mode": "palette-classic" },
-              "custom": { "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10 }
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "fillOpacity": 10
+              }
             }
           },
           "options": {
-            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
-            "tooltip": { "mode": "single" }
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single"
+            }
           },
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "sum by (policy, decision) (rate(otelcol_processor_tail_sampling_count_traces_sampled_total{decision=~\"not_sampled|dropped\"}[5m]))",
               "legendFormat": "{{policy}} / {{decision}}",
               "refId": "A"
@@ -446,31 +499,58 @@
           ]
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 9, "w": 8, "x": 0, "y": 31 },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 8,
+            "x": 0,
+            "y": 31
+          },
           "id": 12,
           "title": "Late-arriving spans (Scenario 1 buffer hits)",
           "type": "timeseries",
-          "description": "Late span = a span arriving AFTER its trace's sampling decision was made (Scenario 1 of the v0.151.0 README's three late-span scenarios). Low and stable = `decision_wait: 10s` is right-sized. Climbing = traces have spans straggling beyond the window; consider raising decision_wait or enabling decision_cache.sampled_cache_size. Histogram in SECONDS — _count gives event rate; _bucket+histogram_quantile gives lateness distribution. RESEARCH §3.3 panel 3 — replaces the non-existent `late_span_total` from CONTEXT.md with the canonical `sampling_late_span_age` surface.",
+          "description": "Late span = a span arriving AFTER its trace's sampling decision was made (Scenario 1 of the v0.151.0 README's three late-span scenarios). Low and stable = `decision_wait: 10s` is right-sized. Climbing = traces have spans straggling beyond the window; consider raising decision_wait or enabling decision_cache.sampled_cache_size. Histogram in SECONDS \u2014 _count gives event rate; _bucket+histogram_quantile gives lateness distribution. RESEARCH \u00a73.3 panel 3 \u2014 replaces the non-existent `late_span_total` from CONTEXT.md with the canonical `sampling_late_span_age` surface.",
           "fieldConfig": {
             "defaults": {
-              "color": { "mode": "palette-classic" },
-              "custom": { "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10 }
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "fillOpacity": 10
+              }
             }
           },
           "options": {
-            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
-            "tooltip": { "mode": "single" }
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single"
+            }
           },
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "rate(otelcol_processor_tail_sampling_sampling_late_span_age_count[5m])",
               "legendFormat": "late spans/s",
               "refId": "A"
             },
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "histogram_quantile(0.99, sum by (le) (rate(otelcol_processor_tail_sampling_sampling_late_span_age_bucket[5m])))",
               "legendFormat": "p99 lateness (seconds)",
               "refId": "B"
@@ -478,37 +558,67 @@
           ]
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 9, "w": 8, "x": 8, "y": 31 },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 8,
+            "x": 8,
+            "y": 31
+          },
           "id": 13,
           "title": "Sampling decision-loop latency (p50/p95/p99)",
           "type": "timeseries",
-          "description": "Wall-clock time the Collector spends running the per-trace decision loop for one batch. README quote: 'A latency exceeding 1 second can delay sampling decisions beyond decision_wait, increasing the chance of traces being dropped before sampling.' Workshop p99 should stay well under 10ms. RESEARCH §3.3 panel 4 — uses canonical `sampling_decision_timer_latency` (was incorrectly cited as `decision_latency_bucket` in CONTEXT.md). NOTE: the `_milliseconds` unit suffix may or may not be present per RESEARCH §3.2.1; if panel data is empty, drop the `_milliseconds` infix and reload.",
+          "description": "Wall-clock time the Collector spends running the per-trace decision loop for one batch. README quote: 'A latency exceeding 1 second can delay sampling decisions beyond decision_wait, increasing the chance of traces being dropped before sampling.' Workshop p99 should stay well under 10ms. RESEARCH \u00a73.3 panel 4 \u2014 uses canonical `sampling_decision_timer_latency` (was incorrectly cited as `decision_latency_bucket` in CONTEXT.md). NOTE: the `_milliseconds` unit suffix may or may not be present per RESEARCH \u00a73.2.1; if panel data is empty, drop the `_milliseconds` infix and reload.",
           "fieldConfig": {
             "defaults": {
-              "color": { "mode": "palette-classic" },
-              "custom": { "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10 }
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "fillOpacity": 10
+              }
             }
           },
           "options": {
-            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
-            "tooltip": { "mode": "single" }
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single"
+            }
           },
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "histogram_quantile(0.50, sum by (le) (rate(otelcol_processor_tail_sampling_sampling_decision_timer_latency_milliseconds_bucket[5m])))",
               "legendFormat": "p50 (ms)",
               "refId": "A"
             },
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "histogram_quantile(0.95, sum by (le) (rate(otelcol_processor_tail_sampling_sampling_decision_timer_latency_milliseconds_bucket[5m])))",
               "legendFormat": "p95 (ms)",
               "refId": "B"
             },
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "histogram_quantile(0.99, sum by (le) (rate(otelcol_processor_tail_sampling_sampling_decision_timer_latency_milliseconds_bucket[5m])))",
               "legendFormat": "p99 (ms)",
               "refId": "C"
@@ -516,26 +626,51 @@
           ]
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 9, "w": 8, "x": 16, "y": 31 },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 8,
+            "x": 16,
+            "y": 31
+          },
           "id": 14,
           "title": "Traces dropped before decision (buffer pressure)",
           "type": "timeseries",
-          "description": "Rate of traces evicted from the tail_sampling buffer BEFORE decision_wait expired — real data loss from buffer pressure. When this is > 0, the composite policy never got to evaluate those traces. Zero is healthy. Sustained > 0 means num_traces (currently 10000) is too small for the incoming trace rate or decision_wait (currently 10s) is too long. The old metric (sampling_traces_on_memory) included decided traces in GC retention and was misleading — it showed the hashmap size, not pending work.",
+          "description": "Rate of traces evicted from the tail_sampling buffer BEFORE decision_wait expired \u2014 real data loss from buffer pressure. When this is > 0, the composite policy never got to evaluate those traces. Zero is healthy. Sustained > 0 means num_traces (currently 10000) is too small for the incoming trace rate or decision_wait (currently 10s) is too long. The old metric (sampling_traces_on_memory) included decided traces in GC retention and was misleading \u2014 it showed the hashmap size, not pending work.",
           "fieldConfig": {
             "defaults": {
-              "color": { "mode": "fixed", "fixedColor": "red" },
-              "custom": { "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 2, "fillOpacity": 30 },
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "red"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "fillOpacity": 30
+              },
               "unit": "ops"
             }
           },
           "options": {
-            "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
-            "tooltip": { "mode": "single" }
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single"
+            }
           },
           "targets": [
             {
-              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
               "expr": "rate(otelcol_processor_tail_sampling_sampling_trace_dropped_too_early_total[5m])",
               "legendFormat": "dropped too early /s",
               "refId": "A"
@@ -546,49 +681,84 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 40 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 40
+      },
       "id": 15,
       "title": "Exemplars (Phase 12)",
       "type": "row",
-      "description": "Phase 12 — ExemplarFilter.traceBased() on both SdkMeterProviders attaches trace_id/span_id to histogram data points when a span is active at record() time. Grafana requests exemplar data from Mimir when panel query targets include exemplar: true. Click any exemplar dot to navigate to the originating trace in Tempo.",
+      "description": "Phase 12 \u2014 ExemplarFilter.traceBased() on both SdkMeterProviders attaches trace_id/span_id to histogram data points when a span is active at record() time. Grafana requests exemplar data from Mimir when panel query targets include exemplar: true. Click any exemplar dot to navigate to the originating trace in Tempo.",
       "panels": []
     },
     {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 41 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 41
+      },
       "id": 16,
       "title": "HTTP Request Duration (with Exemplars)",
       "type": "timeseries",
-      "description": "p50/p95/p99 latency percentiles for the producer service's HTTP server. Exemplar dots appear when load is running and the ExemplarFilter.traceBased() pipeline is active — click any dot to open the originating trace in Tempo. Both producer and consumer OtelSdkConfiguration.buildMeterProvider() calls have .setExemplarFilter(ExemplarFilter.traceBased()) (EXMP-01).",
+      "description": "p50/p95/p99 latency percentiles for the producer service's HTTP server. Exemplar dots appear when load is running and the ExemplarFilter.traceBased() pipeline is active \u2014 click any dot to open the originating trace in Tempo. Both producer and consumer OtelSdkConfiguration.buildMeterProvider() calls have .setExemplarFilter(ExemplarFilter.traceBased()) (EXMP-01).",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": { "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1, "fillOpacity": 10 },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10
+          },
           "unit": "s"
         }
       },
       "options": {
         "exemplarLabel": "trace_id",
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "single" }
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single"
+        }
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "expr": "histogram_quantile(0.50, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))",
           "legendFormat": "p50",
           "refId": "A",
           "exemplar": true
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))",
           "legendFormat": "p95",
           "refId": "B",
           "exemplar": true
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket[5m])))",
           "legendFormat": "p99",
           "refId": "C",
@@ -598,23 +768,38 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 50 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 50
+      },
       "id": 17,
       "title": "Log-Based Metrics (Phase 13)",
       "type": "row",
-      "description": "Phase 13 — Loki recording rules derive metrics FROM LOGS using LogQL. The ruler evaluates sum(rate({service_name=~\"order-.+\"} |= \"ERROR\" [2m])) every 1m and remote-writes the result to Mimir as log:order_errors:rate2m. No Java code changes — pure YAML. The panel below overlays this log-derived error rate against the SDK-emitted orders.created counter to demonstrate the equivalence (and divergence) of metrics-from-code vs metrics-from-logs.",
+      "description": "Phase 13 \u2014 Loki recording rules derive metrics FROM LOGS using LogQL. The ruler evaluates sum(rate({service_name=~\"order-.+\"} |= \"ERROR\" [2m])) every 1m and remote-writes the result to Mimir as log:order_errors:rate2m. No Java code changes \u2014 pure YAML. The panel below overlays this log-derived error rate against the SDK-emitted orders.created counter to demonstrate the equivalence (and divergence) of metrics-from-code vs metrics-from-logs.",
       "panels": []
     },
     {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 51 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 51
+      },
       "id": 18,
       "title": "Log-Based Error Rate vs SDK Counter",
       "type": "timeseries",
       "description": "The gap between the SDK-emitted creation rate and the log-derived error rate is your success rate. The SDK counter is the source of truth; the log-derived metric is an ops-team approximation that requires no code change.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "drawStyle": "line",
             "lineInterpolation": "linear",
@@ -628,21 +813,121 @@
         "overrides": []
       },
       "options": {
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "single" }
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single"
+        }
       },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "expr": "sum by (service_name) (rate(orders_created_total[2m]))",
           "legendFormat": "SDK: orders created ({{service_name}})",
           "refId": "A"
         },
         {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "expr": "log:order_errors:rate2m",
           "legendFormat": "Logs: errors ({{service_name}})",
           "refId": "B"
+        }
+      ]
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 60
+      },
+      "id": 19,
+      "title": "HTTP Client Spans (Phase 15)",
+      "type": "row",
+      "panels": [
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 61
+          },
+          "id": 20,
+          "title": "Recent CLIENT Spans (POST /notifications)",
+          "type": "table",
+          "description": "CLIENT spans from TracingClientHttpRequestInterceptor \u2014 the outbound HTTP call from order-producer to the notification stub. Shows span name, duration, status, and service.peer.name attribute.",
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "tempo",
+                "uid": "tempo"
+              },
+              "query": "{kind=client && resource.service.name=\"order-producer\" && name=\"POST /notifications\"}",
+              "queryType": "traceql",
+              "limit": 20,
+              "tableType": "traces",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 61
+          },
+          "id": 21,
+          "title": "CLIENT \u2192 SERVER Span Waterfall (sample trace)",
+          "type": "traces",
+          "description": "Pick any trace from the table on the left to see the full waterfall: SERVER (POST /orders) \u2192 INTERNAL (OrderService.place) \u2192 CLIENT (POST /notifications) \u2192 SERVER (stub). The CLIENT\u2192SERVER nesting within the same JVM is the Phase 15 teaching moment.",
+          "targets": [
+            {
+              "datasource": {
+                "type": "tempo",
+                "uid": "tempo"
+              },
+              "query": "{kind=client && resource.service.name=\"order-producer\" && name=\"POST /notifications\"}",
+              "queryType": "traceql",
+              "limit": 1,
+              "tableType": "traces",
+              "refId": "A"
+            }
+          ]
         }
       ]
     }
@@ -667,14 +952,17 @@
           "selected": false
         },
         "skipUrlSync": false,
-        "description": "Regex applied to the Loki trace_id structured-metadata filter on the top-row Logs panel. Default '^$' matches no spanned log line — the panel renders empty until you paste a 32-hex trace_id from the Recent Traces panel and press Enter, focusing the log feed on that one request. Default was previously '.+' which streamed every spanned line to the browser; under workshop load (~22k lines/min) that made the panel the slowest on the dashboard."
+        "description": "Regex applied to the Loki trace_id structured-metadata filter on the top-row Logs panel. Default '^$' matches no spanned log line \u2014 the panel renders empty until you paste a 32-hex trace_id from the Recent Traces panel and press Enter, focusing the log feed on that one request. Default was previously '.+' which streamed every spanned line to the browser; under workshop load (~22k lines/min) that made the panel the slowest on the dashboard."
       }
     ]
   },
-  "time": {"from": "now-15m", "to": "now"},
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
   "timepicker": {},
   "timezone": "browser",
-  "title": "OSE OTel Demo — Three Signals",
+  "title": "OSE OTel Demo \u2014 Three Signals",
   "uid": "ose-otel-demo",
   "weekStart": ""
 }
