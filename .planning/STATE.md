@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Production Shapes
-status: executing
-stopped_at: Completed 15-04-PLAN.md
-last_updated: "2026-05-04T12:32:50Z"
+status: Phase 15 shipped; tag step-15-http-client-spans applied
+stopped_at: Phase 16 context gathered
+last_updated: "2026-05-04T14:15:41.352Z"
 last_activity: 2026-05-04
 progress:
   total_phases: 9
@@ -186,6 +186,6 @@ Items acknowledged and carried forward at milestone close on 2026-05-02:
 
 ## Session Continuity
 
-Last session: 2026-05-04T12:32:50Z
-Stopped at: Completed 15-04-PLAN.md (Phase 15 complete)
-Resume file: None
+Last session: 2026-05-04T14:15:41.345Z
+Stopped at: Phase 16 context gathered
+Resume file: .planning/phases/16-head-sampling-w3c-baggage/16-CONTEXT.md
