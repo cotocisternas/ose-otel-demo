@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Production Shapes
 status: executing
-stopped_at: Phase 14 context gathered
-last_updated: "2026-05-04T06:52:37.126Z"
-last_activity: 2026-05-04 -- Phase 14 planning complete
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-05-04T06:59:00.527Z"
+last_activity: 2026-05-04
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 24
-  completed_plans: 20
-  percent: 83
+  completed_plans: 21
+  percent: 88
 ---
 
 # Project State
@@ -22,17 +22,17 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A workshop attendee who already shipped v1.0's manual-SDK demo can run `docker compose up` against a decomposed Tempo/Mimir/Loki/Grafana stack, see Collector-side tail sampling shape what reaches Tempo, click a histogram exemplar to land on the originating trace, watch a JDBC/JPA span tree under a CONSUMER span, follow baggage from an HTTP header through AMQP into a consumer log, and understand exactly which lines of SDK and Collector config made each piece work.
 
-**Current focus:** Phase 13 — log-based-metrics-loki-recording-rules
+**Current focus:** Phase 14 — jdbc-jpa-database-spans
 
 ## Current Position
 
-Phase: 18
-Plan: Not started
+Phase: 14 (jdbc-jpa-database-spans) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-05-04 -- Phase 14 planning complete
+Last activity: 2026-05-04
 
 ```
-Progress: [██████████] 100%
+Progress: [█████████░] 88%
 ```
 
 ## Performance Metrics
@@ -75,6 +75,7 @@ Progress: [██████████] 100%
 | Phase 18-automated-screenshot-generation-playwright P03 | 6min | 3 tasks | 6 files |
 | Phase 13 P01 | 2min | 2 tasks | 3 files |
 | Phase 13 P02 | 2min | 2 tasks | 1 files |
+| Phase 14-jdbc-jpa-database-spans P01 | 2min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -126,6 +127,9 @@ Recent decisions affecting current work:
 - [Phase 18-03]: 5 Rule 1 bugs fixed in capture-screenshots.mjs for Grafana 13 / Tempo 2.10.x: viewPanel canvas selector, nativeSearch queryType, ARIA gridcell selector, explicit Run query click, 15-min time range
 - [Phase 18-03]: Annotated tag step-18-screenshots applied on main — all v2.0 teaching PNGs shipped (WORK-01)
 - [Phase 13-02]: Human-verify checkpoint APPROVED — verify:log-metrics both tiers GREEN, dashboard panel renders SDK rate vs log-derived error rate with correct ~10% proportions, README Step 13 narrative clear and well-positioned
+- [Phase ?]: Phase 8 starter-jdbc replaced by starter-data-jpa; postgresql driver retained as JPA uses the same JDBC driver
+- [Phase ?]: ddl-auto=update chosen over create-drop for workshop-local Postgres (T-14-01-02 accept)
+- [Phase ?]: [Phase 14-01] Wave 1 intentional compile breakage on ProcessingService resolves in plan 14-02 when JPA entity + repository are added
 
 ### Roadmap Evolution
 
@@ -168,6 +172,6 @@ Items acknowledged and carried forward at milestone close on 2026-05-02:
 
 ## Session Continuity
 
-Last session: 2026-05-04T06:27:16.206Z
-Stopped at: Phase 14 context gathered
-Resume file: .planning/phases/14-jdbc-jpa-database-spans/14-CONTEXT.md
+Last session: 2026-05-04T06:59:00.520Z
+Stopped at: Completed 14-01-PLAN.md
+Resume file: None
