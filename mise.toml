@@ -698,3 +698,41 @@ echo "verify:head-sampling: GREEN — sampled traces from order-producer are rea
 echo "  Manual verification: send 100 requests, confirm ~50 traces in Tempo (50% head sampling)."
 echo "  Console-emitted spans will show the SDK discarding ~50% before OTLP export."
 """
+
+[tasks."verify:baggage"]
+description = "Phase 16 invariant: baggage.customer-tier attribute present on both producer and consumer spans in Tempo"
+run = """
+set -e
+ATTEMPTS=6
+SLEEP_SECS=5
+LAST_ERR=""
+
+# Prerequisites: mise run infra:up, mise run dev, then:
+#   curl -X POST -H "Content-Type: application/json" -H "X-Customer-Tier: gold" \
+#     -d '{"sku":"WIDGET-1","quantity":1}' http://localhost:8080/orders
+# Wait ~15s for Collector decision_wait, then run this task.
+
+echo "verify:baggage: querying Tempo for spans with baggage.customer-tier=gold..."
+for i in $(seq 1 $ATTEMPTS); do
+  RESULT=$(curl -sS --data-urlencode 'q={span.baggage.customer-tier="gold"}' 'http://localhost:3200/api/search?limit=5' 2>&1) || {
+    LAST_ERR="curl :3200 failed: $RESULT"
+    [ "$i" -lt "$ATTEMPTS" ] && { echo "  attempt $i/$ATTEMPTS — Tempo not ready ($LAST_ERR); retrying in ${SLEEP_SECS}s..."; sleep $SLEEP_SECS; continue; }
+    echo "ERROR: verify:baggage timed out — Tempo not reachable."
+    exit 1
+  }
+  if printf '%s' "$RESULT" | jq -e '.traces | length > 0' >/dev/null 2>&1; then break; fi
+  LAST_ERR="no spans with baggage.customer-tier=gold in Tempo yet"
+  [ "$i" -lt "$ATTEMPTS" ] && { echo "  attempt $i/$ATTEMPTS — $LAST_ERR; retrying in ${SLEEP_SECS}s..."; sleep $SLEEP_SECS; continue; }
+  echo "ERROR: verify:baggage — $LAST_ERR after $((ATTEMPTS * SLEEP_SECS))s."
+  echo "Diagnose:"
+  echo "  1. Did you include -H 'X-Customer-Tier: gold' in the curl request?"
+  echo "  2. Is BaggageSpanAttributeProcessor registered in buildTracerProvider()?"
+  echo "  3. Did TracingMessageListenerAdvice.invoke() get the outer extracted.makeCurrent()?"
+  echo "Tempo API response: $RESULT"
+  exit 1
+done
+
+echo "verify:baggage: GREEN — baggage.customer-tier=gold spans present in Tempo."
+echo "  Open the trace in Tempo and confirm BOTH the PRODUCER-side span AND the CONSUMER span carry baggage.customer-tier=gold."
+echo "  Confirm the SERVER span does NOT carry baggage.customer-tier (D-B5 teaching moment)."
+"""

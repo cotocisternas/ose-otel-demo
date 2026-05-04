@@ -1,7 +1,9 @@
 package com.example.e2e;
 
+import java.util.Set;
 import java.util.UUID;
 
+import com.example.otel.context.BaggageSpanAttributeProcessor;
 import io.opentelemetry.api.baggage.propagation.W3CBaggagePropagator;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
@@ -140,9 +142,14 @@ final class TestOtelHolder {
         // captured. The parent-based wrapper used in production is correct
         // because some spans arrive with sampled=false from upstream —
         // irrelevant in tests.
+        // X-4 mitigation: register BaggageSpanAttributeProcessor so integration test
+        // assertions on baggage.customer-tier attribute work.
+        // D-18: test sampler stays alwaysOn() — test determinism overrides the Phase 16
+        // production sampler swap (traceIdRatioBased). Every span is captured in tests.
         SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
             .setResource(resource)
             .setSampler(Sampler.alwaysOn())
+            .addSpanProcessor(new BaggageSpanAttributeProcessor(Set.of("customer-tier")))  // X-4 fix
             .addSpanProcessor(SimpleSpanProcessor.create(SPANS))
             .build();
 

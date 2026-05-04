@@ -200,6 +200,32 @@ if [[ "$IDEMPOTENT_RPS" -gt 0 ]]; then
   PID_IDEMPOTENT=$!
 fi
 
+# --- Baggage stream (Phase 16) ----------------------------------------------
+#
+# Phase 16 — baggage stream: rotates X-Customer-Tier through gold/silver/standard
+# at BAGGAGE_RPS per request. Demonstrates cardinality-control lesson (3 values,
+# not per-user values) and verifies AMQP baggage propagation end-to-end.
+BAGGAGE_RPS="${BAGGAGE_RPS:-3}"
+if [[ "$BAGGAGE_RPS" -gt 0 ]]; then
+  (
+    sleep_interval=$(awk "BEGIN {printf \"%.3f\", 1.0 / ${BAGGAGE_RPS}}")
+    tiers=(gold silver standard)
+    i=0
+    while :; do
+      tier="${tiers[$((i % 3))]}"
+      i=$((i + 1))
+      curl -sS -o /dev/null \
+        -X POST \
+        -H "Content-Type: application/json" \
+        -H "X-Customer-Tier: ${tier}" \
+        -d '{"sku":"WIDGET-BAGGAGE","quantity":1,"priority":"standard"}' \
+        "${TARGET}" || true
+      sleep "${sleep_interval}"
+    done
+  ) &
+  PID_BAGGAGE=$!
+fi
+
 # --- Burst loop (optional) ---------------------------------------------------
 
 if [[ "$BURST_RPS" -gt 0 ]]; then
