@@ -407,25 +407,24 @@ public class OtelSdkConfiguration {
         // assertions are deterministic.
         BatchSpanProcessor spanProcessor = BatchSpanProcessor.builder(spanExporter).build();
 
-        // ----- Sampler: parent-based, always-on root -----
+        // ----- Sampler: parent-based, 50% ratio sampling (Phase 16 / HSAMP-01) -----
         //
-        // Sampler.parentBased(Sampler.alwaysOn()) means:
+        // Phase 16 swapped this to 50% ratio sampling. See README §16a for the
+        // head-vs-tail sampling contrast.
+        //
+        // Sampler.parentBased(Sampler.traceIdRatioBased(0.5)) means:
         //   - If there is a parent SpanContext (from upstream propagation),
         //     respect its sampling decision via the traceparent flag byte.
-        //   - If there is NO parent (root span), sample 100%.
+        //   - If there is NO parent (root span), sample ~50% based on a hash
+        //     of the trace ID (deterministic: same trace ID always produces
+        //     the same sampling decision — all spans within a trace are
+        //     sampled or dropped together).
         //
-        // For production, swap to:
-        //   Sampler.parentBased(Sampler.traceIdRatioBased(0.1))
-        // which keeps the parent-respecting behaviour for distributed traces
-        // (so a sampled trace stays sampled across all hops via traceparent)
-        // while sampling only 10% of brand-new root spans.
-        //
-        // Why parentBased matters: without it, if you set
-        // traceIdRatioBased(0.1) directly as the root sampler, each service
-        // would re-roll the dice on EVERY span — producing trace fragments
-        // where the consumer span gets sampled but its producer parent does
-        // not. parentBased ensures one decision per trace, made at the root.
-        Sampler sampler = Sampler.parentBased(Sampler.alwaysOn());
+        // Why parentBased matters: without it, traceIdRatioBased(0.5) applied
+        // directly would re-roll per span — producing trace fragments where the
+        // consumer span is sampled but the producer parent is not.
+        // parentBased ensures one decision per trace, made at the root.
+        Sampler sampler = Sampler.parentBased(Sampler.traceIdRatioBased(0.5));
 
         // ----- TracerProvider: assembles resource + sampler + processor -----
         return SdkTracerProvider.builder()
