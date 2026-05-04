@@ -18,6 +18,7 @@ import io.opentelemetry.semconv.HttpAttributes;
 import io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes;
 import io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues;
 import io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MessagingSystemIncubatingValues;
+import io.opentelemetry.semconv.incubating.ServiceIncubatingAttributes;
 
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
@@ -250,11 +251,13 @@ class OrderFlowIT {
         org.assertj.core.api.Assertions.assertThat(response.getStatusCode())
             .isEqualTo(HttpStatus.ACCEPTED);
 
-        // EXPECTED_SPAN_COUNT = 5: SERVER + INTERNAL_producer + PRODUCER
-        // + CONSUMER + INTERNAL_consumer.
+        // Phase 15: adds 2 more spans: CLIENT (TracingClientHttpRequestInterceptor)
+        // + SERVER (HttpServerSpanFilter wrapping POST /notifications).
+        // Total: SERVER_orders + INTERNAL_producer + PRODUCER + CLIENT_http + SERVER_stub
+        //        + CONSUMER + INTERNAL_consumer = 7 minimum.
         Awaitility.await()
             .atMost(Duration.ofSeconds(10))
-            .until(() -> TestOtelHolder.SPANS.getFinishedSpanItems().size() >= 5);
+            .until(() -> TestOtelHolder.SPANS.getFinishedSpanItems().size() >= 7);
 
         forceFlushAll();
 
@@ -271,11 +274,11 @@ class OrderFlowIT {
         // TEST-04: cross-service parent linkage.
         assertThat(consumerSpan).hasParentSpanId(producerSpan.getSpanId());
 
-        // TEST-05: SpanKind coverage (PRODUCER + CONSUMER + SERVER + INTERNAL).
+        // TEST-05: SpanKind coverage (PRODUCER + CONSUMER + SERVER + INTERNAL + CLIENT).
         org.assertj.core.api.Assertions.assertThat(
                 spans.stream().map(SpanData::getKind).toList())
             .contains(SpanKind.SERVER, SpanKind.INTERNAL,
-                      SpanKind.PRODUCER, SpanKind.CONSUMER);
+                      SpanKind.PRODUCER, SpanKind.CONSUMER, SpanKind.CLIENT);
 
         // TEST-05: messaging semconv attributes — typed constants (RABBITMQ /
         // SEND / PROCESS) sourced from MessagingIncubatingAttributes so a
@@ -293,6 +296,68 @@ class OrderFlowIT {
         assertThat(consumerSpan).hasAttribute(equalTo(
             MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE,
             MessagingOperationTypeIncubatingValues.PROCESS));
+    }
+
+    // ----------------------------------------------------------------------
+    // TEST 6 — Phase 15: CLIENT span present, correct kind, correct attributes
+    // ----------------------------------------------------------------------
+    @Test
+    void httpClientSpanPresentInTrace_clientSpanAssertions() {
+        ResponseEntity<Void> response = rest.postForEntity(
+            orderUrl,
+            new TestOrderRequest("WIDGET-NOTIFY-1", 1, "standard"),
+            Void.class);
+        org.assertj.core.api.Assertions.assertThat(response.getStatusCode())
+            .isEqualTo(HttpStatus.ACCEPTED);
+
+        // Wait for CLIENT span from TracingClientHttpRequestInterceptor.
+        // The span is emitted regardless of the HTTP call outcome (D-H2 fire-and-forget):
+        // span.end() is always called in the finally block, so InMemorySpanExporter
+        // captures it even when the notification call fails with a connection error.
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(10))
+            .until(() -> TestOtelHolder.SPANS.getFinishedSpanItems().stream()
+                .anyMatch(s -> s.getKind() == SpanKind.CLIENT
+                    && s.getName().startsWith("POST ")));
+
+        forceFlushAll();
+
+        List<SpanData> spans = TestOtelHolder.SPANS.getFinishedSpanItems();
+
+        // Find the HTTP CLIENT span (distinguished from DB CLIENT spans by span name).
+        SpanData httpClientSpan = spans.stream()
+            .filter(s -> s.getKind() == SpanKind.CLIENT)
+            .filter(s -> s.getName().startsWith("POST /"))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError(
+                "expected a CLIENT span with name starting 'POST /' — found CLIENT spans: "
+                + spans.stream()
+                    .filter(s -> s.getKind() == SpanKind.CLIENT)
+                    .map(s -> s.getName() + "/" + s.getKind())
+                    .toList()));
+
+        // HCLI-02: HTTP semconv attributes present on CLIENT span.
+        assertThat(httpClientSpan)
+            .hasAttribute(equalTo(HttpAttributes.HTTP_REQUEST_METHOD, "POST"));
+        assertThat(httpClientSpan)
+            .hasAttribute(equalTo(
+                ServiceIncubatingAttributes.SERVICE_PEER_NAME, "notification-service"));
+
+        // HCLI-03: CLIENT span is a child of the producer's INTERNAL span.
+        SpanData producerInternalSpan = spans.stream()
+            .filter(s -> s.getKind() == SpanKind.INTERNAL)
+            .filter(s -> "OrderService.place".equals(s.getName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError(
+                "expected an INTERNAL span named 'OrderService.place'"));
+
+        org.assertj.core.api.Assertions.assertThat(httpClientSpan.getParentSpanId())
+            .as("HTTP CLIENT span must be a child of OrderService.place INTERNAL span (HCLI-03)")
+            .isEqualTo(producerInternalSpan.getSpanId());
+
+        // HCLI-04: All spans share one traceId (CLIENT span is part of the same distributed trace).
+        String traceId = findSpanByKind(spans, SpanKind.SERVER).getTraceId();
+        assertThat(httpClientSpan).hasTraceId(traceId);
     }
 
     // ----------------------------------------------------------------------
@@ -335,7 +400,7 @@ class OrderFlowIT {
 
         Awaitility.await()
             .atMost(Duration.ofSeconds(10))
-            .until(() -> TestOtelHolder.SPANS.getFinishedSpanItems().size() >= 5);
+            .until(() -> TestOtelHolder.SPANS.getFinishedSpanItems().size() >= 7);
 
         forceFlushAll();
 
