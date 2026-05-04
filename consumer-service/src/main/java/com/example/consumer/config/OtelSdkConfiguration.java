@@ -2,7 +2,10 @@ package com.example.consumer.config;
 
 import java.time.Duration;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+
+import com.example.otel.context.BaggageSpanAttributeProcessor;
 
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.baggage.propagation.W3CBaggagePropagator;
@@ -426,11 +429,20 @@ public class OtelSdkConfiguration {
         // parentBased ensures one decision per trace, made at the root.
         Sampler sampler = Sampler.parentBased(Sampler.traceIdRatioBased(0.5));
 
-        // ----- TracerProvider: assembles resource + sampler + processor -----
+        // ----- BaggageSpanAttributeProcessor: stamp allowlisted baggage keys as span attributes -----
+        //
+        // Added FIRST so baggage is stamped before BatchSpanProcessor enqueues the span.
+        // Set.of("customer-tier") is the allowlist — F7-3 mitigation against cardinality explosion.
+        // Phase 16 / BAG-02 / D-S1.
+        BaggageSpanAttributeProcessor baggageProcessor =
+            new BaggageSpanAttributeProcessor(Set.of("customer-tier"));
+
+        // ----- TracerProvider: assembles resource + sampler + processors -----
         return SdkTracerProvider.builder()
             .setResource(resource)
             .setSampler(sampler)
-            .addSpanProcessor(spanProcessor)
+            .addSpanProcessor(baggageProcessor)   // FIRST — stamps baggage before batching
+            .addSpanProcessor(spanProcessor)       // BatchSpanProcessor second
             .build();
     }
 

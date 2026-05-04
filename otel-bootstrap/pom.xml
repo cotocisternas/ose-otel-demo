@@ -30,6 +30,20 @@
     </dependency>
 
     <!--
+      OpenTelemetry SDK — SpanProcessor, ReadWriteSpan, ReadableSpan,
+      CompletableResultCode. Required to compile BaggageSpanAttributeProcessor
+      (Phase 16 / BAG-02). Provided scope: consuming services (producer-service,
+      consumer-service) already declare opentelemetry-sdk at compile scope;
+      otel-bootstrap only references the SDK types at compile time.
+      BOM-managed by opentelemetry-bom:1.61.0 — no <version>.
+    -->
+    <dependency>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-sdk</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <!--
       Spring AMQP API — Message, MessageProperties, MessagePostProcessor,
       Correlation. Provided scope: consuming services (producer-service,
       consumer-service) bring spring-rabbit transitively via
