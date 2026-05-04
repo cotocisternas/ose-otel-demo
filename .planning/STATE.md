@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Production Shapes
 status: executing
-stopped_at: Completed 15-03-PLAN.md
-last_updated: "2026-05-04T12:28:28.513Z"
+stopped_at: Completed 15-04-PLAN.md
+last_updated: "2026-05-04T12:32:50Z"
 last_activity: 2026-05-04
 progress:
   total_phases: 9
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 28
-  completed_plans: 27
-  percent: 96
+  completed_plans: 28
+  percent: 100
 ---
 
 # Project State
@@ -22,17 +22,17 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A workshop attendee who already shipped v1.0's manual-SDK demo can run `docker compose up` against a decomposed Tempo/Mimir/Loki/Grafana stack, see Collector-side tail sampling shape what reaches Tempo, click a histogram exemplar to land on the originating trace, watch a JDBC/JPA span tree under a CONSUMER span, follow baggage from an HTTP header through AMQP into a consumer log, and understand exactly which lines of SDK and Collector config made each piece work.
 
-**Current focus:** Phase 15 — outbound-http-client-spans
+**Current focus:** Phase 15 complete — next: Phase 16 (head-sampling-w3c-baggage)
 
 ## Current Position
 
-Phase: 15 (outbound-http-client-spans) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
+Phase: 15 (outbound-http-client-spans) — COMPLETE
+Plan: 4 of 4 (all complete)
+Status: Phase 15 shipped; tag step-15-http-client-spans applied
 Last activity: 2026-05-04
 
 ```
-Progress: [██████████] 96%
+Progress: [██████████] 100%
 ```
 
 ## Performance Metrics
@@ -82,6 +82,7 @@ Progress: [██████████] 96%
 | Phase 14-jdbc-jpa-database-spans P04 | 3min | 2 tasks | 2 files |
 | Phase 15-outbound-http-client-spans P02 | 2min | 2 tasks | 4 files |
 | Phase 15-outbound-http-client-spans P03 | 1min | 2 tasks | 2 files |
+| Phase 15-outbound-http-client-spans P04 | 2min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -142,6 +143,7 @@ Recent decisions affecting current work:
 - [Phase 15-02]: HttpClientConfig defines singleton RestClient.Builder @Bean (not PROTOTYPE) — sufficient for one OrderService injection at startup; Spring Boot ConditionalOnMissingBean auto-config backs off. F6-1 prohibition comment in OrderService constructor documents `RestClient.create(url)` as prohibited.
 - [Phase 15-02]: Fire-and-forget outbound HTTP notification in OrderService.place() swallows exceptions with WARN log (D-H2) — order is already AMQP-published before the HTTP call; notification failure observable in Tempo (CLIENT span status=ERROR) without failing the 202 response.
 - [Phase ?]: [Phase 15-03]: Notification URL not overridden in IT — fire-and-forget (D-H2) absorbs connection failure; TracingClientHttpRequestInterceptor finally block always exports CLIENT span regardless of HTTP outcome
+- [Phase 15-04]: Human-verify checkpoint APPROVED — verify:http-client-spans GREEN, Tempo shows CLIENT span as child of INTERNAL OrderService.place, traceparent header non-null in producer log, all ITs pass. Annotated tag step-15-http-client-spans applied per WORK-01.
 
 ### Roadmap Evolution
 
@@ -184,6 +186,6 @@ Items acknowledged and carried forward at milestone close on 2026-05-02:
 
 ## Session Continuity
 
-Last session: 2026-05-04T12:28:28.506Z
-Stopped at: Completed 15-03-PLAN.md
+Last session: 2026-05-04T12:32:50Z
+Stopped at: Completed 15-04-PLAN.md (Phase 15 complete)
 Resume file: None

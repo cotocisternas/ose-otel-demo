@@ -31,7 +31,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 - [x] **Phase 12: Exemplars: Metrics to Trace Click-Through** - Wire ExemplarFilter on the SDK, send_exemplars on the Collector, and exemplarTraceIdDestinations on Grafana so one histogram click lands on the originating trace (completed 2026-05-03)
 - [x] **Phase 13: Log-Based Metrics (Loki Recording Rules)** - Enable the Loki ruler and define a recording rule that derives an error-rate metric from log patterns, then visualize it alongside the SDK-emitted counter (completed 2026-05-04)
 - [x] **Phase 14: JDBC/JPA Database Spans** - Extend the consumer service with full Spring Data JPA instrumentation — transaction-parent span wrapping JPA repository child spans — using the complete stable db.* semconv attribute set (completed 2026-05-04)
-- [ ] **Phase 15: Outbound HTTP-Client Spans** - Add TracingClientHttpRequestInterceptor to otel-bootstrap and wire it into the producer's RestClient so every outbound HTTP hop produces a CLIENT span with traceparent injected
+- [x] **Phase 15: Outbound HTTP-Client Spans** - Add TracingClientHttpRequestInterceptor to otel-bootstrap and wire it into the producer's RestClient so every outbound HTTP hop produces a CLIENT span with traceparent injected (completed 2026-05-04)
 - [ ] **Phase 16: Head Sampling + W3C Baggage** - Swap both services to a parentBased(traceIdRatioBased) sampler (sub-lesson 16a) and wire BaggageSpanAttributeProcessor so X-Customer-Tier flows from HTTP header through AMQP into both producer and consumer spans (sub-lesson 16b)
 - [ ] **Phase 17: AMQP Topic + DLX Variants** - Extend the RabbitMQ topology with a topic exchange and DLX dead-letter queue, prove the existing propagation pair is exchange-type-agnostic, and demonstrate span links for DLX retry traces
 
@@ -201,7 +201,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 - [x] 15-01-PLAN.md — Wave 1: TracingClientHttpRequestInterceptor + HttpHeadersSetter in otel-bootstrap/http/ (HCLI-01, HCLI-02)
 - [x] 15-02-PLAN.md — Wave 1: HttpClientConfig + NotificationStubController + OrderService edit + application.yaml (HCLI-03, HCLI-04)
 - [x] 15-03-PLAN.md — Wave 2: OrderFlowIT update (span count + CLIENT span test) + verify:http-client-spans mise task (HCLI-03, HCLI-04)
-- [ ] 15-04-PLAN.md — Wave 3: README §15 + human-verify end-to-end + git tag step-15-http-client-spans (HCLI-01..HCLI-04)
+- [x] 15-04-PLAN.md — Wave 3: README §15 + human-verify end-to-end + git tag step-15-http-client-spans (HCLI-01..HCLI-04)
 
 ---
 
@@ -294,7 +294,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 | 12. Exemplars: Metrics to Trace Click-Through | v2.0 | 0/? | Not started | - | step-12-exemplars |
 | 13. Log-Based Metrics (Loki Recording Rules) | v2.0 | 0/? | Not started | - | step-13-log-based-metrics |
 | 14. JDBC/JPA Database Spans | v2.0 | 0/? | Not started | - | step-14-jpa-spans |
-| 15. Outbound HTTP-Client Spans | v2.0 | 0/? | Not started | - | step-15-http-client-spans |
+| 15. Outbound HTTP-Client Spans | v2.0 | 4/4 | Shipped | 2026-05-04 | step-15-http-client-spans |
 | 16. Head Sampling + W3C Baggage | v2.0 | 0/? | Not started | - | step-16-sampling-baggage |
 | 17. AMQP Topic + DLX Variants | v2.0 | 0/? | Not started | - | step-17-amqp-topology |
 | 18. Automated Screenshot Generation (Playwright) | v2.0 | 3/3 | Shipped | 2026-05-03 | step-18-screenshots |

@@ -67,9 +67,9 @@ Each requirement is user-centric (workshop attendee can observe / verify it), at
 
 > Completes v1.0's HTTP story (which shipped only the SERVER span). New shared module addition; pairs with BAG to demonstrate cross-service baggage.
 
-- [x] **HCLI-01**: `otel-bootstrap/http/TracingClientHttpRequestInterceptor.java` exports a `ClientHttpRequestInterceptor` that wraps each outbound HTTP call in a `SpanKind.CLIENT` span and injects `traceparent`/`tracestate` (and `baggage` when present) via a `TextMapSetter<HttpHeaders>` — symmetric to `otel-bootstrap/amqp/TracingMessagePostProcessor`
-- [x] **HCLI-02**: Each CLIENT span carries the full v2.0 HTTP-client semconv attribute set: `http.request.method`, `server.address`, `server.port`, `url.full`, `http.response.status_code`, plus `service.peer.name` (NOT the deprecated `peer.service` from older semconv) — `http.response.status_code` is captured on both success and exception paths
-- [x] **HCLI-03**: `producer-service/OrderService.place()` makes one outbound HTTP call to an in-process `NotificationStubController.notify()` endpoint via an injected `RestClient.Builder` bean (NEVER `RestClient.create(url)` — the OTel interceptor must be registered through the builder); the OTel interceptor is registered LAST in the interceptor chain so `traceparent` is the final header set
+- [x] **HCLI-01**: `otel-bootstrap/http/TracingClientHttpRequestInterceptor.java` exports a `ClientHttpRequestInterceptor` that wraps each outbound HTTP call in a `SpanKind.CLIENT` span and injects `traceparent`/`tracestate` (and `baggage` when present) via a `TextMapSetter<HttpHeaders>` -- symmetric to `otel-bootstrap/amqp/TracingMessagePostProcessor`
+- [x] **HCLI-02**: Each CLIENT span carries the full v2.0 HTTP-client semconv attribute set: `http.request.method`, `server.address`, `server.port`, `url.full`, `http.response.status_code`, plus `service.peer.name` (NOT the deprecated `peer.service` from older semconv) -- `http.response.status_code` is captured on both success and exception paths
+- [x] **HCLI-03**: `producer-service/OrderService.place()` makes one outbound HTTP call to an in-process `NotificationStubController.notify()` endpoint via an injected `RestClient.Builder` bean (NEVER `RestClient.create(url)` -- the OTel interceptor must be registered through the builder); the OTel interceptor is registered LAST in the interceptor chain so `traceparent` is the final header set
 - [x] **HCLI-04**: Workshop attendee can `POST /orders`, see in Tempo a CLIENT span as a child of producer's INTERNAL span, and confirm via the in-process target's request log that the `traceparent` header arrived at the receiving end
 
 ### Head Sampling (HSAMP)
@@ -185,10 +185,10 @@ Each requirement is user-centric (workshop attendee can observe / verify it), at
 | DBSP-03 | Database Spans | Phase 14 | Complete |
 | DBSP-04 | Database Spans | Phase 14 | Complete |
 | DBSP-05 | Database Spans | Phase 14 | Complete |
-| HCLI-01 | HTTP Client Spans | Phase 15 | Pending |
-| HCLI-02 | HTTP Client Spans | Phase 15 | Pending |
-| HCLI-03 | HTTP Client Spans | Phase 15 | Pending |
-| HCLI-04 | HTTP Client Spans | Phase 15 | Pending |
+| HCLI-01 | HTTP Client Spans | Phase 15 | Complete |
+| HCLI-02 | HTTP Client Spans | Phase 15 | Complete |
+| HCLI-03 | HTTP Client Spans | Phase 15 | Complete |
+| HCLI-04 | HTTP Client Spans | Phase 15 | Complete |
 | HSAMP-01 | Head Sampling | Phase 16 | Pending |
 | HSAMP-02 | Head Sampling | Phase 16 | Pending |
 | HSAMP-03 | Head Sampling | Phase 16 | Pending |
