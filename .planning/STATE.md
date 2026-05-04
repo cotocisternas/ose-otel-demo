@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Production Shapes
 status: executing
-stopped_at: Phase 15 context gathered
-last_updated: "2026-05-04T12:19:20.452Z"
+stopped_at: Completed 15-02-PLAN.md
+last_updated: "2026-05-04T12:23:42.612Z"
 last_activity: 2026-05-04
 progress:
   total_phases: 9
   completed_phases: 6
   total_plans: 28
-  completed_plans: 25
-  percent: 89
+  completed_plans: 26
+  percent: 93
 ---
 
 # Project State
@@ -27,12 +27,12 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 ## Current Position
 
 Phase: 15 (outbound-http-client-spans) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-05-04
 
 ```
-Progress: [█████████░] 89%
+Progress: [█████████░] 93%
 ```
 
 ## Performance Metrics
@@ -80,6 +80,7 @@ Progress: [█████████░] 89%
 | Phase 14-jdbc-jpa-database-spans P02 | 5min | 2 tasks | 4 files |
 | Phase 14-jdbc-jpa-database-spans P03 | 16min | 2 tasks | 3 files |
 | Phase 14-jdbc-jpa-database-spans P04 | 3min | 2 tasks | 2 files |
+| Phase 15-outbound-http-client-spans P02 | 2min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -137,6 +138,8 @@ Recent decisions affecting current work:
 - [Phase ?]: OrderJpaService kept free of OTel SDK calls — AOP aspects in plan 14-03 wrap it; teaching point: instrumentation without modifying business logic
 - [Phase ?]: traceId column carries W3C trace_id at persist time (D-J8): bridge between PostgreSQL rows and Tempo traces
 - [Phase 14-04]: Human-verify checkpoint APPROVED — verify:jpa-spans GREEN, Tempo shows transaction parent + SELECT/INSERT waterfall, 10% failure path shows status=ERROR on INTERNAL span, all 5 ITs pass. Annotated tag step-14-jpa-spans applied.
+- [Phase 15-02]: HttpClientConfig defines singleton RestClient.Builder @Bean (not PROTOTYPE) — sufficient for one OrderService injection at startup; Spring Boot ConditionalOnMissingBean auto-config backs off. F6-1 prohibition comment in OrderService constructor documents `RestClient.create(url)` as prohibited.
+- [Phase 15-02]: Fire-and-forget outbound HTTP notification in OrderService.place() swallows exceptions with WARN log (D-H2) — order is already AMQP-published before the HTTP call; notification failure observable in Tempo (CLIENT span status=ERROR) without failing the 202 response.
 
 ### Roadmap Evolution
 
@@ -179,6 +182,6 @@ Items acknowledged and carried forward at milestone close on 2026-05-02:
 
 ## Session Continuity
 
-Last session: 2026-05-04T12:19:20.444Z
+Last session: 2026-05-04T12:23:42.605Z
 Stopped at: Phase 15 context gathered
 Resume file: None
