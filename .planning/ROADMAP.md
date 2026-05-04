@@ -30,7 +30,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 - [x] **Phase 11: Tail Sampling at the Collector** - Configure the standalone Collector's tail_sampling processor to demonstrate intelligent, trace-complete sampling decisions impossible at the SDK level (completed 2026-05-03)
 - [x] **Phase 12: Exemplars: Metrics to Trace Click-Through** - Wire ExemplarFilter on the SDK, send_exemplars on the Collector, and exemplarTraceIdDestinations on Grafana so one histogram click lands on the originating trace (completed 2026-05-03)
 - [x] **Phase 13: Log-Based Metrics (Loki Recording Rules)** - Enable the Loki ruler and define a recording rule that derives an error-rate metric from log patterns, then visualize it alongside the SDK-emitted counter (completed 2026-05-04)
-- [ ] **Phase 14: JDBC/JPA Database Spans** - Extend the consumer service with full Spring Data JPA instrumentation — transaction-parent span wrapping JPA repository child spans — using the complete stable db.* semconv attribute set
+- [x] **Phase 14: JDBC/JPA Database Spans** - Extend the consumer service with full Spring Data JPA instrumentation — transaction-parent span wrapping JPA repository child spans — using the complete stable db.* semconv attribute set (completed 2026-05-04)
 - [ ] **Phase 15: Outbound HTTP-Client Spans** - Add TracingClientHttpRequestInterceptor to otel-bootstrap and wire it into the producer's RestClient so every outbound HTTP hop produces a CLIENT span with traceparent injected
 - [ ] **Phase 16: Head Sampling + W3C Baggage** - Swap both services to a parentBased(traceIdRatioBased) sampler (sub-lesson 16a) and wire BaggageSpanAttributeProcessor so X-Customer-Tier flows from HTTP header through AMQP into both producer and consumer spans (sub-lesson 16b)
 - [ ] **Phase 17: AMQP Topic + DLX Variants** - Extend the RabbitMQ topology with a topic exchange and DLX dead-letter queue, prove the existing propagation pair is exchange-type-agnostic, and demonstrate span links for DLX retry traces
@@ -173,7 +173,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 - [x] 14-01-PLAN.md — Wave 1: Replace starter-jdbc with starter-data-jpa in pom.xml; update application.yaml (drop sql.init, add JPA config); delete Phase 8 OrderRepository.java + schema.sql (DBSP-01)
 - [x] 14-02-PLAN.md — Wave 2: Create Order entity, OrderJpaRepository, OrderJpaService; wire ProcessingService to JpaService; compile check (DBSP-02)
 - [x] 14-03-PLAN.md — Wave 3: Create TracingRepositoryAspect (CLIENT spans, db.* semconv); create TransactionSpanAspect (@HIGHEST_PRECEDENCE INTERNAL span); update OrderFlowIT assertions (DBSP-03, DBSP-04)
-- [ ] 14-04-PLAN.md — Wave 4: Add verify:jpa-spans to mise.toml; add README §14 section; human-verify end-to-end; apply git tag (DBSP-05)
+- [x] 14-04-PLAN.md — Wave 4: Add verify:jpa-spans to mise.toml; add README §14 section; human-verify end-to-end; apply git tag (DBSP-05)
 
 ---
 
