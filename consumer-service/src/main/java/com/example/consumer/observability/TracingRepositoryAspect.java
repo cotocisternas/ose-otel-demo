@@ -61,7 +61,7 @@ public class TracingRepositoryAspect {
      * <p>Uses {@code bean(*Repository)} to reliably intercept Spring Data JPA proxy beans
      * (see class-level JavaDoc for why {@code execution()} alone is unreliable).
      */
-    @Around("bean(*Repository) && execution(public * *(..))")
+    @Around("bean(*Repository) && execution(public * *(..)) && target(org.springframework.data.repository.Repository)")
     public Object traceRepositoryMethod(ProceedingJoinPoint pjp) throws Throwable {
         // D-J6: span name = "OrderJpaRepository.{methodName}".
         // Use the target bean's most-specific repository interface (e.g. OrderJpaRepository)
