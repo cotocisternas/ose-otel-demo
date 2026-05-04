@@ -128,7 +128,7 @@ A workshop attendee can clone the repo, run `docker compose up` + `mise run dev`
 
 This document evolves at phase transitions and milestone boundaries.
 
-*Last updated: 2026-05-03 — Phase 18 complete (automated-screenshot-generation-playwright). All v2.0 milestone phases executed. PREREQ-02 PNG capture delivered via Playwright script.*
+*Last updated: 2026-05-04 — Phase 13 complete (log-based-metrics-loki-recording-rules). LMET-01/02/03 delivered: Loki recording rule derives error-rate metric from logs, Grafana panel overlays SDK counter vs log-derived metric.*
 
 **After each phase transition** (via `/gsd-transition`):
 1. Requirements invalidated? → Move to Out of Scope with reason
