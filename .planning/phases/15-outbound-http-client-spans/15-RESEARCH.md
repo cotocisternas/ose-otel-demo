@@ -522,17 +522,15 @@ RestClient.Builder restClientBuilder(RestClientBuilderConfigurer restClientBuild
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should the integration test update bump the span count to 6 or 7?**
-   - What we know: Phase 15 adds 1 CLIENT span (producer → stub). The existing `HttpServerSpanFilter` automatically wraps the stub's `POST /notifications` with a SERVER span (not excluded by `/actuator/*` guard). So the in-process total adds 2 spans.
-   - What's unclear: Does the `TestOtelConfiguration` in `integration-tests` capture the stub's SERVER span from `HttpServerSpanFilter`? If both contexts share the same `InMemorySpanExporter` (via `TestOtelHolder`), yes — both producer contexts export to the same exporter.
-   - Recommendation: The plan should await `>= 7` spans for the happy path (SERVER + INTERNAL_producer + PRODUCER + CLIENT_http + SERVER_stub + CONSUMER + INTERNAL_consumer). The test should look for the CLIENT span by kind, not by total count.
+1. **Should the integration test update bump the span count to 6 or 7?** [RESOLVED]
+   - What we know: Phase 15 adds 1 CLIENT span (producer → stub). The existing `HttpServerSpanFilter` automatically wraps the stub's `POST /notifications` with a SERVER span (not excluded by `/actuator/*` guard). Both producer contexts share the same `InMemorySpanExporter` (via `TestOtelHolder`), so both CLIENT and stub SERVER spans are captured.
+   - **Resolution: Use `>= 7`** — SERVER_orders + INTERNAL_producer + PRODUCER + CLIENT_http + SERVER_stub + CONSUMER + INTERNAL_consumer. The integration test `happyPathProducesSingleTrace_traceAssertions()` must await `>= 7` spans. The new CLIENT span assertion test (`httpClientSpanPresentInTrace_clientSpanAssertions`) should filter by `SpanKind.CLIENT` rather than relying on total count, making it robust to any additional spans.
 
-2. **Does `app.notification-url` need to be configurable per-integration-test port?**
-   - What we know: `OrderService` receives the URL via `@Value("${app.notification-url}")`. In integration tests, both producer and consumer contexts run on random ports. The notification URL `http://localhost:8080/notifications` will NOT work if the producer's test port is not 8080.
-   - What's unclear: The default `http://localhost:8080/notifications` works for `mise run dev` (producer runs on 8080). But in IT, `server.port=0` → random port.
-   - Recommendation: The plan must set `app.notification-url=http://localhost:${local.server.port}/notifications` in the producer's integration test context, OR read the port dynamically. The simplest approach: in `OrderFlowIT.startTwoSpringContexts()`, set `app.notification-url=http://localhost:0/notifications` initially and then override after the producer context starts with the actual port. Alternatively, the plan can use `@DynamicPropertySource` style by setting the property via `SpringApplicationBuilder.properties(...)` after capturing the port. This is a plan-level decision but the planner must address it.
+2. **Does `app.notification-url` need to be configurable per-integration-test port?** [RESOLVED]
+   - What we know: `@Value("${app.notification-url}")` resolves at bean creation time (context startup). In IT with `server.port=0`, the random port is not known until after the producer context starts. Setting the System property after startup does not affect `OrderService`, which already built its `RestClient` with the `application.yaml` default (`http://localhost:8080/notifications`).
+   - **Resolution: Leave `app.notification-url` as the `application.yaml` default. Do not attempt to override it for IT.** The fire-and-forget catch (D-H2) absorbs any `IOException` from a connection failure when port 8080 is not listening. The `TracingClientHttpRequestInterceptor` always starts the CLIENT span, sets attributes, and calls `span.end()` in the `finally` block — so the span is exported to `InMemorySpanExporter` regardless of whether the HTTP call succeeds or fails. The integration test asserts CLIENT span presence and attributes, not HTTP call success, so no port override is needed.
 
 ---
 
@@ -607,7 +605,7 @@ RestClient.Builder restClientBuilder(RestClientBuilderConfigurer restClientBuild
 - Architecture: HIGH — structural templates exist in codebase; API contracts verified in Spring 6.2.15 jars.
 - Semconv constants: HIGH — verified by decompiling the exact pinned JARs used by the project.
 - Pitfalls: HIGH — F6-1 through F6-4 from PITFALLS.md verified against API signatures (e.g., `ClientHttpResponse.getStatusCode()` throws `IOException`, confirming the exception-path concern is real).
-- Integration test impact: MEDIUM — open question on span count and notification URL in test context; planner must address.
+- Integration test impact: HIGH — open questions resolved; span count is 7; notification URL uses application.yaml default with fire-and-forget absorbing any connection failure.
 
 **Research date:** 2026-05-04
 **Valid until:** 2026-06-04 (semconv 1.40.0 and Spring Boot 3.4.13 are pinned; no changes expected within 30 days)
