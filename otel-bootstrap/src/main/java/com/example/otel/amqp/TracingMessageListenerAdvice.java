@@ -113,30 +113,36 @@ public class TracingMessageListenerAdvice implements MethodInterceptor {
         String exchange = props.getReceivedExchange();
         String routingKey = props.getReceivedRoutingKey();
 
-        Span span = tracer.spanBuilder(exchange + " process")
-            .setParent(extracted)                          // <-- LOAD-BEARING (ROADMAP SC #1)
-            .setSpanKind(SpanKind.CONSUMER)
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM,
-                MessagingSystemIncubatingValues.RABBITMQ)
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME,
-                exchange)
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE,
-                MessagingOperationTypeIncubatingValues.PROCESS)
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_RABBITMQ_DESTINATION_ROUTING_KEY,
-                routingKey)
-            .startSpan();
-        try (Scope scope = span.makeCurrent()) {
-            return inv.proceed();
-        } catch (Throwable t) {
-            Throwable recorded =
-                (t instanceof ListenerExecutionFailedException && t.getCause() != null)
-                    ? t.getCause()
-                    : t;
-            span.recordException(recorded);
-            span.setStatus(StatusCode.ERROR);
-            throw t;
-        } finally {
-            span.end();
+        // BAG-03 / D-L1: outer scope makes extracted context (including baggage) current
+        // for the ENTIRE listener body, not just for span parenting.
+        // F7-2 mitigation: Baggage.current() inside OrderListener.onOrder() returns
+        // the propagated baggage only after this makeCurrent() call.
+        try (Scope ctxScope = extracted.makeCurrent()) {
+            Span span = tracer.spanBuilder(exchange + " process")
+                .setParent(extracted)                          // <-- LOAD-BEARING (ROADMAP SC #1)
+                .setSpanKind(SpanKind.CONSUMER)
+                .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM,
+                    MessagingSystemIncubatingValues.RABBITMQ)
+                .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME,
+                    exchange)
+                .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE,
+                    MessagingOperationTypeIncubatingValues.PROCESS)
+                .setAttribute(MessagingIncubatingAttributes.MESSAGING_RABBITMQ_DESTINATION_ROUTING_KEY,
+                    routingKey)
+                .startSpan();
+            try (Scope scope = span.makeCurrent()) {
+                return inv.proceed();
+            } catch (Throwable t) {
+                Throwable recorded =
+                    (t instanceof ListenerExecutionFailedException && t.getCause() != null)
+                        ? t.getCause()
+                        : t;
+                span.recordException(recorded);
+                span.setStatus(StatusCode.ERROR);
+                throw t;
+            } finally {
+                span.end();
+            }
         }
     }
 }
