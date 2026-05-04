@@ -1,0 +1,36 @@
+# infra/observability/loki-rules/fake/order-errors.yaml
+#
+# WHY this file: Loki recording rules derive metrics FROM LOGS using LogQL.
+# The attendee lesson: "you can compute an error rate from existing logs
+# without touching a single line of Java code."
+#
+# WHY the fake/ directory: Loki's ruler requires rule files at
+# <ruler_storage.local.directory>/<tenant_id>/<file>.yaml.
+# With auth_enabled: false, the implicit tenant ID is "fake".
+# Without this subdirectory, the ruler silently ignores the rule file.
+# (F4-3 mitigation — see PITFALLS.md.)
+#
+# WHY [2m] window: evaluation_interval is 1m (loki-config.yaml D-07).
+# F4-2 mitigation: rate() window MUST be >= 2x evaluation_interval to avoid
+# aliasing (rate returning 0 even when logs exist).
+#
+# Result metric: log:order_errors:rate2m{service_name="order-consumer"}
+# Delivered to Mimir via ruler.remote_write.clients.mimir
+# (http://mimir:9009/api/v1/push — configured in loki-config.yaml D-07)
+
+groups:
+  - name: order-error-rules
+    # WHY 1m: matches ruler.evaluation_interval in loki-config.yaml (D-07).
+    # Override here makes the rule self-documenting even if global changes.
+    interval: 1m
+    rules:
+      # WHY log: prefix: F4-1 mitigation — prevents collision with
+      # SDK-emitted metric names in Mimir (e.g., orders_created_total).
+      # Convention: log:<thing>:<aggregation_window>
+      - record: log:order_errors:rate2m
+        expr: |
+          sum by (service_name) (
+            rate(
+              {service_name=~"order-.+"} |= "ERROR" [2m]
+            )
+          )

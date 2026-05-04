@@ -497,3 +497,78 @@ fi
 echo "verify:exemplars: GREEN — exemplars with trace_id are present in Mimir. Click any dot on the"
 echo "  'HTTP Request Duration (with Exemplars)' panel in the ose-otel-demo dashboard to navigate to Tempo."
 """
+
+# Phase 13 — verify:log-metrics (D-L4)
+# ──────────────────────────────────────────────────────────────────
+[tasks."verify:log-metrics"]
+description = "Phase 13 invariant: Loki ruler evaluates recording rule AND remote-writes log:order_errors:rate2m to Mimir — proves ruler → Mimir pipeline is active."
+run = """
+set -e
+
+# Two-tier verification (D-L4):
+# Tier 1: Loki rules API — confirm ruler loaded the recording rule.
+# Tier 2: Mimir query API — confirm the metric has data.
+#
+# Prerequisites: mise run infra:up (loki healthy), generate errors:
+#   mise run load && sleep 90
+# WHY 90s: evaluation_interval=1m + [2m] rate window means first non-zero
+# data point appears ~2 eval cycles after first ERROR log (≈2 min worst case).
+
+ATTEMPTS=6
+SLEEP_SECS=10
+LAST_ERR=""
+
+echo "verify:log-metrics tier-1: checking Loki /loki/api/v1/rules for order-error-rules..."
+for i in $(seq 1 $ATTEMPTS); do
+  RULES_OUT=$(curl -fsS http://localhost:3100/loki/api/v1/rules 2>&1) || {
+    LAST_ERR="curl :3100 failed: $RULES_OUT"
+    [ "$i" -lt "$ATTEMPTS" ] && { echo "  attempt $i/$ATTEMPTS — Loki not ready ($LAST_ERR); retrying in ${SLEEP_SECS}s..."; sleep $SLEEP_SECS; continue; }
+    echo "ERROR: verify:log-metrics tier-1 timed out after $((ATTEMPTS * SLEEP_SECS))s — Loki :3100 not reachable."
+    echo "  Run: mise run infra:up && docker compose restart loki"
+    exit 1
+  }
+  # Assert: response contains rule group name AND rule name.
+  # Use grep (liberal) rather than strict jq path — response envelope may vary.
+  if printf '%s' "$RULES_OUT" | grep -q "order-error-rules" && printf '%s' "$RULES_OUT" | grep -q "log:order_errors:rate2m"; then
+    break
+  fi
+  LAST_ERR="rule group 'order-error-rules' or metric 'log:order_errors:rate2m' not found in rules API response"
+  [ "$i" -lt "$ATTEMPTS" ] && { echo "  attempt $i/$ATTEMPTS — $LAST_ERR; retrying in ${SLEEP_SECS}s..."; sleep $SLEEP_SECS; continue; }
+  echo "ERROR: verify:log-metrics tier-1 — $LAST_ERR after $((ATTEMPTS * SLEEP_SECS))s."
+  echo "Diagnose:"
+  echo "  1. File exists: ls infra/observability/loki-rules/fake/order-errors.yaml"
+  echo "  2. Restart Loki: docker compose restart loki && sleep 10"
+  echo "  3. Check path: the file MUST be in fake/ subdirectory (tenant ID = 'fake')"
+  echo "Loki API response: $RULES_OUT"
+  exit 1
+done
+echo "verify:log-metrics tier-1: GREEN — recording rule 'log:order_errors:rate2m' loaded by Loki ruler."
+
+echo "verify:log-metrics tier-2: querying Mimir for log:order_errors:rate2m metric data..."
+for i in $(seq 1 $ATTEMPTS); do
+  MIMIR_OUT=$(curl -fsS "http://localhost:9009/prometheus/api/v1/query?query=log:order_errors:rate2m" 2>&1) || {
+    LAST_ERR="curl :9009 failed: $MIMIR_OUT"
+    [ "$i" -lt "$ATTEMPTS" ] && { echo "  attempt $i/$ATTEMPTS — Mimir not ready ($LAST_ERR); retrying in ${SLEEP_SECS}s..."; sleep $SLEEP_SECS; continue; }
+    echo "ERROR: verify:log-metrics tier-2 timed out after $((ATTEMPTS * SLEEP_SECS))s — Mimir :9009 not reachable."
+    echo "  Run: mise run infra:up"
+    exit 1
+  }
+  if printf '%s' "$MIMIR_OUT" | jq -e '.data.result | length > 0' >/dev/null 2>&1; then
+    break
+  fi
+  LAST_ERR="log:order_errors:rate2m returned empty result set (no data points yet)"
+  [ "$i" -lt "$ATTEMPTS" ] && { echo "  attempt $i/$ATTEMPTS — $LAST_ERR; retrying in ${SLEEP_SECS}s..."; sleep $SLEEP_SECS; continue; }
+  echo "ERROR: verify:log-metrics tier-2 — $LAST_ERR after $((ATTEMPTS * SLEEP_SECS))s."
+  echo "Diagnose:"
+  echo "  1. Tier 1 passed — ruler is loading the rule."
+  echo "  2. Generate errors: mise run load && sleep 90 (wait for 2x eval cycle)"
+  echo "  3. Check remote-write: docker compose logs loki 2>&1 | grep -i 'remote.write\\|error'"
+  echo "  4. Check Mimir: curl http://localhost:9009/prometheus/api/v1/query?query=log:order_errors:rate2m"
+  echo "Mimir API response: $MIMIR_OUT"
+  exit 1
+done
+echo "verify:log-metrics tier-2: GREEN — log:order_errors:rate2m has data in Mimir."
+echo ""
+echo "verify:log-metrics: GREEN — recording rule pipeline active (Loki ruler → Mimir)."
+echo "  Open the 'Log-Based Metrics (Phase 13)' row in the ose-otel-demo dashboard to see both series."
+"""
