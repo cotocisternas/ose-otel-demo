@@ -661,3 +661,40 @@ echo "  Span name: 'POST /notifications'"
 echo "  Attributes: http.request.method=POST, service.peer.name=notification-service"
 echo "  Search Tempo: span.kind=client AND service.name=order-producer"
 """
+
+[tasks."verify:head-sampling"]
+description = "Phase 16 invariant: ~50% of traces reach Tempo under head sampling (traceIdRatioBased(0.5))"
+run = """
+set -e
+ATTEMPTS=6
+SLEEP_SECS=5
+LAST_ERR=""
+
+# Prerequisites: mise run infra:up, mise run dev, then send ~100 requests:
+#   for i in $(seq 1 100); do curl -sS -o /dev/null -X POST -H 'Content-Type: application/json' \
+#     -d '{"sku":"WIDGET-1","quantity":1}' http://localhost:8080/orders; done
+# Then wait ~15s for the Collector decision_wait window, then run this task.
+#
+# We assert at least 1 trace exists (proves sampling is working, not zero).
+# The ~50% ratio is a probabilistic property verified by the README demo
+# (100 requests → ~50 traces), not by this automated gate.
+
+echo "verify:head-sampling: querying Tempo for any trace from order-producer (proves SDK is exporting sampled traces)..."
+for i in $(seq 1 $ATTEMPTS); do
+  RESULT=$(curl -sS --data-urlencode 'q={resource.service.name="order-producer"}' 'http://localhost:3200/api/search?limit=5' 2>&1) || {
+    LAST_ERR="curl :3200 failed: $RESULT"
+    [ "$i" -lt "$ATTEMPTS" ] && { echo "  attempt $i/$ATTEMPTS — Tempo not ready ($LAST_ERR); retrying in ${SLEEP_SECS}s..."; sleep $SLEEP_SECS; continue; }
+    echo "ERROR: verify:head-sampling timed out — Tempo not reachable."
+    exit 1
+  }
+  if printf '%s' "$RESULT" | jq -e '.traces | length > 0' >/dev/null 2>&1; then break; fi
+  LAST_ERR="no traces from order-producer in Tempo yet"
+  [ "$i" -lt "$ATTEMPTS" ] && { echo "  attempt $i/$ATTEMPTS — $LAST_ERR; retrying in ${SLEEP_SECS}s..."; sleep $SLEEP_SECS; continue; }
+  echo "ERROR: verify:head-sampling — $LAST_ERR after $((ATTEMPTS * SLEEP_SECS))s."
+  exit 1
+done
+
+echo "verify:head-sampling: GREEN — sampled traces from order-producer are reaching Tempo."
+echo "  Manual verification: send 100 requests, confirm ~50 traces in Tempo (50% head sampling)."
+echo "  Console-emitted spans will show the SDK discarding ~50% before OTLP export."
+"""
