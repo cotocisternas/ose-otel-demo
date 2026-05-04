@@ -588,9 +588,9 @@ LAST_ERR=""
 # db.query.text is set exclusively via DbAttributes.DB_QUERY_TEXT in TracingRepositoryAspect
 # (F5-2 mitigation — string literal "db.statement" is wrong and would return zero results here).
 
-echo "verify:jpa-spans: querying Tempo for db.query.text=* spans on service order-consumer..."
+echo "verify:jpa-spans: querying Tempo for db.system.name=postgresql spans on service order-consumer..."
 for i in $(seq 1 $ATTEMPTS); do
-  RESULT=$(curl -fsS 'http://localhost:3200/api/search?tags=db.query.text%3D%2A&q=%7Bservice.name%3D%22order-consumer%22%7D&limit=5' 2>&1) || {
+  RESULT=$(curl -fsS 'http://localhost:3200/api/search?tags=service.name%3Dorder-consumer%20db.system.name%3Dpostgresql&limit=5' 2>&1) || {
     LAST_ERR="curl :3200 failed: $RESULT"
     [ "$i" -lt "$ATTEMPTS" ] && { echo "  attempt $i/$ATTEMPTS — Tempo not ready ($LAST_ERR); retrying in ${SLEEP_SECS}s..."; sleep $SLEEP_SECS; continue; }
     echo "ERROR: verify:jpa-spans timed out after $((ATTEMPTS * SLEEP_SECS))s — Tempo :3200 not reachable."
@@ -598,7 +598,7 @@ for i in $(seq 1 $ATTEMPTS); do
     exit 1
   }
   if printf '%s' "$RESULT" | jq -e '.traces | length > 0' >/dev/null 2>&1; then break; fi
-  LAST_ERR="no traces with db.query.text in Tempo yet (service=order-consumer)"
+  LAST_ERR="no traces with db.system.name=postgresql in Tempo yet (service=order-consumer)"
   [ "$i" -lt "$ATTEMPTS" ] && { echo "  attempt $i/$ATTEMPTS — $LAST_ERR; retrying in ${SLEEP_SECS}s..."; sleep $SLEEP_SECS; continue; }
   echo "ERROR: verify:jpa-spans — $LAST_ERR after $((ATTEMPTS * SLEEP_SECS))s."
   echo "Diagnose:"
@@ -611,8 +611,8 @@ for i in $(seq 1 $ATTEMPTS); do
   exit 1
 done
 
-echo "verify:jpa-spans: GREEN — db.query.text spans present in Tempo for order-consumer."
-echo "  Search Tempo for: db.query.text=* AND service.name=order-consumer"
+echo "verify:jpa-spans: GREEN — db.system.name=postgresql spans present in Tempo for order-consumer."
+echo "  Search Tempo for: db.system.name=postgresql AND service.name=order-consumer"
 echo "  Expected span names: OrderJpaRepository.findByOrderId, OrderJpaRepository.save"
 echo "  Transaction parent: OrderJpaService.persist (INTERNAL span)"
 """
