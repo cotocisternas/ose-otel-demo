@@ -3,7 +3,7 @@ package com.example.consumer.domain;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.example.consumer.db.OrderRepository;
+import com.example.consumer.db.OrderJpaService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.opentelemetry.api.trace.Span;
@@ -40,16 +40,16 @@ import org.springframework.stereotype.Service;
  * and CONSUMER spans show ERROR status in Tempo for the 10th order
  * (ROADMAP SC #3).
  *
- * <p>Phase 8 adds {@link OrderRepository} injection: on the success path
- * (after the 10%-failure check), {@code insertProcessedOrder} persists the
- * order to PostgreSQL with a JDBC CLIENT span wrapping the INSERT.
+ * <p>Phase 14 replaces the Phase 8 raw-JDBC {@link com.example.consumer.db.OrderJpaService}
+ * injection: on the success path (after the 10%-failure check), {@code jpaService.persist}
+ * persists the order via Spring Data JPA — SELECT then conditional INSERT.
  */
 @Service
 public class ProcessingService {
     private static final Logger LOG = LoggerFactory.getLogger(ProcessingService.class);
 
     private final Tracer tracer;
-    private final OrderRepository repository;
+    private final OrderJpaService jpaService;
     private final ObjectMapper objectMapper;
 
     // Phase 3: deterministic 10%-failure trigger (APP-04 + D-11). Spring
@@ -58,9 +58,9 @@ public class ProcessingService {
     // for fresh demo sessions).
     private final AtomicInteger counter = new AtomicInteger();
 
-    public ProcessingService(Tracer tracer, OrderRepository repository, ObjectMapper objectMapper) {
+    public ProcessingService(Tracer tracer, OrderJpaService jpaService, ObjectMapper objectMapper) {
         this.tracer       = tracer;
-        this.repository   = repository;
+        this.jpaService   = jpaService;
         this.objectMapper = objectMapper;
     }
 
@@ -93,14 +93,14 @@ public class ProcessingService {
                 String traceId = Span.current().getSpanContext().getTraceId();
                 try {
                     String payloadJson = objectMapper.writeValueAsString(order);
-                    repository.insertProcessedOrder(orderId, traceId, payloadJson);
+                    jpaService.persist(orderId, payloadJson, traceId);
                 } catch (Exception e) {
                     // Log the persistence failure but do NOT rethrow — a DB insert failure
                     // should not NACK the AMQP message and trigger requeue/DLX.
-                    LOG.warn("failed to persist orderId={} to processed_orders: {}", orderId, e.getMessage());
+                    LOG.warn("failed to persist orderId={} to orders: {}", orderId, e.getMessage());
                 }
             } else {
-                LOG.warn("skipping processed_orders persist: orderId missing or blank in payload");
+                LOG.warn("skipping orders persist: orderId missing or blank in payload");
             }
         } catch (RuntimeException e) {
             // D-03 catch shape from Phase 2 — preserved unchanged below.
