@@ -634,7 +634,7 @@ LAST_ERR=""
 
 echo "verify:http-client-spans: querying Tempo for span.kind=client spans on service order-producer..."
 for i in $(seq 1 $ATTEMPTS); do
-  RESULT=$(curl -fsS 'http://localhost:3200/api/search?tags=service.name%3Dorder-producer%20span.kind%3Dclient&limit=5' 2>&1) || {
+  RESULT=$(curl -sS --data-urlencode 'q={kind=client && resource.service.name="order-producer"}' 'http://localhost:3200/api/search?limit=5' 2>&1) || {
     LAST_ERR="curl :3200 failed: $RESULT"
     [ "$i" -lt "$ATTEMPTS" ] && { echo "  attempt $i/$ATTEMPTS — Tempo not ready ($LAST_ERR); retrying in ${SLEEP_SECS}s..."; sleep $SLEEP_SECS; continue; }
     echo "ERROR: verify:http-client-spans timed out after $((ATTEMPTS * SLEEP_SECS))s — Tempo :3200 not reachable."
