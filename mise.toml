@@ -118,12 +118,12 @@ run = "mvn -T 1C verify"
 [tasks."dev:producer"]
 description = "Run producer-service on the host JVM"
 depends = ["infra:up"]
-run = "mvn -pl producer-service -am spring-boot:run -Dspring-boot.run.jvmArguments=\"-Dserver.port=${PRODUCER_PORT}\""
+run = "mvn -pl otel-bootstrap install -q && mvn -pl producer-service spring-boot:run -Dspring-boot.run.jvmArguments=\"-Dserver.port=${PRODUCER_PORT}\""
 
 [tasks."dev:consumer"]
 description = "Run consumer-service on the host JVM"
 depends = ["infra:up"]
-run = "mvn -pl consumer-service -am spring-boot:run -Dspring-boot.run.jvmArguments=\"-Dserver.port=${CONSUMER_PORT}\""
+run = "mvn -pl otel-bootstrap install -q && mvn -pl consumer-service spring-boot:run -Dspring-boot.run.jvmArguments=\"-Dserver.port=${CONSUMER_PORT}\""
 
 [tasks.dev]
 description = "Run producer + consumer in parallel (Ctrl-C stops both)"
