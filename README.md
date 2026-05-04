@@ -887,6 +887,104 @@ Copy a `trace_id` value and search for it in Tempo: `traceID=<value>`. This is t
 
 **Verify the `db.query.text` attribute name (not the old `db.statement`).** Searching Tempo for `db.statement=*` should return no results. All Phase 14 spans use `DbAttributes.DB_QUERY_TEXT` from semconv 1.40.0 — the correct stable attribute key. This is why `mise run verify:jpa-spans` searches for `db.query.text=*` specifically.
 
+## Step 15: Outbound HTTP-Client Spans — the CLIENT counterpart to the SERVER span
+
+### What you'll learn
+
+- **Completing the HTTP story.** Phase 2 added an `HttpServerSpanFilter` that wraps every inbound
+  `POST /orders` request in a `SERVER` span. Phase 15 adds the outbound counterpart: a
+  `TracingClientHttpRequestInterceptor` in `otel-bootstrap/http/` that wraps every outbound HTTP
+  call from the producer in a `CLIENT` span. Together they cover both ends of every HTTP hop —
+  the server sees a `SERVER` span, the client sees a `CLIENT` span, and `traceparent` bridges them.
+
+- **Symmetric to AMQP propagation.** The interceptor mirrors `TracingMessagePostProcessor` exactly
+  — same span lifecycle template (`spanBuilder → makeCurrent → inject → execute → end`), same
+  propagator reuse (`openTelemetry.getPropagators().getTextMapPropagator()`), same shared-module
+  placement in `otel-bootstrap/http/`. Compare:
+  `git diff step-03-context-propagation..step-15-http-client-spans -- otel-bootstrap/`.
+
+- **In-JVM CLIENT → SERVER nesting.** The producer calls `POST /notifications` on its own
+  in-process `NotificationStubController`. `HttpServerSpanFilter` (which wraps ALL non-actuator
+  paths) automatically creates a `SERVER` span for the stub's incoming request. In Tempo you see
+  a `CLIENT` span (the producer's outbound call) with a `SERVER` span as its child — both in
+  the producer-service trace. This is the proof that `traceparent` was correctly injected: the
+  stub's `SERVER` span shows the CLIENT span's `spanId` as its `parentSpanId`.
+
+- **The five HTTP-client semconv attributes.** Every CLIENT span carries:
+  `http.request.method`, `server.address`, `server.port`, `url.full`, `http.response.status_code`.
+  Plus `service.peer.name=notification-service` (from the incubating semconv JAR — not the
+  deprecated `peer.service`). These match the server-side attributes on `HttpServerSpanFilter`'s
+  SERVER span, completing a paired reference for the semconv spec.
+
+- **Fire-and-forget error observability.** If the notification call fails, the `catch` block in
+  `OrderService.place()` logs a WARN and continues — the order is already on the AMQP queue and
+  will be processed. The CLIENT span captures `status=ERROR` + `http.response.status_code` so
+  Tempo records the failure even though the HTTP response to the caller remains `202 Accepted`.
+
+### Checkpoint
+
+Workshop is at `step-15-http-client-spans` — the orchestrator applies this annotated tag atomically
+with the phase-completion commit per WORK-01 / D-21. `git checkout step-15-http-client-spans` jumps
+to this point. The previous tag is `step-14-jpa-spans`; `git diff step-14-jpa-spans..step-15-http-client-spans`
+shows the focused diff: two new Java files in `otel-bootstrap/http/` (the interceptor +
+TextMapSetter), two new Java files in `producer-service/` (HttpClientConfig + NotificationStubController),
+one edited `OrderService.java`, one edited `application.yaml`, and this README section.
+
+### Run
+
+```bash
+mise run preflight
+mise run infra:up
+mise run dev
+# In another terminal — generate load so CLIENT spans appear in Tempo:
+mise run load
+# Verify CLIENT spans are reaching Tempo:
+mise run verify:http-client-spans
+# Open Grafana to see the full trace waterfall:
+mise run ui:grafana
+```
+
+### What to look for
+
+**The CLIENT span as a child of INTERNAL in Tempo.** Search for traces from `order-producer`.
+Open any trace and look for the span waterfall — the HTTP CLIENT span nests inside the producer's
+INTERNAL span, and the in-process stub's SERVER span nests inside the CLIENT span:
+
+```
+SERVER span (HttpServerSpanFilter — POST /orders)
+  └── INTERNAL span (OrderService.place)
+        ├── PRODUCER span (TracingMessagePostProcessor — AMQP publish)   ← from Phase 3
+        └── CLIENT span (TracingClientHttpRequestInterceptor — POST /notifications)   ← Phase 15 NEW
+              └── SERVER span (HttpServerSpanFilter — POST /notifications, same JVM)
+```
+
+**Expected CLIENT span attributes in Tempo:**
+
+```
+Name:                   POST /notifications
+span.kind:              client
+http.request.method:    POST
+server.address:         localhost
+server.port:            8080
+url.full:               http://localhost:8080/notifications
+http.response.status_code: 200
+service.peer.name:      notification-service
+```
+
+**Confirm traceparent in the producer log.** After `mise run load`, grep the producer logs:
+
+```bash
+# Producer logs print: "Notification received for order <uuid>. traceparent header: 00-<traceId>-<spanId>-01"
+# (The log line comes from NotificationStubController.notify() when the stub receives the call)
+```
+
+A non-null `traceparent` value in the log proves W3C context propagation worked — the interceptor
+injected the header and the stub received it.
+
+**Screenshot** (`docs/screenshots/step-15-http-client-spans.png`): generated by the Phase 18
+Playwright capture script (`mise run screenshots`). The screenshot shows the CLIENT → SERVER span
+nesting in the Tempo waterfall for a single producer-service trace.
+
 ## Concepts & FAQ
 
 The following four sections collect the narrative deep-dives the per-step *Why it matters* paragraphs cross-reference. They preserve a second reading mode: skim the per-step walkthrough top-to-bottom, then dive into the conceptual narrative — or read this section first and use the per-step blocks as worked examples.
