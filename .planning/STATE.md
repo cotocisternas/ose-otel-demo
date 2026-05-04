@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Production Shapes
 status: executing
-stopped_at: Completed 15-02-PLAN.md
-last_updated: "2026-05-04T12:23:42.612Z"
+stopped_at: Completed 15-03-PLAN.md
+last_updated: "2026-05-04T12:28:28.513Z"
 last_activity: 2026-05-04
 progress:
   total_phases: 9
   completed_phases: 6
   total_plans: 28
-  completed_plans: 26
-  percent: 93
+  completed_plans: 27
+  percent: 96
 ---
 
 # Project State
@@ -27,12 +27,12 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 ## Current Position
 
 Phase: 15 (outbound-http-client-spans) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-05-04
 
 ```
-Progress: [█████████░] 93%
+Progress: [██████████] 96%
 ```
 
 ## Performance Metrics
@@ -81,6 +81,7 @@ Progress: [█████████░] 93%
 | Phase 14-jdbc-jpa-database-spans P03 | 16min | 2 tasks | 3 files |
 | Phase 14-jdbc-jpa-database-spans P04 | 3min | 2 tasks | 2 files |
 | Phase 15-outbound-http-client-spans P02 | 2min | 2 tasks | 4 files |
+| Phase 15-outbound-http-client-spans P03 | 1min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,7 @@ Recent decisions affecting current work:
 - [Phase 14-04]: Human-verify checkpoint APPROVED — verify:jpa-spans GREEN, Tempo shows transaction parent + SELECT/INSERT waterfall, 10% failure path shows status=ERROR on INTERNAL span, all 5 ITs pass. Annotated tag step-14-jpa-spans applied.
 - [Phase 15-02]: HttpClientConfig defines singleton RestClient.Builder @Bean (not PROTOTYPE) — sufficient for one OrderService injection at startup; Spring Boot ConditionalOnMissingBean auto-config backs off. F6-1 prohibition comment in OrderService constructor documents `RestClient.create(url)` as prohibited.
 - [Phase 15-02]: Fire-and-forget outbound HTTP notification in OrderService.place() swallows exceptions with WARN log (D-H2) — order is already AMQP-published before the HTTP call; notification failure observable in Tempo (CLIENT span status=ERROR) without failing the 202 response.
+- [Phase ?]: [Phase 15-03]: Notification URL not overridden in IT — fire-and-forget (D-H2) absorbs connection failure; TracingClientHttpRequestInterceptor finally block always exports CLIENT span regardless of HTTP outcome
 
 ### Roadmap Evolution
 
@@ -182,6 +184,6 @@ Items acknowledged and carried forward at milestone close on 2026-05-02:
 
 ## Session Continuity
 
-Last session: 2026-05-04T12:23:42.605Z
-Stopped at: Phase 15 context gathered
+Last session: 2026-05-04T12:28:28.506Z
+Stopped at: Completed 15-03-PLAN.md
 Resume file: None
