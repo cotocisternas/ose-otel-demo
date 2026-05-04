@@ -713,6 +713,105 @@ The three-layer architecture is also a teaching surface for the OTel data model:
      width="900" />
 <!-- Screenshot captured by Phase 18 Playwright automation -->
 
+## Step 13: Log-Based Metrics — an error rate from logs, zero Java code
+
+### What you'll learn
+
+- **Step 13 is the only step with no Java changes** — everything happens in YAML. You will learn that an operations team can derive structured metrics from application logs without touching a single line of application code.
+- A **Loki recording rule** evaluates a LogQL expression on a schedule (every 1 minute) and remote-writes the result to Mimir as a standard Prometheus-compatible metric. The metric lives alongside SDK-emitted metrics in Mimir and is queryable with the same PromQL.
+- The `log:<metric>:<aggregation>` naming convention (F4-1 mitigation) prevents the log-derived metric from colliding with SDK-emitted metric names in Mimir. Our metric: `log:order_errors:rate2m`.
+- The `[2m]` rate window (F4-2 mitigation) is deliberately 2x the evaluation interval (1m) to prevent aliasing — a `[1m]` window on a 1m eval cycle produces intermittent zero values even when errors are flowing.
+- The **`fake/` tenant subdirectory** (F4-3 mitigation): Loki's local ruler storage scans `<ruler_storage.local.directory>/<tenant_id>/`. With `auth_enabled: false`, the implicit tenant is `"fake"`. Files placed at the root of the rules directory are silently ignored.
+
+### Checkpoint
+
+Workshop is at `step-13-log-based-metrics` — the orchestrator applies this annotated tag atomically with the phase-completion merge per WORK-01 / D-21. `git checkout step-13-log-based-metrics` jumps to this point. The previous tag is `step-12-exemplars`; `git diff step-12-exemplars..step-13-log-based-metrics` shows the focused diff: one YAML file (recording rule), one JSON file (dashboard panel), one TOML file (verify:log-metrics task), and this README section.
+
+### Run
+
+```bash
+mise run preflight
+mise run infra:up
+# Restart Loki to pick up the new recording rule file:
+docker compose restart loki
+mise run dev
+# In another terminal — generate errors (the 10% failure path):
+mise run load
+# Wait ~90 seconds for 2x evaluation cycles (eval=1m, window=[2m]):
+sleep 90
+# Verify the pipeline end-to-end:
+mise run verify:log-metrics
+# Open Grafana and look at the Log-Based Metrics (Phase 13) row:
+mise run ui:grafana
+```
+
+### What to look for
+
+**The recording rule in the Loki rules API.** Confirm the ruler loaded the rule:
+
+```bash
+curl -s http://localhost:3100/loki/api/v1/rules | jq '.data.groups[].rules[].record'
+# Expected: "log:order_errors:rate2m"
+```
+
+**The metric in Mimir.** Confirm the ruler is remote-writing:
+
+```bash
+curl -s "http://localhost:9009/prometheus/api/v1/query?query=log:order_errors:rate2m" | jq '.data.result'
+# Expected: [{metric: {service_name: "order-consumer"}, value: [<timestamp>, "<rate>"]}]
+```
+
+**The dashboard panel.** Open the `ose-otel-demo` dashboard in Grafana at `:3000`. Look for the "Log-Based Metrics (Phase 13)" row — it is open by default. The "Log-Based Error Rate vs SDK Counter" panel shows two overlaid series:
+
+1. **SDK: orders created** (blue-ish) — the `rate(orders_created_total[2m])` showing total order creation rate from the application counter
+2. **Logs: errors** (orange-ish) — the `log:order_errors:rate2m` showing the error rate derived from log patterns
+
+**The gap between the two lines is your success rate.** The SDK counter tracks all order creations; the log-derived metric tracks only the errors. When load is running with the 10% deterministic failure rate, you should see the error line at roughly 10% of the creation line. This is the core teaching point: both metrics describe the same system from different vantage points.
+
+**Annotated recording rule** (`infra/observability/loki-rules/fake/order-errors.yaml`):
+
+```yaml
+groups:
+  - name: order-error-rules
+    interval: 1m                  # matches loki-config.yaml evaluation_interval
+    rules:
+      - record: log:order_errors:rate2m
+        expr: |
+          sum by (service_name) (
+            rate(
+              {service_name=~"order-.+"} |= "ERROR" [2m]
+            )
+          )
+```
+
+The pipeline: Loki ruler evaluates this LogQL every 1m → produces a numeric time series → remote-writes to Mimir at `http://mimir:9009/api/v1/push` → Grafana queries Mimir via the Prometheus datasource.
+
+**When to use which: SDK metrics vs log-derived metrics.**
+
+| Dimension | SDK Metric (`orders.created`) | Log-Derived (`log:order_errors:rate2m`) |
+|-----------|-------------------------------|------------------------------------------|
+| Latency | Real-time (10s export interval) | Delayed (~2 min: eval cycle + rate window) |
+| Accuracy | Exact count (counter increment on event) | Approximate (regex match on log text) |
+| Code change | Yes — add `meter.counterBuilder(...)` | No — pure YAML, ops-team owned |
+| Cardinality control | Developer chooses labels at emit time | LogQL `sum by(...)` controls output labels |
+
+The SDK counter is the **source of truth**. The log-derived metric is an **ops-team approximation** that requires no code change — useful for quick-turnaround monitoring of patterns the app team hasn't instrumented yet, or as an independent cross-check of existing counters.
+
+### Why it matters
+
+Recording rules demonstrate the boundary between developer-owned metrics (SDK instrumentation) and operations-owned metrics (log-derived). In a production organization, the ops team can ship a new error-rate alert from logs within minutes — without waiting for the next application release to add a counter. Phase 13 teaches this boundary explicitly: zero Java files changed, one YAML file added.
+
+The `log:` naming prefix convention prevents the "two metrics with the same name" trap that catches teams who naively name their recording rule output `orders_errors_total` — colliding with a future SDK counter. The prefix makes ownership visible in every PromQL query.
+
+The `fake/` tenant directory is the most common gotcha when self-hosting Loki with recording rules. Without it, the ruler silently ignores rule files and the `/loki/api/v1/rules` endpoint returns an empty response — no error in logs, no warning. Phase 10 pre-wired the ruler config (D-07); Phase 13 drops the rule file into the correct path.
+
+**Screenshot placeholder:**
+
+<img src="docs/screenshots/step-13-log-based-metrics.png"
+     alt="Log-Based Error Rate vs SDK Counter panel — the gap between the SDK creation rate and the log-derived error rate is your success rate."
+     width="900" />
+<!-- Screenshot captured by Phase 18 Playwright automation -->
+
 ## Concepts & FAQ
 
 The following four sections collect the narrative deep-dives the per-step *Why it matters* paragraphs cross-reference. They preserve a second reading mode: skim the per-step walkthrough top-to-bottom, then dive into the conceptual narrative — or read this section first and use the per-step blocks as worked examples.
