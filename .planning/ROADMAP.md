@@ -29,7 +29,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 - [x] **Phase 10: Prerequisites & Stack Decomposition** - Fix the OtelSdkConfiguration circular-ref carryover, replace the all-in-one otel-lgtm container with five separate production-shaped services, and restore all existing dashboards (completed 2026-05-03)
 - [x] **Phase 11: Tail Sampling at the Collector** - Configure the standalone Collector's tail_sampling processor to demonstrate intelligent, trace-complete sampling decisions impossible at the SDK level (completed 2026-05-03)
 - [x] **Phase 12: Exemplars: Metrics to Trace Click-Through** - Wire ExemplarFilter on the SDK, send_exemplars on the Collector, and exemplarTraceIdDestinations on Grafana so one histogram click lands on the originating trace (completed 2026-05-03)
-- [ ] **Phase 13: Log-Based Metrics (Loki Recording Rules)** - Enable the Loki ruler and define a recording rule that derives an error-rate metric from log patterns, then visualize it alongside the SDK-emitted counter
+- [x] **Phase 13: Log-Based Metrics (Loki Recording Rules)** - Enable the Loki ruler and define a recording rule that derives an error-rate metric from log patterns, then visualize it alongside the SDK-emitted counter (completed 2026-05-04)
 - [ ] **Phase 14: JDBC/JPA Database Spans** - Extend the consumer service with full Spring Data JPA instrumentation — transaction-parent span wrapping JPA repository child spans — using the complete stable db.* semconv attribute set
 - [ ] **Phase 15: Outbound HTTP-Client Spans** - Add TracingClientHttpRequestInterceptor to otel-bootstrap and wire it into the producer's RestClient so every outbound HTTP hop produces a CLIENT span with traceparent injected
 - [ ] **Phase 16: Head Sampling + W3C Baggage** - Swap both services to a parentBased(traceIdRatioBased) sampler (sub-lesson 16a) and wire BaggageSpanAttributeProcessor so X-Customer-Tier flows from HTTP header through AMQP into both producer and consumer spans (sub-lesson 16b)
@@ -145,7 +145,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 
 **Plans**: 2 plans across 2 waves
 - [x] 13-01-PLAN.md — Recording rule file (fake/ subdirectory), dashboard panel (Log-Based Metrics row), verify:log-metrics mise task
-- [ ] 13-02-PLAN.md — README Step 13 walkthrough + end-to-end human-verify checkpoint
+- [x] 13-02-PLAN.md — README Step 13 walkthrough + end-to-end human-verify checkpoint
 
 ---
 
