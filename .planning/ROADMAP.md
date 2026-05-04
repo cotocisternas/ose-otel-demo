@@ -172,7 +172,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 **Plans**: 4 plans across 4 waves
 - [x] 14-01-PLAN.md — Wave 1: Replace starter-jdbc with starter-data-jpa in pom.xml; update application.yaml (drop sql.init, add JPA config); delete Phase 8 OrderRepository.java + schema.sql (DBSP-01)
 - [x] 14-02-PLAN.md — Wave 2: Create Order entity, OrderJpaRepository, OrderJpaService; wire ProcessingService to JpaService; compile check (DBSP-02)
-- [ ] 14-03-PLAN.md — Wave 3: Create TracingRepositoryAspect (CLIENT spans, db.* semconv); create TransactionSpanAspect (@HIGHEST_PRECEDENCE INTERNAL span); update OrderFlowIT assertions (DBSP-03, DBSP-04)
+- [x] 14-03-PLAN.md — Wave 3: Create TracingRepositoryAspect (CLIENT spans, db.* semconv); create TransactionSpanAspect (@HIGHEST_PRECEDENCE INTERNAL span); update OrderFlowIT assertions (DBSP-03, DBSP-04)
 - [ ] 14-04-PLAN.md — Wave 4: Add verify:jpa-spans to mise.toml; add README §14 section; human-verify end-to-end; apply git tag (DBSP-05)
 
 ---
