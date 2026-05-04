@@ -32,7 +32,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 - [x] **Phase 13: Log-Based Metrics (Loki Recording Rules)** - Enable the Loki ruler and define a recording rule that derives an error-rate metric from log patterns, then visualize it alongside the SDK-emitted counter (completed 2026-05-04)
 - [x] **Phase 14: JDBC/JPA Database Spans** - Extend the consumer service with full Spring Data JPA instrumentation — transaction-parent span wrapping JPA repository child spans — using the complete stable db.* semconv attribute set (completed 2026-05-04)
 - [x] **Phase 15: Outbound HTTP-Client Spans** - Add TracingClientHttpRequestInterceptor to otel-bootstrap and wire it into the producer's RestClient so every outbound HTTP hop produces a CLIENT span with traceparent injected (completed 2026-05-04)
-- [ ] **Phase 16: Head Sampling + W3C Baggage** - Swap both services to a parentBased(traceIdRatioBased) sampler (sub-lesson 16a) and wire BaggageSpanAttributeProcessor so X-Customer-Tier flows from HTTP header through AMQP into both producer and consumer spans (sub-lesson 16b)
+- [x] **Phase 16: Head Sampling + W3C Baggage** - Swap both services to a parentBased(traceIdRatioBased) sampler (sub-lesson 16a) and wire BaggageSpanAttributeProcessor so X-Customer-Tier flows from HTTP header through AMQP into both producer and consumer spans (sub-lesson 16b) (completed 2026-05-04)
 - [ ] **Phase 17: AMQP Topic + DLX Variants** - Extend the RabbitMQ topology with a topic exchange and DLX dead-letter queue, prove the existing propagation pair is exchange-type-agnostic, and demonstrate span links for DLX retry traces
 
 ## Phase Details
@@ -230,7 +230,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 - [x] 16-01-PLAN.md — Wave 1: sampler swap in both OtelSdkConfiguration + verify:head-sampling mise task (HSAMP-01, HSAMP-03)
 - [x] 16-02-PLAN.md — Wave 2: BaggageSpanAttributeProcessor in otel-bootstrap/context/ + registration in both buildTracerProvider() (BAG-02)
 - [x] 16-03-PLAN.md — Wave 3: OrderController X-Customer-Tier baggage scope + TracingMessageListenerAdvice outer extracted.makeCurrent() + TestOtelHolder X-4 fix + load.sh BAGGAGE_RPS + verify:baggage (BAG-01, BAG-03, BAG-04)
-- [ ] 16-04-PLAN.md — Wave 4: README §16 (16a F2-3 callout + 5-dim table, 16b walkthrough + D-B5) + human-verify + git tag step-16-sampling-baggage (HSAMP-02, BAG-04)
+- [x] 16-04-PLAN.md — Wave 4: README §16 (16a F2-3 callout + 5-dim table, 16b walkthrough + D-B5) + human-verify + git tag step-16-sampling-baggage (HSAMP-02, BAG-04)
 
 ---
 
@@ -299,7 +299,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 | 13. Log-Based Metrics (Loki Recording Rules) | v2.0 | 0/? | Not started | - | step-13-log-based-metrics |
 | 14. JDBC/JPA Database Spans | v2.0 | 0/? | Not started | - | step-14-jpa-spans |
 | 15. Outbound HTTP-Client Spans | v2.0 | 4/4 | Shipped | 2026-05-04 | step-15-http-client-spans |
-| 16. Head Sampling + W3C Baggage | v2.0 | 0/? | Not started | - | step-16-sampling-baggage |
+| 16. Head Sampling + W3C Baggage | v2.0 | 4/4 | Shipped | 2026-05-04 | step-16-sampling-baggage |
 | 17. AMQP Topic + DLX Variants | v2.0 | 0/? | Not started | - | step-17-amqp-topology |
 | 18. Automated Screenshot Generation (Playwright) | v2.0 | 3/3 | Shipped | 2026-05-03 | step-18-screenshots |
 

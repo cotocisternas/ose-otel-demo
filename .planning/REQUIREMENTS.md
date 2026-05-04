@@ -77,7 +77,7 @@ Each requirement is user-centric (workshop attendee can observe / verify it), at
 > SDK-side companion to TSAMP; lives in `OtelSdkConfiguration`. Taught SEPARATELY from tail sampling to avoid double-filter confusion.
 
 - [x] **HSAMP-01**: Both `OtelSdkConfiguration.buildTracerProvider()` calls swap v1.0's `Sampler.parentBased(Sampler.alwaysOn())` for `Sampler.parentBased(Sampler.traceIdRatioBased(0.5))` — set programmatically in code (NOT via the `OTEL_TRACES_SAMPLER` env var; the workshop teaches the explicit-call shape)
-- [ ] **HSAMP-02**: The README explains the head-vs-tail sampling contrast in a paired table: head sampling drops at the SDK before export (saves bandwidth, no view of full trace); tail sampling drops at the Collector after the trace is assembled (sees full trace before deciding) — the `step-XX-head-sampling.png` README screenshot pairs with `step-XX-tail-sampling.png` (TSAMP-03)
+- [x] **HSAMP-02**: The README explains the head-vs-tail sampling contrast in a paired table: head sampling drops at the SDK before export (saves bandwidth, no view of full trace); tail sampling drops at the Collector after the trace is assembled (sees full trace before deciding) — the `step-XX-head-sampling.png` README screenshot pairs with `step-XX-tail-sampling.png` (TSAMP-03)
 - [x] **HSAMP-03**: Workshop attendee runs the load script for 100 requests and observes ~50 traces in Tempo (50% head-sampling ratio) — and can see in the console-emitted spans that the SDK is dropping spans before export, demonstrating that no Collector-side processor saw the dropped traces
 
 ### Baggage (BAG)
@@ -189,13 +189,13 @@ Each requirement is user-centric (workshop attendee can observe / verify it), at
 | HCLI-02 | HTTP Client Spans | Phase 15 | Complete |
 | HCLI-03 | HTTP Client Spans | Phase 15 | Complete |
 | HCLI-04 | HTTP Client Spans | Phase 15 | Complete |
-| HSAMP-01 | Head Sampling | Phase 16 | Pending |
-| HSAMP-02 | Head Sampling | Phase 16 | Pending |
-| HSAMP-03 | Head Sampling | Phase 16 | Pending |
-| BAG-01 | Baggage | Phase 16 | Pending |
-| BAG-02 | Baggage | Phase 16 | Pending |
-| BAG-03 | Baggage | Phase 16 | Pending |
-| BAG-04 | Baggage | Phase 16 | Pending |
+| HSAMP-01 | Head Sampling | Phase 16 | Complete |
+| HSAMP-02 | Head Sampling | Phase 16 | Complete |
+| HSAMP-03 | Head Sampling | Phase 16 | Complete |
+| BAG-01 | Baggage | Phase 16 | Complete |
+| BAG-02 | Baggage | Phase 16 | Complete |
+| BAG-03 | Baggage | Phase 16 | Complete |
+| BAG-04 | Baggage | Phase 16 | Complete |
 | AMQP-01 | AMQP Topic + DLX | Phase 17 | Pending |
 | AMQP-02 | AMQP Topic + DLX | Phase 17 | Pending |
 | AMQP-03 | AMQP Topic + DLX | Phase 17 | Pending |

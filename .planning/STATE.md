@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Production Shapes
 status: executing
-stopped_at: Phase 16 context gathered
-last_updated: "2026-05-04T17:33:57.799Z"
+stopped_at: Phase 16 complete — all 4 plans shipped, tag step-16-sampling-baggage applied
+last_updated: "2026-05-04T17:46:00.000Z"
 last_activity: 2026-05-04
 progress:
   total_phases: 9
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 32
-  completed_plans: 31
-  percent: 97
+  completed_plans: 32
+  percent: 100
 ---
 
 # Project State
@@ -22,17 +22,17 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A workshop attendee who already shipped v1.0's manual-SDK demo can run `docker compose up` against a decomposed Tempo/Mimir/Loki/Grafana stack, see Collector-side tail sampling shape what reaches Tempo, click a histogram exemplar to land on the originating trace, watch a JDBC/JPA span tree under a CONSUMER span, follow baggage from an HTTP header through AMQP into a consumer log, and understand exactly which lines of SDK and Collector config made each piece work.
 
-**Current focus:** Phase 16 — head-sampling-w3c-baggage
+**Current focus:** Phase 16 complete — Phase 17 next
 
 ## Current Position
 
-Phase: 16 (head-sampling-w3c-baggage) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
+Phase: 16 (head-sampling-w3c-baggage) — SHIPPED
+Plan: 4 of 4 (all complete)
+Status: Phase 16 shipped; tag step-16-sampling-baggage applied
 Last activity: 2026-05-04
 
 ```
-Progress: [██████████] 97%
+Progress: [██████████] 100%
 ```
 
 ## Performance Metrics
@@ -85,6 +85,8 @@ Progress: [██████████] 97%
 | Phase 15-outbound-http-client-spans P04 | 2min | 3 tasks | 1 files |
 | Phase 16-head-sampling-w3c-baggage P01 | 3min | 2 tasks | 3 files |
 | Phase 16-head-sampling-w3c-baggage P02 | 2min | 2 tasks | 4 files |
+| Phase 16-head-sampling-w3c-baggage P03 | 2min | 2 tasks | 5 files |
+| Phase 16-head-sampling-w3c-baggage P04 | 10min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -147,6 +149,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 15-03]: Notification URL not overridden in IT — fire-and-forget (D-H2) absorbs connection failure; TracingClientHttpRequestInterceptor finally block always exports CLIENT span regardless of HTTP outcome
 - [Phase 15-04]: Human-verify checkpoint APPROVED — verify:http-client-spans GREEN, Tempo shows CLIENT span as child of INTERNAL OrderService.place, traceparent header non-null in producer log, all ITs pass. Annotated tag step-15-http-client-spans applied per WORK-01.
 - [Phase ?]: traceIdRatioBased(0.5) replaces alwaysOn() in both service SDK configs
+- [Phase 16-04]: Human-verify checkpoint APPROVED — verify:head-sampling GREEN, verify:baggage GREEN, Tempo trace confirmed baggage.customer-tier=gold on INTERNAL/PRODUCER/CONSUMER spans, SERVER span correctly absent (D-B5), all ITs pass. Annotated tag step-16-sampling-baggage applied per WORK-01.
 
 ### Roadmap Evolution
 
@@ -189,6 +192,6 @@ Items acknowledged and carried forward at milestone close on 2026-05-02:
 
 ## Session Continuity
 
-Last session: 2026-05-04T17:33:57.794Z
-Stopped at: Phase 16 context gathered
+Last session: 2026-05-04T17:46:00.000Z
+Stopped at: Completed 16-04-PLAN.md
 Resume file: None
