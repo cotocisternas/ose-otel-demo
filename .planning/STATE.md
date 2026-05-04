@@ -4,14 +4,14 @@ milestone: v2.0
 milestone_name: Production Shapes
 status: executing
 stopped_at: Completed 14-01-PLAN.md
-last_updated: "2026-05-04T06:59:00.527Z"
+last_updated: "2026-05-04T07:05:10.595Z"
 last_activity: 2026-05-04
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 24
-  completed_plans: 21
-  percent: 88
+  completed_plans: 22
+  percent: 92
 ---
 
 # Project State
@@ -27,12 +27,12 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 ## Current Position
 
 Phase: 14 (jdbc-jpa-database-spans) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-05-04
 
 ```
-Progress: [█████████░] 88%
+Progress: [█████████░] 92%
 ```
 
 ## Performance Metrics
@@ -76,6 +76,7 @@ Progress: [█████████░] 88%
 | Phase 13 P01 | 2min | 2 tasks | 3 files |
 | Phase 13 P02 | 2min | 2 tasks | 1 files |
 | Phase 14-jdbc-jpa-database-spans P01 | 2min | 2 tasks | 4 files |
+| Phase 14-jdbc-jpa-database-spans P02 | 5min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -130,6 +131,8 @@ Recent decisions affecting current work:
 - [Phase ?]: Phase 8 starter-jdbc replaced by starter-data-jpa; postgresql driver retained as JPA uses the same JDBC driver
 - [Phase ?]: ddl-auto=update chosen over create-drop for workshop-local Postgres (T-14-01-02 accept)
 - [Phase ?]: [Phase 14-01] Wave 1 intentional compile breakage on ProcessingService resolves in plan 14-02 when JPA entity + repository are added
+- [Phase ?]: OrderJpaService kept free of OTel SDK calls — AOP aspects in plan 14-03 wrap it; teaching point: instrumentation without modifying business logic
+- [Phase ?]: traceId column carries W3C trace_id at persist time (D-J8): bridge between PostgreSQL rows and Tempo traces
 
 ### Roadmap Evolution
 
@@ -172,6 +175,6 @@ Items acknowledged and carried forward at milestone close on 2026-05-02:
 
 ## Session Continuity
 
-Last session: 2026-05-04T06:59:00.520Z
+Last session: 2026-05-04T07:05:04.491Z
 Stopped at: Completed 14-01-PLAN.md
 Resume file: None
