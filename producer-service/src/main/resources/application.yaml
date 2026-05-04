@@ -12,3 +12,5 @@ valkey:
   host: ${VALKEY_HOST:localhost}
   port: ${VALKEY_PORT:6379}
   idempotency-ttl-seconds: 3600
+app:
+  notification-url: http://localhost:8080/notifications

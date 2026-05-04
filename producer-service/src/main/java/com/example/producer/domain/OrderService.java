@@ -4,6 +4,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.client.RestClient;
+
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.LongCounter;
@@ -56,11 +61,17 @@ import com.example.producer.messaging.OrderPublisher;
  */
 @Service
 public class OrderService {
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
+
     private final OrderPublisher publisher;
     private final Tracer tracer;
     private final LongCounter ordersCreated;
+    private final RestClient restClient;
+    private final String notifyUrl;
 
-    public OrderService(OrderPublisher publisher, Tracer tracer, Meter meter) {
+    public OrderService(OrderPublisher publisher, Tracer tracer, Meter meter,
+                        RestClient.Builder restClientBuilder,
+                        @Value("${app.notification-url}") String notifyUrl) {
         this.publisher = publisher;
         this.tracer = tracer;
         // Counter "orders.created" — METRIC-02 locked. Built once here and
@@ -79,6 +90,11 @@ public class OrderService {
             .setDescription("Successful POST /orders -> publish completions")
             .setUnit("1")
             .build();
+        // D-H3: build RestClient once in constructor from the injected builder.
+        // The builder already has TracingClientHttpRequestInterceptor registered (HttpClientConfig).
+        // F6-1: never call RestClient.create(url) — that bypasses the interceptor entirely.
+        this.restClient = restClientBuilder.build();
+        this.notifyUrl = notifyUrl;
     }
 
     public String place(Map<String, Object> payload) {
@@ -126,6 +142,34 @@ public class OrderService {
             }
 
             publisher.publish(orderId, payload);
+
+            // ---- Phase 15 D-H1/D-H2/D-H3: outbound HTTP notification (fire-and-forget) ----
+            //
+            // D-H1: Call AFTER publisher.publish() — trace waterfall reads top-down as familiar
+            // PRODUCER span first, then new CLIENT span. Attendees see the existing AMQP flow
+            // before the new HTTP hop.
+            //
+            // D-H2: Wrapped in its own try/catch — notification failure does NOT roll back
+            // the published AMQP message (order is already queued). Notification failure is
+            // observable in Tempo via the CLIENT span's status=ERROR + http.response.status_code
+            // attribute, but does not fail the HTTP 202 response to the caller.
+            //
+            // D-H3: Inline in place() — "boilerplate is the lesson." Attendees read AMQP publish
+            // (TracingMessagePostProcessor in publisher.publish()) and HTTP call (interceptor via
+            // restClient.post()) side by side. No separate NotificationClient class.
+            try {
+                restClient.post()
+                    .uri(notifyUrl)                          // @Value("${app.notification-url}")
+                    .body(Map.of("orderId", orderId))        // D-H6: minimal identity payload
+                    .retrieve()
+                    .toBodilessEntity();
+            } catch (Exception e) {
+                // F6-4 / D-H2: notification failure is observable in Tempo but does NOT fail
+                // the order. Log at WARN so attendees can find the failure in Loki without it
+                // contaminating the application error rate metric (orders.created counts successes).
+                log.warn("Notification call failed for order {}; continuing (fire-and-forget): {}",
+                    orderId, e.getMessage());
+            }
 
             // ---- Phase 4 D-08 / D-09: orders.created Counter (METRIC-02) ----
             //
