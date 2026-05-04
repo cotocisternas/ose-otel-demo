@@ -812,6 +812,81 @@ The `fake/` tenant directory is the most common gotcha when self-hosting Loki wi
      width="900" />
 <!-- Screenshot captured by Phase 18 Playwright automation -->
 
+## Step 14: JPA Database Spans — transaction parent + SELECT/INSERT waterfall
+
+### What you'll learn
+
+- **From 1 span to 3 spans.** Phase 8 produced a single `INSERT processed_orders` CLIENT span using `JdbcTemplate`. Phase 14 replaces it with a JPA stack: a transaction-level INTERNAL parent span wrapping two CLIENT child spans (`findByOrderId` SELECT + conditional `save` INSERT). Compare: `git diff step-08-db-cache..step-14-jpa-spans`.
+- **JPA hides the SQL — spans document the abstraction.** Phase 8 named spans after SQL verbs (`INSERT processed_orders`) because `JdbcTemplate` executes raw SQL. Phase 14 names spans after repository methods (`OrderJpaRepository.findByOrderId`) because JPA generates SQL internally. The `db.query.text` attribute carries `"JpaRepository.findByOrderId(String)"` — honest about the abstraction level.
+- **`@Order(HIGHEST_PRECEDENCE)` is the key.** The `TransactionSpanAspect` uses `@Order(Ordered.HIGHEST_PRECEDENCE)` to wrap **outside** the `@Transactional` proxy. Without this ordering, rollbacks would show `status=OK` on the transaction span because the span would end before the commit/rollback. With it, the deterministic 10% failure path surfaces as `status=ERROR` on the INTERNAL span.
+- **Hibernate manages the schema.** In Phase 8, a hand-written `schema.sql` created the `processed_orders` table. In Phase 14, the `@Entity` annotations on `Order.java` are the schema — `spring.jpa.hibernate.ddl-auto=update` lets Hibernate create and patch the `orders` table automatically. The Phase 8 `processed_orders` table remains in the database but is no longer written to.
+
+### Checkpoint
+
+Workshop is at `step-14-jpa-spans` — the orchestrator applies this annotated tag atomically with the phase-completion merge per WORK-01 / D-21. `git checkout step-14-jpa-spans` jumps to this point. The previous tag is `step-13-log-based-metrics`; `git diff step-13-log-based-metrics..step-14-jpa-spans` shows the focused diff: three new Java files (`Order.java`, `OrderJpaRepository.java`, `OrderJpaService.java`), two new aspect files (`TracingRepositoryAspect.java`, `TransactionSpanAspect.java`), two deleted files (`OrderRepository.java`, `schema.sql`), one updated `ProcessingService.java`, one updated `pom.xml`, and this README section.
+
+### Run
+
+```bash
+mise run preflight
+mise run infra:up
+mise run dev
+# In another terminal — generate load (triggers both success + 10% failure paths):
+mise run load
+# Verify JPA spans are reaching Tempo:
+mise run verify:jpa-spans
+# Open Grafana to correlate spans with metrics and logs:
+mise run ui:grafana
+```
+
+### What to look for
+
+**The JPA span waterfall in Tempo.** Search for traces from `order-consumer` with attribute `db.query.text=*`. Open any trace and look for the transaction parent + child span structure:
+
+<table>
+<tr>
+<th>Phase 8: single JDBC span (<code>step-08-db-cache</code>)</th>
+<th>Phase 14: transaction parent + SELECT/INSERT waterfall (<code>step-14-jpa-spans</code>)</th>
+</tr>
+<tr>
+<td><img src="docs/screenshots/step-08-db-cache.png" alt="Phase 8 single JDBC INSERT span in Tempo trace waterfall" /></td>
+<td><img src="docs/screenshots/step-14-jpa.png" alt="Phase 14 JPA waterfall: INTERNAL OrderJpaService.persist wrapping CLIENT findByOrderId + CLIENT save" /></td>
+</tr>
+</table>
+
+**Expected span structure in Tempo (new order):**
+
+```
+CONSUMER span (TracingMessageListenerAdvice)
+  └── INTERNAL ProcessingService.process
+        └── INTERNAL OrderJpaService.persist       ← TransactionSpanAspect (@HIGHEST_PRECEDENCE)
+              ├── CLIENT OrderJpaRepository.findByOrderId  ← TracingRepositoryAspect
+              │     db.system.name=postgresql
+              │     db.namespace=orders
+              │     db.operation.name=SELECT
+              │     db.collection.name=orders
+              │     db.query.text=JpaRepository.findByOrderId(String)
+              └── CLIENT OrderJpaRepository.save          ← TracingRepositoryAspect
+                    db.system.name=postgresql
+                    db.namespace=orders
+                    db.operation.name=INSERT
+                    db.collection.name=orders
+                    db.query.text=JpaRepository.save(Order)
+```
+
+**The 10% failure path.** When the deterministic failure triggers, the `OrderJpaService.persist` INTERNAL span shows `status=ERROR` in Tempo — because `@Order(HIGHEST_PRECEDENCE)` ensures the `TransactionSpanAspect`'s `catch(Throwable)` block fires after the transaction rolls back. Look for the red INTERNAL span in the waterfall; it is the outermost span that marks the transaction boundary as failed.
+
+**The `traceId` bridge column.** After running load, query PostgreSQL directly to see the `trace_id` column populated:
+
+```bash
+docker exec -it $(docker compose ps -q postgres) \
+  psql -U orders -d orders -c "SELECT order_id, trace_id FROM orders LIMIT 5;"
+```
+
+Copy a `trace_id` value and search for it in Tempo: `traceID=<value>`. This is the bridge between the relational world and the observability world — the same teaching artifact from Phase 8, now in the JPA `orders` table.
+
+**Verify the `db.query.text` attribute name (not the old `db.statement`).** Searching Tempo for `db.statement=*` should return no results. All Phase 14 spans use `DbAttributes.DB_QUERY_TEXT` from semconv 1.40.0 — the correct stable attribute key. This is why `mise run verify:jpa-spans` searches for `db.query.text=*` specifically.
+
 ## Concepts & FAQ
 
 The following four sections collect the narrative deep-dives the per-step *Why it matters* paragraphs cross-reference. They preserve a second reading mode: skim the per-step walkthrough top-to-bottom, then dive into the conceptual narrative — or read this section first and use the per-step blocks as worked examples.
