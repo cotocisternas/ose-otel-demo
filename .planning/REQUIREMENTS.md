@@ -76,9 +76,9 @@ Each requirement is user-centric (workshop attendee can observe / verify it), at
 
 > SDK-side companion to TSAMP; lives in `OtelSdkConfiguration`. Taught SEPARATELY from tail sampling to avoid double-filter confusion.
 
-- [ ] **HSAMP-01**: Both `OtelSdkConfiguration.buildTracerProvider()` calls swap v1.0's `Sampler.parentBased(Sampler.alwaysOn())` for `Sampler.parentBased(Sampler.traceIdRatioBased(0.5))` — set programmatically in code (NOT via the `OTEL_TRACES_SAMPLER` env var; the workshop teaches the explicit-call shape)
+- [x] **HSAMP-01**: Both `OtelSdkConfiguration.buildTracerProvider()` calls swap v1.0's `Sampler.parentBased(Sampler.alwaysOn())` for `Sampler.parentBased(Sampler.traceIdRatioBased(0.5))` — set programmatically in code (NOT via the `OTEL_TRACES_SAMPLER` env var; the workshop teaches the explicit-call shape)
 - [ ] **HSAMP-02**: The README explains the head-vs-tail sampling contrast in a paired table: head sampling drops at the SDK before export (saves bandwidth, no view of full trace); tail sampling drops at the Collector after the trace is assembled (sees full trace before deciding) — the `step-XX-head-sampling.png` README screenshot pairs with `step-XX-tail-sampling.png` (TSAMP-03)
-- [ ] **HSAMP-03**: Workshop attendee runs the load script for 100 requests and observes ~50 traces in Tempo (50% head-sampling ratio) — and can see in the console-emitted spans that the SDK is dropping spans before export, demonstrating that no Collector-side processor saw the dropped traces
+- [x] **HSAMP-03**: Workshop attendee runs the load script for 100 requests and observes ~50 traces in Tempo (50% head-sampling ratio) — and can see in the console-emitted spans that the SDK is dropping spans before export, demonstrating that no Collector-side processor saw the dropped traces
 
 ### Baggage (BAG)
 
