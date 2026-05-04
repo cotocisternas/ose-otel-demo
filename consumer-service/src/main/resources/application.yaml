@@ -5,11 +5,17 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/orders}
     username: ${SPRING_DATASOURCE_USERNAME:orders}
     password: ${SPRING_DATASOURCE_PASSWORD:orders}
-  sql:
-    init:
-      # RESEARCH §7 pitfall: default is "embedded" — only runs schema.sql for H2/HSQL/Derby.
-      # Set to "always" so Postgres gets the schema on startup.
-      mode: always
+  # Phase 14: JPA config replaces schema DDL init (D-J2: JPA owns DDL via entity annotations).
+  # ddl-auto=update: Hibernate creates the 'orders' table on first run; patches on subsequent runs.
+  # The Phase 8 'processed_orders' table remains in the database but is no longer written to.
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.PostgreSQLDialect
 management:
   endpoints:
     web:
