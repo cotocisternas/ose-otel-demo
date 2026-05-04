@@ -63,7 +63,12 @@ public class TracingRepositoryAspect {
      */
     @Around("bean(*Repository) && execution(public * *(..))")
     public Object traceRepositoryMethod(ProceedingJoinPoint pjp) throws Throwable {
-        String simpleName    = pjp.getSignature().getDeclaringType().getSimpleName();
+        // D-J6: span name = "OrderJpaRepository.{methodName}".
+        // Use the target bean's most-specific repository interface (e.g. OrderJpaRepository)
+        // rather than the method's declaring class (e.g. CrudRepository.save is declared
+        // in CrudRepository, not in OrderJpaRepository). The proxy bean implements both;
+        // we want the user-defined interface that matches the bean(*Repository) pointcut.
+        String simpleName    = resolveRepositoryInterfaceName(pjp.getTarget());
         String methodName    = pjp.getSignature().getName();
         String spanName      = simpleName + "." + methodName;        // D-J6
         String operationName = resolveOperationName(methodName);
@@ -87,6 +92,36 @@ public class TracingRepositoryAspect {
         } finally {
             span.end();
         }
+    }
+
+    /**
+     * Resolve the most-specific user-defined repository interface name from the AOP target.
+     *
+     * <p>Spring Data JPA proxies implement multiple interfaces in their hierarchy
+     * (e.g. {@code OrderJpaRepository} → {@code JpaRepository} → {@code CrudRepository}).
+     * The method's {@code declaringType} points to where the method is DEFINED in the hierarchy
+     * (e.g. {@code CrudRepository.save}), not to the user-defined interface. We traverse
+     * the target bean's interfaces and return the first one whose simple name ends in
+     * {@code "Repository"} and is not a Spring Data framework interface — this gives us
+     * {@code "OrderJpaRepository"} for all methods on the bean, including inherited ones.
+     *
+     * <p>Falls back to the declaring type's simple name if no user-defined interface is found
+     * (should not occur in practice — the bean(*Repository) pointcut already guarantees
+     * the target implements a *Repository interface).
+     */
+    private static String resolveRepositoryInterfaceName(Object target) {
+        for (Class<?> iface : target.getClass().getInterfaces()) {
+            String name = iface.getSimpleName();
+            // Skip Spring Data framework interfaces (they're in the org.springframework.data
+            // or org.springframework.data.jpa packages). User-defined repository interfaces
+            // are in application packages (e.g. com.example.consumer.db).
+            if (name.endsWith("Repository")
+                    && !iface.getName().startsWith("org.springframework.data")) {
+                return name;
+            }
+        }
+        // Fallback: use declaring type (covers edge case where no user-defined interface found)
+        return target.getClass().getSimpleName();
     }
 
     /**
