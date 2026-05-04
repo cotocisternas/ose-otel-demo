@@ -11,8 +11,7 @@ import io.opentelemetry.semconv.DbAttributes;
 import io.opentelemetry.semconv.ServerAttributes;
 import io.opentelemetry.semconv.incubating.DbIncubatingAttributes;
 
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.RedisClient;
 import redis.clients.jedis.params.SetParams;
 
 /**
@@ -45,13 +44,13 @@ import redis.clients.jedis.params.SetParams;
  */
 public class InstrumentedJedisPool implements Closeable {
 
-    private final JedisPool pool;
+    private final RedisClient client;
     private final Tracer tracer;
     private final String host;
     private final int port;
 
     public InstrumentedJedisPool(Tracer tracer, String host, int port) {
-        this.pool   = new JedisPool(host, port);
+        this.client = RedisClient.create(host, port);
         this.tracer = tracer;
         this.host   = host;
         this.port   = port;
@@ -89,10 +88,8 @@ public class InstrumentedJedisPool implements Closeable {
             .setAttribute(ServerAttributes.SERVER_PORT, (long) port)
             .startSpan();
         try (Scope scope = span.makeCurrent()) {
-            try (Jedis jedis = pool.getResource()) {
-                String result = jedis.set(key, value, SetParams.setParams().nx().ex(ttlSeconds));
-                return "OK".equals(result);
-            }
+            String result = client.set(key, value, SetParams.setParams().nx().ex(ttlSeconds));
+            return "OK".equals(result);
         } catch (Exception e) {
             span.recordException(e);
             span.setStatus(StatusCode.ERROR, e.getMessage());
@@ -104,6 +101,6 @@ public class InstrumentedJedisPool implements Closeable {
 
     @Override
     public void close() {
-        pool.close();
+        client.close();
     }
 }
