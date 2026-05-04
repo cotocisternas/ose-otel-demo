@@ -595,6 +595,56 @@
           "exemplar": true
         }
       ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 50 },
+      "id": 17,
+      "title": "Log-Based Metrics (Phase 13)",
+      "type": "row",
+      "description": "Phase 13 — Loki recording rules derive metrics FROM LOGS using LogQL. The ruler evaluates sum(rate({service_name=~\"order-.+\"} |= \"ERROR\" [2m])) every 1m and remote-writes the result to Mimir as log:order_errors:rate2m. No Java code changes — pure YAML. The panel below overlays this log-derived error rate against the SDK-emitted orders.created counter to demonstrate the equivalence (and divergence) of metrics-from-code vs metrics-from-logs.",
+      "panels": []
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 51 },
+      "id": 18,
+      "title": "Log-Based Error Rate vs SDK Counter",
+      "type": "timeseries",
+      "description": "The gap between the SDK-emitted creation rate and the log-derived error rate is your success rate. The SDK counter is the source of truth; the log-derived metric is an ops-team approximation that requires no code change.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "auto",
+            "spanNulls": false
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (service_name) (rate(orders_created_total[2m]))",
+          "legendFormat": "SDK: orders created ({{service_name}})",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "log:order_errors:rate2m",
+          "legendFormat": "Logs: errors ({{service_name}})",
+          "refId": "B"
+        }
+      ]
     }
   ],
   "refresh": "30s",
