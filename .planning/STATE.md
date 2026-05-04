@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Production Shapes
-status: executing
+status: ready_to_plan
 stopped_at: Phase 16 complete — all 4 plans shipped, tag step-16-sampling-baggage applied
 last_updated: "2026-05-04T17:46:00.000Z"
 last_activity: 2026-05-04
 progress:
   total_phases: 9
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 32
   completed_plans: 32
   percent: 100
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 
 ## Current Position
 
-Phase: 16 (head-sampling-w3c-baggage) — SHIPPED
-Plan: 4 of 4 (all complete)
-Status: Phase 16 shipped; tag step-16-sampling-baggage applied
+Phase: 18
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-05-04
 
 ```
@@ -60,6 +60,7 @@ Progress: [██████████] 100%
 | 18 | 3 | - | - |
 | 13 | 2 | - | - |
 | 14 | 4 | - | - |
+| 16 | 4 | - | - |
 
 *Updated after each plan completion*
 
