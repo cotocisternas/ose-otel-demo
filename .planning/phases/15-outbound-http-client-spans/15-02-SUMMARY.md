@@ -105,6 +105,15 @@ None — no external service configuration required.
 - Plan 03 (integration test update — OrderFlowIT span count >= 7) can proceed immediately
 - Plan 04 (README + verify:http-client-spans mise task) can proceed in parallel with Plan 03
 
+## Self-Check: PASSED
+
+- HttpClientConfig.java: FOUND
+- NotificationStubController.java: FOUND
+- 15-02-SUMMARY.md: FOUND
+- Task 1 commit 2d09139: FOUND
+- Task 2 commit 1747da9: FOUND
+- mvn -pl producer-service -am compile: Exit 0
+
 ---
 *Phase: 15-outbound-http-client-spans*
 *Completed: 2026-05-04*
