@@ -4,14 +4,14 @@ milestone: v2.0
 milestone_name: Production Shapes
 status: executing
 stopped_at: Phase 15 context gathered
-last_updated: "2026-05-04T12:12:57.381Z"
-last_activity: 2026-05-04 -- Phase 15 planning complete
+last_updated: "2026-05-04T12:19:20.452Z"
+last_activity: 2026-05-04
 progress:
   total_phases: 9
   completed_phases: 6
   total_plans: 28
-  completed_plans: 24
-  percent: 86
+  completed_plans: 25
+  percent: 89
 ---
 
 # Project State
@@ -22,17 +22,17 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A workshop attendee who already shipped v1.0's manual-SDK demo can run `docker compose up` against a decomposed Tempo/Mimir/Loki/Grafana stack, see Collector-side tail sampling shape what reaches Tempo, click a histogram exemplar to land on the originating trace, watch a JDBC/JPA span tree under a CONSUMER span, follow baggage from an HTTP header through AMQP into a consumer log, and understand exactly which lines of SDK and Collector config made each piece work.
 
-**Current focus:** Phase 14 — jdbc-jpa-database-spans
+**Current focus:** Phase 15 — outbound-http-client-spans
 
 ## Current Position
 
-Phase: 18
-Plan: Not started
+Phase: 15 (outbound-http-client-spans) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-05-04 -- Phase 15 planning complete
+Last activity: 2026-05-04
 
 ```
-Progress: [██████████] 100%
+Progress: [█████████░] 89%
 ```
 
 ## Performance Metrics
@@ -179,6 +179,6 @@ Items acknowledged and carried forward at milestone close on 2026-05-02:
 
 ## Session Continuity
 
-Last session: 2026-05-04T11:34:53.335Z
+Last session: 2026-05-04T12:19:20.444Z
 Stopped at: Phase 15 context gathered
-Resume file: .planning/phases/15-outbound-http-client-spans/15-CONTEXT.md
+Resume file: None

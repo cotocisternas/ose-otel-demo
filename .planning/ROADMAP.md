@@ -198,7 +198,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 **Git tag**: `step-15-http-client-spans`
 
 **Plans**: 4 plans across 3 waves
-- [ ] 15-01-PLAN.md — Wave 1: TracingClientHttpRequestInterceptor + HttpHeadersSetter in otel-bootstrap/http/ (HCLI-01, HCLI-02)
+- [x] 15-01-PLAN.md — Wave 1: TracingClientHttpRequestInterceptor + HttpHeadersSetter in otel-bootstrap/http/ (HCLI-01, HCLI-02)
 - [ ] 15-02-PLAN.md — Wave 1: HttpClientConfig + NotificationStubController + OrderService edit + application.yaml (HCLI-03, HCLI-04)
 - [ ] 15-03-PLAN.md — Wave 2: OrderFlowIT update (span count + CLIENT span test) + verify:http-client-spans mise task (HCLI-03, HCLI-04)
 - [ ] 15-04-PLAN.md — Wave 3: README §15 + human-verify end-to-end + git tag step-15-http-client-spans (HCLI-01..HCLI-04)
