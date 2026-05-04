@@ -12,7 +12,7 @@
       }
     ]
   },
-  "description": "Step 9 Infra & Deps dashboard — pairs app-emitted OTel telemetry (HikariCP gauge, SET/INSERT spans, HTTP histogram) with infrastructure exporter metrics (RabbitMQ Prometheus plugin via /metrics/per-object, redis_exporter, postgres_exporter). The Database row is the two-lens money panel: HikariCP db_client_connection_count (app view) sits next to pg_stat_database_numbackends (server view). Companion to /d/ose-otel-demo (workshop) and /d/ose-otel-noc (NOC).",
+  "description": "Step 9 Infra & Deps dashboard — pairs app-emitted OTel telemetry (HikariCP gauge, SET/JPA spans, HTTP histogram) with infrastructure exporter metrics (RabbitMQ Prometheus plugin via /metrics/per-object, redis_exporter, postgres_exporter). The Database row is the two-lens money panel: HikariCP db_client_connection_count (app view) sits next to pg_stat_database_numbackends (server view). Companion to /d/ose-otel-demo (workshop) and /d/ose-otel-noc (NOC).",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -287,7 +287,7 @@
           "type": "timeseries",
           "id": 14,
           "title": "Tuple activity (rate/1m)",
-          "description": "pg_stat_database_tup_inserted/updated/fetched as rates. Inserts come from the consumer's processed_orders write path; fetched is read activity (could be the producer's idempotency lookup if it falls through to Postgres).",
+          "description": "pg_stat_database_tup_inserted/updated/fetched as rates. Inserts come from the consumer's JPA persist path (OrderJpaService → OrderJpaRepository.save); fetched includes the findByOrderId idempotency check and the producer's Valkey fallback lookup.",
           "datasource": {"type": "prometheus", "uid": "prometheus"},
           "gridPos": {"h": 8, "w": 6, "x": 12, "y": 30},
           "fieldConfig": {
@@ -322,13 +322,13 @@
         {
           "type": "table",
           "id": 15,
-          "title": "Recent INSERT spans (app view)",
-          "description": "Consumer-emitted CLIENT spans for processed_orders INSERT. Span name literal is 'INSERT processed_orders' (from OrderRepository.java tracer.spanBuilder(\"INSERT \" + TABLE)).",
+          "title": "Recent JPA database spans (app view)",
+          "description": "Consumer-emitted CLIENT spans from TracingRepositoryAspect — OrderJpaRepository.findByOrderId (SELECT) and OrderJpaRepository.save (INSERT). Phase 14 replaced the Phase 8 raw-JDBC 'INSERT processed_orders' span with AOP-driven JPA repository spans carrying full db.* semconv.",
           "datasource": {"type": "tempo", "uid": "tempo"},
           "gridPos": {"h": 7, "w": 24, "x": 0, "y": 38},
           "options": {"showHeader": true, "cellHeight": "sm"},
           "fieldConfig": {"defaults": {"custom": {"align": "auto", "cellOptions": {"type": "auto"}, "inspect": false}}, "overrides": []},
-          "targets": [{"datasource": {"type": "tempo", "uid": "tempo"}, "query": "{resource.service.name=\"order-consumer\" && name=\"INSERT processed_orders\"}", "queryType": "traceql", "tableType": "traces", "limit": 20, "refId": "A"}]
+          "targets": [{"datasource": {"type": "tempo", "uid": "tempo"}, "query": "{resource.service.name=\"order-consumer\" && span.db.system.name=\"postgresql\"}", "queryType": "traceql", "tableType": "traces", "limit": 20, "refId": "A"}]
         }
       ]
     },
