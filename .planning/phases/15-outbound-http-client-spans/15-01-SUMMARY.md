@@ -119,3 +119,12 @@ None - no external service configuration required.
 ---
 *Phase: 15-outbound-http-client-spans*
 *Completed: 2026-05-04*
+
+## Self-Check: PASSED
+
+- `otel-bootstrap/src/main/java/com/example/otel/http/HttpHeadersSetter.java` — FOUND
+- `otel-bootstrap/src/main/java/com/example/otel/http/TracingClientHttpRequestInterceptor.java` — FOUND
+- `.planning/phases/15-outbound-http-client-spans/15-01-SUMMARY.md` — FOUND
+- Commit `9e028a5` (Task 1) — FOUND
+- Commit `d3e93e1` (Task 2) — FOUND
+- `mvn -pl otel-bootstrap compile` — EXIT 0

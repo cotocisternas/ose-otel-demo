@@ -647,7 +647,7 @@
       ]
     }
   ],
-  "refresh": "30s",
+  "refresh": "10s",
   "schemaVersion": 39,
   "tags": [
     "ose-otel-demo",
@@ -671,10 +671,7 @@
       }
     ]
   },
-  "time": {
-    "from": "now-15m",
-    "to": "now"
-  },
+  "time": {"from": "now-15m", "to": "now"},
   "timepicker": {},
   "timezone": "browser",
   "title": "OSE OTel Demo — Three Signals",
