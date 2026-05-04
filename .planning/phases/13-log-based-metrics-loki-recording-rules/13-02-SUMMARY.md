@@ -25,7 +25,7 @@ decisions:
 metrics:
   duration: "2 minutes"
   completed_date: "2026-05-04"
-  tasks_completed: 1
+  tasks_completed: 2
   files_changed: 1
 ---
 
@@ -54,9 +54,13 @@ The section follows the Step 12 structural template exactly:
 
 **Screenshot placeholder (D-L9):** `<img src="docs/screenshots/step-13-log-based-metrics.png" ... width="900" />` with Phase 18 comment — matches Phase 12's HTML img pattern exactly.
 
-### Task 2: End-to-end pipeline verification (PENDING — checkpoint:human-verify)
+### Task 2: End-to-end pipeline verification (COMPLETE — human-verify APPROVED)
 
-Human verification of the complete Phase 13 pipeline against a live stack. Not yet executed — awaiting checkpoint.
+Human verified the complete Phase 13 pipeline against a live stack:
+- `mise run verify:log-metrics` exits 0 — both tiers GREEN (Loki rules API + Mimir query)
+- Grafana dashboard "Log-Based Metrics (Phase 13)" row renders both overlaid series
+- SDK creation rate (blue) ~10x higher than log-derived error rate (orange) — confirms 10% deterministic failure path
+- README Step 13 reads coherently between Step 12 and Concepts & FAQ sections
 
 ## Deviations from Plan
 
