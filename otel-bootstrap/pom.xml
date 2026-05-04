@@ -56,6 +56,20 @@
     </dependency>
 
     <!--
+      Spring Web — HttpHeaders, HttpRequest, ClientHttpRequestInterceptor,
+      ClientHttpRequestExecution, ClientHttpResponse. Provided scope:
+      consuming services (producer-service, consumer-service) bring
+      spring-web transitively via spring-boot-starter-web; otel-bootstrap
+      only references the API types at compile time. BOM-managed by
+      spring-boot-dependencies:3.4.13 — no <version>.
+    -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-web</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <!--
       OpenTelemetry semconv-incubating — MessagingIncubatingAttributes
       constants are referenced by the propagation classes; while constants
       inline at compile, the artifact is needed to compile this module
