@@ -616,3 +616,48 @@ echo "  Search Tempo for: db.system.name=postgresql AND service.name=order-consu
 echo "  Expected span names: OrderJpaRepository.findByOrderId, OrderJpaRepository.save"
 echo "  Transaction parent: OrderJpaService.persist (INTERNAL span)"
 """
+
+# Phase 15 — verify:http-client-spans (HCLI-04)
+# ──────────────────────────────────────────────────────────────────
+[tasks."verify:http-client-spans"]
+description = "Phase 15 invariant: CLIENT span with span.kind=client and service.name=order-producer present in Tempo — proves TracingClientHttpRequestInterceptor spans are reaching Tempo for the outbound HTTP notification call."
+run = """
+set -e
+ATTEMPTS=6
+SLEEP_SECS=5
+LAST_ERR=""
+
+# Prerequisites: mise run infra:up, mise run dev, mise run load
+# Tempo search for CLIENT spans from order-producer service.
+# span.kind=client is a Tempo built-in tag filtering by SpanKind.CLIENT.
+# TracingClientHttpRequestInterceptor sets SpanKind.CLIENT exclusively for outbound HTTP calls.
+
+echo "verify:http-client-spans: querying Tempo for span.kind=client spans on service order-producer..."
+for i in $(seq 1 $ATTEMPTS); do
+  RESULT=$(curl -fsS 'http://localhost:3200/api/search?tags=service.name%3Dorder-producer%20span.kind%3Dclient&limit=5' 2>&1) || {
+    LAST_ERR="curl :3200 failed: $RESULT"
+    [ "$i" -lt "$ATTEMPTS" ] && { echo "  attempt $i/$ATTEMPTS — Tempo not ready ($LAST_ERR); retrying in ${SLEEP_SECS}s..."; sleep $SLEEP_SECS; continue; }
+    echo "ERROR: verify:http-client-spans timed out after $((ATTEMPTS * SLEEP_SECS))s — Tempo :3200 not reachable."
+    echo "  Run: mise run infra:up && mise run dev && mise run load"
+    exit 1
+  }
+  if printf '%s' "$RESULT" | jq -e '.traces | length > 0' >/dev/null 2>&1; then break; fi
+  LAST_ERR="no CLIENT spans from order-producer in Tempo yet (span.kind=client)"
+  [ "$i" -lt "$ATTEMPTS" ] && { echo "  attempt $i/$ATTEMPTS — $LAST_ERR; retrying in ${SLEEP_SECS}s..."; sleep $SLEEP_SECS; continue; }
+  echo "ERROR: verify:http-client-spans — $LAST_ERR after $((ATTEMPTS * SLEEP_SECS))s."
+  echo "Diagnose:"
+  echo "  1. Check interceptor is registered: grep -r 'requestInterceptor' producer-service/src/main/java/com/example/producer/config/HttpClientConfig.java"
+  echo "  2. Check RestClient is injected (not created statically): grep -r 'RestClient.create' producer-service/src/main/java/"
+  echo "     (must return 0 — RestClient.create() bypasses the interceptor)"
+  echo "  3. Restart services: mise run dev"
+  echo "  4. Generate load: mise run load && sleep 10"
+  echo "  5. Confirm span name 'POST /notifications' in Tempo by searching: service.name=order-producer span.kind=client"
+  echo "Tempo API response: $RESULT"
+  exit 1
+done
+
+echo "verify:http-client-spans: GREEN — CLIENT spans present in Tempo for order-producer."
+echo "  Span name: 'POST /notifications'"
+echo "  Attributes: http.request.method=POST, service.peer.name=notification-service"
+echo "  Search Tempo: span.kind=client AND service.name=order-producer"
+"""
