@@ -151,15 +151,19 @@
     </dependency>
 
     <!--
-      Phase 8: Spring JDBC — brings JdbcTemplate + HikariCP DataSource auto-config.
-      spring-boot-starter-jdbc is BOM-managed by Spring Boot 3.4.13; HikariCP 5.1.0
-      is transitively managed. Do NOT define a custom DataSource @Bean — that would
-      suppress spring.sql.init.* processing (RESEARCH §7 pitfall: custom DataSource
-      @Bean disables schema.sql auto-run).
+      Phase 14: Spring Data JPA — replaces spring-boot-starter-jdbc (which becomes
+      transitively redundant; removed above when JPA is added).
+      spring-boot-starter-data-jpa is BOM-managed by Spring Boot 3.4.13; pulls
+      Hibernate 6.x + Spring Data JPA 3.x + HikariCP 5.x + aspectjweaver
+      (via spring-boot-starter-aop). No <version> tag needed.
+      @EnableAspectJAutoProxy is activated automatically by Spring Boot's
+      AopAutoConfiguration when aspectjweaver is on the classpath.
+      Phase 8 contrast: starter-jdbc exposed raw JdbcTemplate (1 INSERT span);
+      Phase 14 exposes @Transactional + JpaRepository (transaction parent + SELECT/INSERT waterfall).
     -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-jdbc</artifactId>
+      <artifactId>spring-boot-starter-data-jpa</artifactId>
     </dependency>
 
     <!--
