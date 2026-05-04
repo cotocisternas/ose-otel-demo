@@ -226,7 +226,11 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 
 **Git tag**: `step-16-sampling-baggage`
 
-**Plans**: TBD
+**Plans**: 4 plans across 4 waves
+- [ ] 16-01-PLAN.md — Wave 1: sampler swap in both OtelSdkConfiguration + verify:head-sampling mise task (HSAMP-01, HSAMP-03)
+- [ ] 16-02-PLAN.md — Wave 2: BaggageSpanAttributeProcessor in otel-bootstrap/context/ + registration in both buildTracerProvider() (BAG-02)
+- [ ] 16-03-PLAN.md — Wave 3: OrderController X-Customer-Tier baggage scope + TracingMessageListenerAdvice outer extracted.makeCurrent() + TestOtelHolder X-4 fix + load.sh BAGGAGE_RPS + verify:baggage (BAG-01, BAG-03, BAG-04)
+- [ ] 16-04-PLAN.md — Wave 4: README §16 (16a F2-3 callout + 5-dim table, 16b walkthrough + D-B5) + human-verify + git tag step-16-sampling-baggage (HSAMP-02, BAG-04)
 
 ---
 
