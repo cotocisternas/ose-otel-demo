@@ -4,14 +4,14 @@ milestone: v2.0
 milestone_name: Production Shapes
 status: executing
 stopped_at: Completed 18-03-PLAN.md (Phase 18 complete)
-last_updated: "2026-05-04T00:43:09.410Z"
-last_activity: 2026-05-04 -- Phase 13 planning complete
+last_updated: "2026-05-04T00:54:43.484Z"
+last_activity: 2026-05-04
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 20
-  completed_plans: 18
-  percent: 90
+  completed_plans: 19
+  percent: 95
 ---
 
 # Project State
@@ -22,17 +22,17 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** A workshop attendee who already shipped v1.0's manual-SDK demo can run `docker compose up` against a decomposed Tempo/Mimir/Loki/Grafana stack, see Collector-side tail sampling shape what reaches Tempo, click a histogram exemplar to land on the originating trace, watch a JDBC/JPA span tree under a CONSUMER span, follow baggage from an HTTP header through AMQP into a consumer log, and understand exactly which lines of SDK and Collector config made each piece work.
 
-**Current focus:** Phase 18 — automated-screenshot-generation-playwright (COMPLETE)
+**Current focus:** Phase 13 — log-based-metrics-loki-recording-rules
 
 ## Current Position
 
-Phase: 18
-Plan: Not started
+Phase: 13 (log-based-metrics-loki-recording-rules) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-05-04 -- Phase 13 planning complete
+Last activity: 2026-05-04
 
 ```
-Progress: [██████████] 100%
+Progress: [██████████] 95%
 ```
 
 ## Performance Metrics
@@ -72,6 +72,7 @@ Progress: [██████████] 100%
 | Phase 18-automated-screenshot-generation-playwright P01 | 2min | 2 tasks | 2 files |
 | Phase 18-automated-screenshot-generation-playwright P02 | 3min | 2 tasks | 5 files |
 | Phase 18-automated-screenshot-generation-playwright P03 | 6min | 3 tasks | 6 files |
+| Phase 13 P01 | 2min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -164,6 +165,6 @@ Items acknowledged and carried forward at milestone close on 2026-05-02:
 
 ## Session Continuity
 
-Last session: 2026-05-03T23:21:00Z
+Last session: 2026-05-04T00:54:43.477Z
 Stopped at: Completed 18-03-PLAN.md (Phase 18 complete)
 Resume file: None

@@ -49,9 +49,9 @@ Each requirement is user-centric (workshop attendee can observe / verify it), at
 
 > Pure Loki + Mimir YAML; no Java changes. Depends on STACK.
 
-- [ ] **LMET-01**: Loki runs with the `ruler` component enabled in `loki-config.yaml`, configured to remote-write recording rule outputs to Mimir on the same `auth_enabled: false` tenant as STACK-05
-- [ ] **LMET-02**: A recording rule lives at `infra/observability/loki-rules/order-errors.yaml` defining `log:order_errors:rate2m` as `sum by (service_name) (rate({service_name=~"order-.+"} |= "ERROR" [2m]))` — the metric name uses the `log:<thing>:<aggregation>` prefix convention to prevent collisions with SDK-emitted metric names
-- [ ] **LMET-03**: Workshop attendee opens a Grafana panel that plots the log-derived `log:order_errors:rate2m` series alongside the SDK-emitted `orders.created` counter; both share the same `service_name` axis so the workshop can demonstrate the equivalence (and divergence) of "metrics from app code" vs "metrics derived from logs"
+- [x] **LMET-01**: Loki runs with the `ruler` component enabled in `loki-config.yaml`, configured to remote-write recording rule outputs to Mimir on the same `auth_enabled: false` tenant as STACK-05
+- [x] **LMET-02**: A recording rule lives at `infra/observability/loki-rules/order-errors.yaml` defining `log:order_errors:rate2m` as `sum by (service_name) (rate({service_name=~"order-.+"} |= "ERROR" [2m]))` — the metric name uses the `log:<thing>:<aggregation>` prefix convention to prevent collisions with SDK-emitted metric names
+- [x] **LMET-03**: Workshop attendee opens a Grafana panel that plots the log-derived `log:order_errors:rate2m` series alongside the SDK-emitted `orders.created` counter; both share the same `service_name` axis so the workshop can demonstrate the equivalence (and divergence) of "metrics from app code" vs "metrics derived from logs"
 
 ### Database Spans — JDBC/JPA (DBSP)
 

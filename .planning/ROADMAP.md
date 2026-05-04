@@ -144,7 +144,7 @@ Plus the post-Phase-7 quick-task workshop polish on `main`:
 **Git tag**: `step-13-log-based-metrics`
 
 **Plans**: 2 plans across 2 waves
-- [ ] 13-01-PLAN.md — Recording rule file (fake/ subdirectory), dashboard panel (Log-Based Metrics row), verify:log-metrics mise task
+- [x] 13-01-PLAN.md — Recording rule file (fake/ subdirectory), dashboard panel (Log-Based Metrics row), verify:log-metrics mise task
 - [ ] 13-02-PLAN.md — README Step 13 walkthrough + end-to-end human-verify checkpoint
 
 ---
